@@ -15,18 +15,46 @@ class BaseUserModel(AbstractUser):
 
 class User(BaseUserModel):
 
-    first_name = models.CharField(max_length=255)
+    ROLE_CHOICES = [
+        (1, 'Administrador'),
+        (2, 'Funcionario'),
+    ]
+
+    username = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
-    
+    system_role = models.CharField(
+        max_length=20, choices=ROLE_CHOICES, default='funcionario'
+    )
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(
         blank=True, null=True, db_index=True, editable=False
     )
-    is_active = models.BooleanField( default=True)
-    username = None
+    is_active = models.BooleanField(default=True)
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["password", "is_active"]
+    REQUIRED_FIELDS = ["username", "password", "is_active"]
 
     class Meta:
         db_table = "auth_user"
+
+    def save(self, *args, **kwargs):
+        if self.system_role == '1':  
+            update_system_role(self)
+        else:
+            
+            self.is_superuser = False
+            self.is_staff = False
+
+        super(User, self).save(*args, **kwargs)
+
+def update_system_role(user):
+    if user.system_role == '1':  
+        user.is_superuser = True
+        user.is_staff = True
+    else:
+        user.is_superuser = False
+        user.is_staff = False
+
+    user.save()
+
+
