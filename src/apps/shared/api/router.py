@@ -3,10 +3,11 @@ from rest_framework.routers import DefaultRouter, SimpleRouter
 from django.urls import path
 
 from .viewsets.login_viewsets import LoginView
-
+from .viewsets import scraper_viewsets
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
+    path('scrape-url/', scraper_viewsets.scrape_pdf, name='scrape_url'),
 ]
 urlpatterns += router.urls
