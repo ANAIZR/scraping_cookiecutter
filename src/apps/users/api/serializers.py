@@ -4,8 +4,11 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from ..utils.update_system_role import update_system_role
+
 
 class UsuarioGETSerializer(serializers.ModelSerializer):
+    system_role_description = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -15,12 +18,18 @@ class UsuarioGETSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "system_role",
+            "system_role_description",
             "is_active",
             "date_joined",
             "deleted_at",
             "updated_at",
             "is_superuser",
         ]
+
+    def get_system_role_description(self, obj):
+        print("system_role:", obj.system_role)  # Esto te mostrará el valor real en consola
+        role_dict = dict(User.ROLE_CHOICES)
+        return role_dict.get(obj.system_role, "No definido")
 
 
 class UserNameSerializer(serializers.ModelSerializer):
@@ -31,13 +40,12 @@ class UserNameSerializer(serializers.ModelSerializer):
 
 
 class UsuarioPOSTSerializer(serializers.ModelSerializer):
-    
 
     class Meta:
         model = User
         fields = "__all__"
         extra_kwargs = {"password": {"write_only": True, "required": True}}
-    
+
     def create(self, validated_data):
         password = validated_data.pop("password", None)
 
@@ -50,12 +58,12 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"password": list(e.messages)})
             user.set_password(password)
 
+        update_system_role(user)
         user.save()
 
         self.send_welcome_email(user)
 
         return user
-
 
     def update(self, instance, validated_data):
         password = validated_data.get("password", None)
@@ -67,10 +75,10 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 validate_password(password, user=user)
             except ValidationError as e:
                 raise serializers.ValidationError({"password": list(e.messages)})
-            
+
             user.set_password(password)
 
-
+        update_system_role(user)
         user.save()
 
         return user

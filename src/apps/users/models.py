@@ -13,23 +13,19 @@ class BaseUserModel(AbstractUser):
     class Meta:
         abstract = True
 
-class User(BaseUserModel):
 
+class User(BaseUserModel):
     ROLE_CHOICES = [
-        (1, 'Administrador'),
-        (2, 'Funcionario'),
+        (1, "Administrador del sistema"),
+        (2, "Funcionario"),
     ]
 
     username = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
-    system_role = models.CharField(
-        max_length=20, choices=ROLE_CHOICES, default='funcionario'
-    )
+    system_role = models.PositiveSmallIntegerField(choices=ROLE_CHOICES, default=2)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(
-        blank=True, null=True, db_index=True, editable=False
-    )
+    deleted_at = models.DateTimeField(blank=True, null=True, db_index=True, editable=False)
     is_active = models.BooleanField(default=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username", "password", "is_active"]
@@ -37,24 +33,15 @@ class User(BaseUserModel):
     class Meta:
         db_table = "auth_user"
 
-    def save(self, *args, **kwargs):
-        if self.system_role == '1':  
-            update_system_role(self)
-        else:
-            
-            self.is_superuser = False
-            self.is_staff = False
+    def delete(self, *args, **kwargs):
+        self.deleted_at = timezone.now()
+        self.is_active = False
+        self.save()
 
-        super(User, self).save(*args, **kwargs)
+    def restore(self):
+        self.deleted_at = None
+        self.is_active = True
+        self.save()
 
-def update_system_role(user):
-    if user.system_role == '1':  
-        user.is_superuser = True
-        user.is_staff = True
-    else:
-        user.is_superuser = False
-        user.is_staff = False
-
-    user.save()
-
-
+    def is_deleted(self):
+        return self.deleted_at is not None
