@@ -1,96 +1,92 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import pdfplumber
-import requests
 from pymongo import MongoClient
 from datetime import datetime
 import gridfs
+import requests
+import pdfplumber
 import os
 import json
-
-output_dir = r"C:\web_scraping_files"
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
 
 client = MongoClient("mongodb://localhost:27017/")
 db = client["scrapping-can"]
 collection = db["collection"]
 fs = gridfs.GridFS(db)
 
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
-}
+output_dir = r"C:\web_scraping_files"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 @csrf_exempt
 def scrape_pdf(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            pdf_urls = data.get('pdf_urls', [])
+            url = data.get('url')
+            if not url:
+                return JsonResponse({'error': 'No se proporcionó una URL'}, status=400)
 
-            if not pdf_urls:
-                return JsonResponse({"error": "No se proporcionaron URLs de PDF"}, status=400)
+            url_docs = list(collection.find({"Url": url}).sort("Fecha_scrapper", -1))
 
-            response_data = []
+            if len(url_docs) >= 2:
+                oldest_doc = url_docs[-1]  
+                fs.delete(oldest_doc["Objeto"])  
+                collection.delete_one({"_id": oldest_doc["_id"]})  
 
-            for url in pdf_urls:
-                existing_doc = collection.find_one({"Url": url})
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                pdf_filename = os.path.join(output_dir, url.split("/")[-1])
+                txt_filename = pdf_filename.replace('.pdf', '.txt')
                 
-                if existing_doc:
-                    response_data.append({
-                        "message": f"El documento para esta URL ya existe.",
-                        "object_id": str(existing_doc['Objeto'])
-                    })
-                    continue
+                with open(pdf_filename, "wb") as pdf_file:
+                    pdf_file.write(response.content)
                 
-                response = requests.get(url, headers=headers)
+                full_text = ""
+                with pdfplumber.open(pdf_filename) as pdf:
+                    for page in pdf.pages:
+                        text = page.extract_text()
+                        if text:
+                            full_text += text + "\n"
 
-                if response.status_code == 200:
-                    pdf_filename = os.path.join(output_dir, url.split("/")[-1])  
-                    txt_filename = pdf_filename.replace('.pdf', '.txt')  
+                with open(txt_filename, "w", encoding="utf-8") as txt_file:
+                    txt_file.write(full_text.strip())
 
-                    with open(pdf_filename, "wb") as f:
-                        f.write(response.content)
+                with open(txt_filename, "rb") as txt_file:
+                    object_id = fs.put(txt_file, filename=txt_filename)
 
-                    full_text = ""
-                    with pdfplumber.open(pdf_filename) as pdf:
-                        for page in pdf.pages:
-                            text = page.extract_text()
-                            if text:
-                                full_text += text + "\n"
+                data = {
+                    "Objeto": object_id,
+                    "Tipo": "Documento",
+                    "Url": url,
+                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Etiquetas": ["planta", "plaga"]
+                }
+                collection.insert_one(data)
 
-                    with open(txt_filename, "w", encoding="utf-8") as txt_file:
-                        txt_file.write(full_text.strip())
-
-                    with open(txt_filename, "rb") as f:
-                        object_id = fs.put(f, filename=txt_filename)
-
-                    data = {
-                        "Objeto": object_id,
-                        "Tipo": "Documento",
-                        "Url": url,
-                        "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "Etiquetas": ["planta", "plaga"],
-                    }
-                    collection.insert_one(data)
-                    response_data.append({
-                        "message": f"Texto extraído y guardado en MongoDB",
-                        "object_id": str(object_id)
-                    })
-
-                    records = list(collection.find({'Url': url}).sort("Fecha_scrapper", -1))
-                    if len(records) > 2:
-                        for record in records[2:]:
-                            collection.delete_one({'_id': record['_id']})
-                            fs.delete(record['Objeto'])  
-                else:
-                    response_data.append({
-                        "error": f"Error al descargar el PDF {url}: {response.status_code}"
-                    })
-
-            return JsonResponse({"results": response_data})
+                return JsonResponse({
+                    "message": "Datos guardados en MongoDB",
+                    "object_id": str(object_id),
+                    "Fecha_scrapper": data["Fecha_scrapper"]
+                })
+            else:
+                error_msg = f"Error al descargar el PDF: {response.status_code}"
+                error_data = {
+                    "Url": url,
+                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "error": error_msg
+                }
+                collection.insert_one(error_data)
+                return JsonResponse({"error": error_msg}, status=500)
 
         except Exception as e:
-            return JsonResponse({"error": f"Ocurrió un error: {str(e)}"}, status=500)
-    else:
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
+            error_msg = f"Ocurrió un error inesperado: {str(e)}"
+            error_data = {
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "error": error_msg
+            }
+            collection.insert_one(error_data)
+            return JsonResponse({"error": error_msg}, status=500)
+
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
