@@ -89,4 +89,23 @@ def scrape_pdf(request):
             collection.insert_one(error_data)
             return JsonResponse({"error": error_msg}, status=500)
 
+    elif request.method == 'GET':
+        url = request.GET.get('url')
+        if url:
+            documents = list(collection.find({"Url": url}).sort("Fecha_scrapper", -1))
+        else:
+            documents = list(collection.find().sort("Fecha_scrapper", -1))
+        
+        results = []
+        for doc in documents:
+            results.append({
+                "object_id": str(doc["Objeto"]),
+                "Tipo": doc["Tipo"],
+                "Url": doc["Url"],
+                "Fecha_scrapper": doc["Fecha_scrapper"],
+                "Etiquetas": doc.get("Etiquetas", [])
+            })
+        
+        return JsonResponse({"documents": results}, safe=False)
+
     return JsonResponse({'error': 'Método no permitido'}, status=405)
