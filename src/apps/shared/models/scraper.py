@@ -3,19 +3,23 @@ from django.db import models
 
 from ...core.models import CoreModel
 
+
 class ScraperURL(CoreModel):
     TYPE_CHOICES = [
         (1, "Web"),
-        (2, "Libro"),
+        (2, "PDF"),
     ]
-    url = models.URLField(max_length=255)
+    TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral")]
+    url = models.URLField(max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     type_file = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, default=1)
     deleted_at = models.DateTimeField(
         blank=True, null=True, db_index=True, editable=False
     )
+    time_choices = models.PositiveSmallIntegerField(choices=TIME_CHOICES, default=1)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         db_table = "scraper_url"
 

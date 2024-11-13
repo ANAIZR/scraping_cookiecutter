@@ -1,0 +1,431 @@
+[
+  {
+    "model": "shared.ScraperURL",
+    "pk": 1,
+    "fields": {
+      "url": "https://www.redalyc.org/pdf/1950/195018673003.pdf",
+      "type_file": 2,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 2,
+    "fields": {
+      "url": "http://www.iucngisd.org/gisd/",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 3,
+    "fields": {
+      "url": "http://coleoptera-neotropical.org/8b-colecc-JEBC/JEBC/5-Buprestidae.htm",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 4,
+    "fields": {
+      "url": "http://aphid.aphidnet.org/",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 5,
+    "fields": {
+      "url": "https://www.bugwood.org/index.cfm",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 6,
+    "fields": {
+      "url": "http://editorial.agrosavia.co/index.php/publicaciones/catalog/download/10/8/97-1?inline=1",
+      "type_file": 2,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 7,
+    "fields": {
+      "url": "https://repository.cimmyt.org/xmlui/bitstream/handle/10883/732/4941.pdf?sequence=1&isAllowed=y",
+      "type_file": 2,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 8,
+    "fields": {
+      "url": "https://books.google.com.bo/books?id=_wxn-mJcTX0C&pg=PA182&lpg=PA182&dq=carpophilus+hemipterus+en+sesamo&source=bl&ots=3Kit4Gok3I&sig=ACfU3U1MZqPeMbmF0WX1qBENcT3nmdehGw&hl=es&sa=X&ved=2ahUKEwjIvbu6p9jvAhWfF7kGHc9sBtgQ6AEwD3oECBAQAw#v=onepage&q=carpophilus%20hemipterus%20en%20sesamo&f=false",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 9,
+    "fields": {
+      "url": "http://www.sag.cl/sites/default/files/MANUAL_INSECTOS_MADERA.pdf",
+      "type_file": 2,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 10,
+    "fields": {
+      "url": "http://www.iucngisd.org/gisd/pdf/100Spanish.pdf",
+      "type_file": 2,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 11,
+    "fields": {
+      "url": "http://aguiar.hvr.utad.pt/pt/herbario/cons_reg.asp",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 12,
+    "fields": {
+      "url": "http://www.efloras.org/flora_page.aspx?flora_id=5",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 13,
+    "fields": {
+      "url": "http://www.ansci.cornell.edu/plants/php/plants.php",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 14,
+    "fields": {
+      "url": "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_en.php",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 15,
+    "fields": {
+      "url": "http://delta-intkey.com/www/data.htm",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 16,
+    "fields": {
+      "url": "http://flora.huh.harvard.edu/china/",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 17,
+    "fields": {
+      "url": "http://herbarium.lsa.umich.edu/collections.html",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 18,
+    "fields": {
+      "url": "http://plants.ifas.ufl.edu/",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 19,
+    "fields": {
+      "url": "http://plants.usda.gov/core/profile?symbol=PANO2",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 20,
+    "fields": {
+      "url": "http://www.bonap.org/",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 21,
+    "fields": {
+      "url": "http://www.habitas.org.uk/flora/index.html",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 22,
+    "fields": {
+      "url": "http://www.plantatlas.usf.edu",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 23,
+    "fields": {
+      "url": "http://www.virtualherbarium.org/",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 24,
+    "fields": {
+      "url": "http://www.cal-ipc.org/ip/inventory/index.php",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 25,
+    "fields": {
+      "url": "https://microbewiki.kenyon.edu/index.php/Clavibacter_michiganensis",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 26,
+    "fields": {
+      "url": "https://www.genome.jp/virushostdb/view/",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 27,
+    "fields": {
+      "url": "https://www.mycobank.org/",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 28,
+    "fields": {
+      "url": "http://www.cals.ncsu.edu/botany/ncsc",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 29,
+    "fields": {
+      "url": "https://biotanz.landcareresearch.co.nz/",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 30,
+    "fields": {
+      "url": "http://www.flmnh.ufl.edu/scripts/dbs/malatp_pub.asp",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 31,
+    "fields": {
+      "url": "http://www.catalogueoflife.org/annual-checklist/2007/search.php",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 32,
+    "fields": {
+      "url": "http://www.indexfungorum.org/names/names.asp",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 33,
+    "fields": {
+      "url": "http://nemaplex.ucdavis.edu/Nemabase2010/PlantHostStatusDDQuery.aspx",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 34,
+    "fields": {
+      "url": "http://nemaplex.ucdavis.edu/Nemabase2010/PlantNematodeHostStatusDDQuery.aspx",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 35,
+    "fields": {
+      "url": "https://www.padil.gov.au/",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 36,
+    "fields": {
+      "url": "https://www.ars.usda.gov/main/site_main.htm?modecode=12-75-29-00",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 37,
+    "fields": {
+      "url": "https://www.ars.usda.gov/main/site_main.htm?modecode=12-45-49-00",
+      "type_file": 1,
+      "time_choices": 2,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 38,
+    "fields": {
+      "url": "https://agriculture.canada.ca/en/science/canadian-biodiversity-information-facility-cbif",
+      "type_file": 1,
+      "time_choices": 3,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 39,
+    "fields": {
+      "url": "http://www2.dpi.qld.gov.au/health/208.html",
+      "type_file": 1,
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z"
+    }
+  }
+]
