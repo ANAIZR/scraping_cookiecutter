@@ -32,3 +32,5 @@ webdriver-manager
 beautifulsoup4
 pdfplumber
 requests
+pymongo==4.10.1
+
