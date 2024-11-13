@@ -17,9 +17,18 @@ class ScraperURLSerializer(serializers.ModelSerializer):
             "type_file",
             "type_file_display",
             "url",
-            "short_url",
             "time_choices",
             "time_choices_display",
             "created_at",
             "updated_at",
         )
+    def validate_url(self, value):
+        
+        instance = self.instance
+        if instance and instance.url == value:
+            return value
+
+        if ScraperURL.objects.filter(url=value).exists():
+            raise serializers.ValidationError("Esta URL ya ha sido registrada.")
+        
+        return value
