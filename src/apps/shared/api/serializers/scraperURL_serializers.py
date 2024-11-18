@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ...models.scraper import ScraperURL
+from ...models.scraperURL import ScraperURL
 
 
 class ScraperURLSerializer(serializers.ModelSerializer):

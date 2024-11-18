@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from ...models.scraper import ScraperURL
-from ..serializers.url_serializers import ScraperURLSerializer
+from ...models.scraperURL import ScraperURL
+from ..serializers.scraperURL_serializers import ScraperURLSerializer
 
 
 class ScraperURLViewSet(viewsets.ModelViewSet):

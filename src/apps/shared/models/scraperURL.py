@@ -11,6 +11,7 @@ class ScraperURL(CoreModel):
     ]
     TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral")]
     url = models.URLField(max_length=500)
+    sobrenombre = models.CharField(max_length=120)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     type_file = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, default=1)
@@ -19,6 +20,7 @@ class ScraperURL(CoreModel):
     )
     time_choices = models.PositiveSmallIntegerField(choices=TIME_CHOICES, default=1)
     is_active = models.BooleanField(default=True)
+    parameters = models.JSONField(default=dict) 
 
     class Meta:
         db_table = "scraper_url"
