@@ -8,11 +8,7 @@
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "search_button_selector": "#go",
-        "content_selector": "ul.content.spec",
-        "wait_time": 10
-      }
+      "parameters": {}
     }
   },
   {
@@ -25,7 +21,9 @@
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {
-        
+        "search_button_selector": "#go",
+        "content_selector": "ul.content.spec",
+        "wait_time": 10
       }
     }
   },
@@ -38,9 +36,7 @@
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -52,9 +48,7 @@
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -66,9 +60,7 @@
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -80,9 +72,7 @@
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -94,9 +84,7 @@
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -108,9 +96,7 @@
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -122,9 +108,7 @@
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -136,9 +120,7 @@
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -150,9 +132,7 @@
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -164,9 +144,7 @@
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -178,9 +156,7 @@
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        
-      }
+      "parameters": {}
     }
   },
   {
@@ -191,7 +167,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -202,7 +179,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -213,7 +191,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -224,7 +203,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -235,7 +215,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -246,7 +227,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -257,7 +239,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -268,7 +251,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -279,7 +263,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -290,7 +275,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -301,7 +287,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -312,7 +299,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -323,7 +311,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -334,7 +323,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -345,7 +335,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -356,7 +347,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -367,7 +359,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -378,7 +371,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -389,7 +383,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -400,7 +395,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -411,7 +407,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -422,7 +419,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -433,7 +431,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -444,7 +443,8 @@
       "type_file": 1,
       "time_choices": 2,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -455,7 +455,8 @@
       "type_file": 1,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {
@@ -466,7 +467,8 @@
       "type_file": 1,
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z"
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   }
 ]

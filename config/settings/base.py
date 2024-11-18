@@ -64,7 +64,6 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # AUTHENTICATION
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
-
 ]
 AUTH_USER_MODEL = "users.User"
 LOGIN_REDIRECT_URL = "users:redirect"
@@ -100,6 +99,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
 # STATIC
@@ -109,6 +109,8 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
+CSRF_COOKIE_SECURE = False  # Solo para desarrollo
+CSRF_COOKIE_HTTPONLY = False  # Solo para desarrollo
 
 # MEDIA
 MEDIA_ROOT = str(APPS_DIR / "media")
@@ -144,8 +146,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
 
 # SECURITY
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+#SESSION_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
 
 # EMAIL
@@ -181,24 +182,21 @@ LOGGING = {
 }
 
 
-
-
 # django-rest-framework
 
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-       # "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-   # "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema", 
+    # "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 
 CORS_URLS_REGEX = r"^/api/.*$"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-
 ]
 SPECTACULAR_SETTINGS = {
     "TITLE": "WEB SCRAPER API",
@@ -206,12 +204,12 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
     "SCHEMA_PATH_PREFIX": "/api/",
-    'SECURITY': [
+    "SECURITY": [
         {
-            'BearerAuth': {
-                'type': 'http',
-                'scheme': 'bearer',
-                'bearerFormat': 'JWT',
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
             },
         },
     ],

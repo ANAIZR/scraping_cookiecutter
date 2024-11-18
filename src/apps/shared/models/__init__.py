@@ -1,1 +1,1 @@
-from .scraper import ScraperURL
+from .scraperURL import ScraperURL
