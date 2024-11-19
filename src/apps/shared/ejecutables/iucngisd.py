@@ -9,10 +9,30 @@ from pymongo import MongoClient
 from datetime import datetime
 import gridfs
 import os
+import hashlib
 
 output_dir = r"C:\web_scraping_files"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
+
+def generate_directory(output_dir, url):
+    url_hash = hashlib.md5(url.encode()).hexdigest()
+    folder_name = url.split('//')[-1].replace('/', '_') + "_" + url_hash[:8]
+    folder_path = os.path.join(output_dir, folder_name)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    return folder_path
+
+def get_next_versioned_filename(folder_path, base_name="archivo"):
+    version = 0
+    while True:
+        file_name = f"{base_name}_v{version}.txt"
+        file_path = os.path.join(folder_path, file_name)
+        if not os.path.exists(file_path):
+            return file_path
+        version += 1
+
+
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
@@ -20,10 +40,10 @@ client = MongoClient('mongodb://localhost:27017/')
 db = client['scrapping-can']  
 collection = db['collection']
 fs = gridfs.GridFS(db)  
-
-driver.get('https://www.iucngisd.org/gisd/search.php')
+url = 'http://www.iucngisd.org/gisd/'
 
 try:
+    driver.get(url)
     search_button = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.ID, 'go'))  
     )
@@ -36,19 +56,14 @@ try:
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     text_content = soup.get_text(separator='\n', strip=True)
+    folder_path = generate_directory(output_dir, url)
+    file_path = get_next_versioned_filename(folder_path, base_name="iucngisd")
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(text_content)
 
-    existing_doc = collection.find_one({"Url": 'http://www.iucngisd.org/gisd/'})
+    with open(file_path, 'rb') as file_data:
+        object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-    if existing_doc:
-        print(f"Ya existe un documento para esta URL con ObjectId: {existing_doc['Objeto']}")
-    else:
-        file_name = os.path.join(output_dir, 'iucngisd.txt')
-        
-        with open(file_name, 'w', encoding='utf-8') as file:
-            file.write(text_content)
-        
-        with open(file_name, 'rb') as file_data:
-            object_id = fs.put(file_data, filename=file_name)  
 
         data = {
             'Objeto': object_id,  
@@ -59,12 +74,16 @@ try:
         }
 
         collection.insert_one(data)
-
+        docs_count = collection.count_documents({'Url': url}) 
+        if docs_count > 2:
+            docs_for_url = collection.find({'Url': url}).sort('Fecha_scrapper', -1)
+            for doc in docs_for_url[2:]:
+                collection.delete_one({'_id': doc['_id']})
+                fs.delete(doc['Objeto'])  
         print(f"Los datos se han guardado en MongoDB y el contenido se ha escrito en el archivo. ObjectId: {object_id}")
 
 except Exception as e:
     print(f'Ocurrió un error: {e}')
 
 finally:
-    # Cerrar el navegador
     driver.quit()
