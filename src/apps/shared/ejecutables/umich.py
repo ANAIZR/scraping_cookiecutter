@@ -10,7 +10,6 @@ import os
 from pymongo import MongoClient
 import gridfs
 from datetime import datetime
-from selenium.webdriver.common.action_chains import ActionChains
 
 
 output_dir = r"C:\web_scraping_files"
