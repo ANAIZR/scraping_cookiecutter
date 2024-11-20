@@ -21,6 +21,7 @@ class ScraperURL(CoreModel):
     time_choices = models.PositiveSmallIntegerField(choices=TIME_CHOICES, default=1)
     is_active = models.BooleanField(default=True)
     parameters = models.JSONField(default=dict) 
+    mode_scrapeo = models.PositiveSmallIntegerField(default=1, blank=True, null=True)
 
     class Meta:
         db_table = "scraper_url"
