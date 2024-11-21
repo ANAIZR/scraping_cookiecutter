@@ -29,7 +29,6 @@ def scrape_mode_three(
     tag_name_third,
     attribute,
     selector,
-
 ):
     # options = webdriver.ChromeOptions()
     # options.add_argument("--headless")
@@ -38,73 +37,64 @@ def scrape_mode_three(
     db = client["scrapping-can"]
     collection = db["collection"]
     fs = gridfs.GridFS(db)
-
+    all_scrapped = ""
     try:
         driver.get(url)
-        search_button = WebDriverWait(driver, wait_time).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, search_button_selector))
+        submit = WebDriverWait(driver, wait_time).until(
+            EC.presence_of_element_located(
+                (
+                    By.CSS_SELECTOR,
+                    search_button_selector,
+                )
+            )
         )
-        search_button.click()
-
-        WebDriverWait(driver, wait_time).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
+        submit.click()
+        print("haciendo click")
+        content = WebDriverWait(driver, wait_time).until(
+            EC.presence_of_element_located(
+                (
+                    By.CSS_SELECTOR,
+                    content_selector,
+                )
+            )
         )
 
-        content = driver.find_element(By.CSS_SELECTOR, content_selector)
         tr_tags = content.find_elements(By.TAG_NAME, tag_name_one)
 
         for i, tr_tag in enumerate(tr_tags):
             if i < 2 or i >= len(tr_tags) - 2:
                 continue
             try:
-                content = driver.find_element(By.CSS_SELECTOR, content_selector)
-                tr_tags = content.find_elements(By.TAG_NAME, tag_name_one)
-                tr_tag = tr_tags[i]
-                td_tags = tr_tag.find_elements(By.TAG_NAME, tag_name_second)
-                print(td_tags.text)
-                if len(td_tags) >= 2:
-                    second_td = td_tags[1]
-                    a_tag = second_td.find_element(By.TAG_NAME, tag_name_third)
-                    print(a_tag.text)
-                    if a_tag:
-                        href = a_tag.get_attribute(attribute)
-                        text = a_tag.text
+                td_tags = tr_tag.find_elements(By.CSS_SELECTOR, tag_name_second)
 
-                        print(f"Enlace: {href}, Texto: {text}")
+                a_tags = td_tags[0].find_elements(By.TAG_NAME, "a")
 
-                        driver.get(href)
-                        WebDriverWait(driver, wait_time).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                if a_tags:
+                    href = a_tags[0].get_attribute("href")
+                    driver.get(href)
+
+                    content = WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, "#TableMain #lblTaxonDesc")
                         )
-
-                        page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                        content_Box = page_soup.find(selector)
-
-                        if content_Box:
-                            all_scrapped += f"Enlace: {href}, Texto: {text}\n"
-                            all_scrapped += f"Contenido de la página {href}:\n"
-                            all_scrapped += content.get_text(strip=True) + "\n\n"
-
-                        driver.back()
-                        WebDriverWait(driver, wait_time).until(
-                            EC.presence_of_element_located(
-                                (
-                                    By.CSS_SELECTOR,
-                                    content_selector,
-                                )
-                            )
-                        )
+                    )
+                    if content:
+                        all_scrapped += f"Contenido de la página {href}:\n"
+                        all_scrapped += content.text.strip() + "\n\n"
+                    else:
+                        print(f"No content found for page: {href}")
+                    driver.back()
             except Exception as e:
                 print(f"Error procesando la fila {i}: {e}")
+        
+        
 
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        text_content = soup.get_text(separator="\n", strip=True)
         output_dir = r"C:\web_scraping_files"
         folder_path = generate_directory(output_dir, url)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write(text_content)
+            file.write(all_scrapped)
 
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))

@@ -3,7 +3,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 from webdriver_manager.chrome import ChromeDriverManager
 import hashlib
 import os
@@ -20,11 +19,12 @@ if not os.path.exists(output_dir):
 # Función para generar un directorio basado en la URL
 def generate_directory(output_dir, url):
     url_hash = hashlib.md5(url.encode()).hexdigest()
-    folder_name = url.split("//")[-1].replace("/", "_") + "_" + url_hash[:8]
+    folder_name = url.split("//")[-1].replace("/", "_").replace("?","_").replace("=","_") + "_" + url_hash[:8]
     folder_path = os.path.join(output_dir, folder_name)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     return folder_path
+
 
 
 # Función para obtener el siguiente nombre de archivo versionado
@@ -51,19 +51,17 @@ all_scrapped = ""
 
 try:
     driver.get(url)
-
-    search_button = WebDriverWait(driver, 30).until(
-        EC.element_to_be_clickable(
+    submit = WebDriverWait(driver, 30).until(
+        EC.presence_of_element_located(
             (
                 By.CSS_SELECTOR,
                 "#TableMain #ucEfloraHeader_tableHeaderWrapper tbody tr td:nth-of-type(2) input[type='submit']",
             )
         )
     )
-    search_button.click()
-
-    # Esperar a que la tabla esté presente
-    WebDriverWait(driver, 10).until(
+    submit.click()
+    print("haciendo click")
+    content = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located(
             (
                 By.CSS_SELECTOR,
@@ -72,53 +70,51 @@ try:
         )
     )
     
-    body_table = driver.find_element(
-        By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList table"
-    )
-    tr_tags = body_table.find_elements(By.TAG_NAME, "tr")
+    
+    tr_tags = content.find_elements(By.TAG_NAME, "tr")
+    print(f"tr_tags: {len(tr_tags)}")
 
+    
     for i, tr_tag in enumerate(tr_tags):
-        if i < 2 or i >= len(tr_tags) - 2:
+        if i < 2 or i >= len(tr_tags) - 180:
             continue
-
+        print(f"Fila {i}: {tr_tag.text}")
         try:
-            body_table = driver.find_element(By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList table")
-            tr_tags = body_table.find_elements(By.TAG_NAME, "tr")
-            tr_tag = tr_tags[i] 
-            
-            td_tags = tr_tag.find_elements(By.TAG_NAME, "td")  
-
-            if len(td_tags) >= 2:
-                second_td = td_tags[1]  
-                a_tag = second_td.find_element(By.TAG_NAME, "a") 
-
-                if a_tag:  
-                    href = a_tag.get_attribute("href")  
-                    text = a_tag.text  
-
-                    print(f"Enlace: {href}, Texto: {text}")
-
-                    driver.get(href)
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#TableMain"))
+            td_tags = tr_tag.find_elements(By.CSS_SELECTOR, "td:nth-child(2)")
+            print(f"td_tags: {len(td_tags)}")
+            a_tags = td_tags[0].find_elements(By.TAG_NAME, "a")
+            if a_tags:
+                href = a_tags[0].get_attribute("href")
+                print(f"URL encontrada: {href}")
+                
+                driver.get(href)
+                content = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located(
+                        (
+                            By.CSS_SELECTOR,
+                            "#TableMain #lblTaxonDesc",
+                        )
                     )
+                )
+                if content:
+                    driver.execute_script("""
+                        var content = arguments[0];
+                        var liTags = content.getElementsByTagName('li');
+                        for (var i = 0; i < liTags.length; i++) {
+                            liTags[i].remove();  
+                        }
+                    """, content)
 
-                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    content = page_soup.find(id="TableMain")
+                    clean_text = content.text.strip()
 
-                    if content:
-                        all_scrapped += f"Enlace: {href}, Texto: {text}\n"
-                        all_scrapped += f"Contenido de la página {href}:\n"
-                        all_scrapped += content.get_text(strip=True) + "\n\n"
-
-                    driver.back()
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList table"))
+                    all_scrapped += (
+                        f" Enlace: {href}\n"
                     )
-
+                    all_scrapped += f"Contenido de la página {href}:\n"
+                    all_scrapped += clean_text + "\n\n"
+                driver.back()
         except Exception as e:
             print(f"Error procesando la fila {i}: {e}")
-
     folder_path = generate_directory(output_dir, url)
     file_path = get_next_versioned_filename(folder_path, base_name="flora")
 

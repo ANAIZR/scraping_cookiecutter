@@ -120,8 +120,6 @@ try:
     actions = ActionChains(driver)
     actions.move_to_element(nav_morphology).perform()
 
-    
-
     ul_tag = driver.find_element(By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul")
     li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
 
