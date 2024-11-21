@@ -2,7 +2,7 @@ import os
 import hashlib
 def generate_directory(output_dir, url):
     url_hash = hashlib.md5(url.encode()).hexdigest()
-    folder_name = url.split("//")[-1].replace("/", "_") + "_" + url_hash[:8]
+    folder_name = url.split("//")[-1].replace("/", "_").replace("?","_").replace("=","_") + "_" + url_hash[:8]
     folder_path = os.path.join(output_dir, folder_name)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)

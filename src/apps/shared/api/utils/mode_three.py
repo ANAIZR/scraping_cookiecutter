@@ -18,11 +18,21 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-def scrape_mode_one(
-    url, search_button_selector, content_selector, tag_name, wait_time, sobrenombre
+def scrape_mode_three(
+    url,
+    search_button_selector,
+    content_selector,
+    tag_name_one,
+    wait_time,
+    sobrenombre,
+    tag_name_second,
+    tag_name_third,
+    attribute,
+    selector,
+
 ):
-    #options = webdriver.ChromeOptions()
-    #options.add_argument("--headless")
+    # options = webdriver.ChromeOptions()
+    # options.add_argument("--headless")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]
@@ -39,13 +49,53 @@ def scrape_mode_one(
         WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
         )
-        ul_tag = driver.find_element(By.CSS_SELECTOR, content_selector)
-        li_tags = ul_tag.find_elements(By.TAG_NAME, tag_name)
 
-        for li_tag in li_tags:
-            WebDriverWait(driver, wait_time).until(
-                EC.presence_of_element_located((By.TAG_NAME, tag_name))
-            )
+        content = driver.find_element(By.CSS_SELECTOR, content_selector)
+        tr_tags = content.find_elements(By.TAG_NAME, tag_name_one)
+
+        for i, tr_tag in enumerate(tr_tags):
+            if i < 2 or i >= len(tr_tags) - 2:
+                continue
+            try:
+                content = driver.find_element(By.CSS_SELECTOR, content_selector)
+                tr_tags = content.find_elements(By.TAG_NAME, tag_name_one)
+                tr_tag = tr_tags[i]
+                td_tags = tr_tag.find_elements(By.TAG_NAME, tag_name_second)
+                print(td_tags.text)
+                if len(td_tags) >= 2:
+                    second_td = td_tags[1]
+                    a_tag = second_td.find_element(By.TAG_NAME, tag_name_third)
+                    print(a_tag.text)
+                    if a_tag:
+                        href = a_tag.get_attribute(attribute)
+                        text = a_tag.text
+
+                        print(f"Enlace: {href}, Texto: {text}")
+
+                        driver.get(href)
+                        WebDriverWait(driver, wait_time).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                        )
+
+                        page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                        content_Box = page_soup.find(selector)
+
+                        if content_Box:
+                            all_scrapped += f"Enlace: {href}, Texto: {text}\n"
+                            all_scrapped += f"Contenido de la página {href}:\n"
+                            all_scrapped += content.get_text(strip=True) + "\n\n"
+
+                        driver.back()
+                        WebDriverWait(driver, wait_time).until(
+                            EC.presence_of_element_located(
+                                (
+                                    By.CSS_SELECTOR,
+                                    content_selector,
+                                )
+                            )
+                        )
+            except Exception as e:
+                print(f"Error procesando la fila {i}: {e}")
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
         text_content = soup.get_text(separator="\n", strip=True)
