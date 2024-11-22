@@ -18,10 +18,10 @@
       "url": "http://www.iucngisd.org/gisd/",
       "type_file": 1,
       "time_choices": 3,
-      "sobrenombre":"IUCN",
+      "sobrenombre": "IUCN",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "mode_scrapeo":1,
+      "mode_scrapeo": 1,
       "parameters": {
         "search_button_selector": "#go",
         "content_selector": "ul.content.spec",
@@ -37,11 +37,13 @@
       "url": "http://coleoptera-neotropical.org/8b-colecc-JEBC/JEBC/5-Buprestidae.htm",
       "type_file": 1,
       "time_choices": 1,
-      "sobrenombre":"COLEOPTERA",
-      "mode_scrapeo":2,
+      "sobrenombre": "COLEOPTERA",
+      "mode_scrapeo": 2,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
+      "parameters": {
+        "content_selector": "body tbody"
+      }
     }
   },
   {
@@ -147,9 +149,19 @@
       "url": "http://www.efloras.org/flora_page.aspx?flora_id=5",
       "type_file": 1,
       "time_choices": 2,
+      "mode_scrapeo": 3,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
+      "sobrenombre":"FLORAS",
+      "parameters": {
+        "search_button_selector": "#TableMain #ucEfloraHeader_tableHeaderWrapper tbody tr td:nth-of-type(2) input[type='submit']",
+        "content_selector": "#ucFloraTaxonList_panelTaxonList table",
+        "tag_name_one": "tr",
+        "tag_name_second": "td:nth-child(2)",
+        "tag_name_third": "a",
+        "attribute": "href",
+        "selector": "#TableMain #lblTaxonDesc"
+      }
     }
   },
   {
@@ -207,9 +219,13 @@
       "url": "http://herbarium.lsa.umich.edu/collections.html",
       "type_file": 1,
       "time_choices": 2,
+      "mode_scrapeo": 2,
+      "sobrenombre": "HERBARIUM",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
+      "parameters": {
+        "content_selector": "#content #content-column #page-content .aem-Grid"
+      }
     }
   },
   {

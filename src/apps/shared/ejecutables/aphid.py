@@ -52,7 +52,7 @@ all_scraped_morphology = ""
 try:
 
     driver.get(url)
-    
+
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located(
             (
@@ -61,24 +61,14 @@ try:
             )
         )
     )
-    
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located(
-            (
-                By.CSS_SELECTOR,
-                "nav.main #nav li:nth-child(5)",
-            )
-        )
-    )
-    
-    
+
     nav_fact_sheets = driver.find_element(
         By.CSS_SELECTOR, 'nav.main #nav li:nth-child(4) a[href="species_list.php"]'
     )
     nav_fact_sheets.click()
 
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "content")))
-    
+
     page_soup = BeautifulSoup(driver.page_source, "html.parser")
     faq_div = page_soup.find("div", class_="grid_8").find("div", id="faq")
 
@@ -100,7 +90,7 @@ try:
 
                     print(f"Letra: {h3_id}, Enlace: {href}, Texto: {text}")
 
-                    driver.get(url  + href)
+                    driver.get(url + href)
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.ID, "content"))
                     )
@@ -115,18 +105,20 @@ try:
                         all_scraped_fact_sheets += f"Contenido de la página {href}:\n"
                         all_scraped_fact_sheets += content.get_text(strip=True) + "\n\n"
 
-    
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (
+                By.CSS_SELECTOR,
+                "nav.main #nav li:nth-child(5)",
+            )
+        )
+    )
+
     nav_morphology = driver.find_element(
         By.CSS_SELECTOR, "nav.main #nav li:nth-child(5)"
     )
     actions = ActionChains(driver)
     actions.move_to_element(nav_morphology).perform()
-
-    WebDriverWait(driver, 10).until(
-        EC.visibility_of_element_located(
-            (By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul")
-        )
-    )
 
     ul_tag = driver.find_element(By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul")
     li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
@@ -136,7 +128,9 @@ try:
             if index == 0:
                 continue
 
-            ul_tag = driver.find_element(By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul")
+            ul_tag = driver.find_element(
+                By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul"
+            )
             li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
             li = li_tags[index]
 
@@ -150,23 +144,25 @@ try:
             )
 
             page_soup = BeautifulSoup(driver.page_source, "html.parser")
-            
-            content = page_soup.find("section", id="content").find("div", class_="grid_8")
-            portfolio = page_soup.find("section", class_="portfolio").find("ul", id="portfolio")
-            
+
+            content = page_soup.find("section", id="content").find(
+                "div", class_="grid_8"
+            )
+            portfolio = page_soup.find("section", class_="portfolio").find(
+                "ul", id="portfolio"
+            )
+
             if content and portfolio:
                 all_scraped_morphology += f" Enlace: {href}\n"
                 all_scraped_morphology += f"Contenido de la página {href}:\n"
                 all_scraped_morphology += content.get_text(strip=True) + "\n\n"
                 all_scraped_morphology += portfolio.get_text(strip=True) + "\n\n"
-            
+
         except Exception as e:
             print(f"Error procesando un elemento: {e}")
 
-
-
     folder_path = generate_directory(output_dir, url)
-    file_path = get_next_versioned_filename(folder_path, base_name="coleoptera")
+    file_path = get_next_versioned_filename(folder_path, base_name="aphid")
 
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(all_scraped_fact_sheets + all_scraped_morphology)

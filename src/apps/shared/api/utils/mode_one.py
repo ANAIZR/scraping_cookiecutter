@@ -21,6 +21,8 @@ from rest_framework import status
 def scrape_mode_one(
     url, search_button_selector, content_selector, tag_name, wait_time, sobrenombre
 ):
+    #options = webdriver.ChromeOptions()
+    #options.add_argument("--headless")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]

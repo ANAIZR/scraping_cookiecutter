@@ -4,6 +4,7 @@ from rest_framework import status
 from ...models.scraperURL import ScraperURL
 from ..utils.mode_one import scrape_mode_one
 from ..utils.mode_two import scrape_mode_two
+from ..utils.mode_three import scrape_mode_three
 
 
 class ScraperAPIView(APIView):
@@ -31,6 +32,11 @@ class ScraperAPIView(APIView):
         wait_time = parameters.get("wait_time", 10)
         tag_name = parameters.get("tag_name")
         sobrenombre = scraper_url.sobrenombre
+        tag_name_one = parameters.get("tag_name_one")
+        tag_name_second = parameters.get("tag_name_second")
+        attribute = parameters.get("attribute")
+        selector = parameters.get("selector")
+        tag_name_third = parameters.get("tag_name_third")
 
         if mode_scrapeo == 1:
             return scrape_mode_one(
@@ -46,6 +52,20 @@ class ScraperAPIView(APIView):
             return scrape_mode_two(
                 url,
                 sobrenombre,
+                content_selector,
+            )
+        elif mode_scrapeo == 3:
+            return scrape_mode_three(
+                url,
+                search_button_selector,
+                content_selector,
+                tag_name_one,
+                wait_time,
+                sobrenombre,
+                tag_name_second,
+                attribute,
+                selector,
+                tag_name_third
             )
 
         return Response(
