@@ -155,7 +155,7 @@
       "sobrenombre":"FLORAS",
       "parameters": {
         "search_button_selector": "#TableMain #ucEfloraHeader_tableHeaderWrapper tbody tr td:nth-of-type(2) input[type='submit']",
-        "content_selector": "#ucFloraTaxonList_panelTaxonList table",
+        "content_selector": "#ucFloraTaxonList_panelTaxonList span table",
         "tag_name_one": "tr",
         "tag_name_second": "td:nth-child(2)",
         "tag_name_third": "a",

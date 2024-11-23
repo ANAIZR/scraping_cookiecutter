@@ -39,6 +39,7 @@ def scrape_mode_three(
     collection = db["collection"]
     fs = gridfs.GridFS(db)
     all_scrapped = ""
+    is_first_page = True 
     try:
         driver.get(url)
         submit = WebDriverWait(driver, wait_time).until(
@@ -68,8 +69,9 @@ def scrape_mode_three(
 
             for i, tr_tag in enumerate(tr_tags):
                 
-                if i < 2 or i >= len(tr_tags) - 2:
-                    continue
+                if is_first_page:
+                    if i < 2 or i >= len(tr_tags) - 2:
+                        continue
                 try:
                     td_tags = tr_tag.select(tag_name_second)
                     if td_tags:
@@ -88,9 +90,10 @@ def scrape_mode_three(
                                 )
                                 content = BeautifulSoup(driver.page_source, "html.parser")
                                 if content:
-                                    print(f"{href} scraped successfully.")
                                     all_scrapped += f"Contenido de la página {href}:\n"
-                                    all_scrapped += content.text.strip() + "\n\n"
+                                    all_scrapped+="Ingresooo"
+                                    cleaned_text = " ".join(content.text.split()) 
+                                    all_scrapped += cleaned_text + "\n\n"
                                 else:
                                     print(f"No content found for page: {href}")
                                 driver.back()
@@ -101,8 +104,9 @@ def scrape_mode_three(
 
         
         scrape_page()
-        print("primera pagina scrapeada")
-        while(next_page_selector):
+        is_first_page = False
+
+        if next_page_selector:
             try:
                 next_page_button = WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, next_page_selector))
@@ -111,11 +115,9 @@ def scrape_mode_three(
                 WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
                 )
-                print("Navegando a la siguiente página...")
                 scrape_page()
             except Exception as e:
                 print(f"Error al navegar a la siguiente página: {e}")
-                break
 
         output_dir = r"C:\web_scraping_files"
         folder_path = generate_directory(output_dir, url)
