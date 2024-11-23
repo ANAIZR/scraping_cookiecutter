@@ -37,7 +37,7 @@ class ScraperAPIView(APIView):
         attribute = parameters.get("attribute")
         selector = parameters.get("selector")
         tag_name_third = parameters.get("tag_name_third")
-
+        next_page_selector = parameters.get("next_page_selector")
         if mode_scrapeo == 1:
             return scrape_mode_one(
                 url,
@@ -57,15 +57,16 @@ class ScraperAPIView(APIView):
         elif mode_scrapeo == 3:
             return scrape_mode_three(
                 url,
+                wait_time,
                 search_button_selector,
                 content_selector,
-                tag_name_one,
-                wait_time,
                 sobrenombre,
+                tag_name_one,
                 tag_name_second,
+                tag_name_third,
                 attribute,
                 selector,
-                tag_name_third
+                next_page_selector,
             )
 
         return Response(

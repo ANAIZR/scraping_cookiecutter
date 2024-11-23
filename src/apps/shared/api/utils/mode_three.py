@@ -20,15 +20,16 @@ from rest_framework import status
 
 def scrape_mode_three(
     url,
+    wait_time,
     search_button_selector,
     content_selector,
-    tag_name_one,
-    wait_time,
     sobrenombre,
+    tag_name_one,
     tag_name_second,
     tag_name_third,
     attribute,
     selector,
+    next_page_selector,
 ):
     # options = webdriver.ChromeOptions()
     # options.add_argument("--headless")
@@ -49,8 +50,7 @@ def scrape_mode_three(
             )
         )
         submit.click()
-        print("haciendo click")
-        content = WebDriverWait(driver, wait_time).until(
+        WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located(
                 (
                     By.CSS_SELECTOR,
@@ -59,35 +59,63 @@ def scrape_mode_three(
             )
         )
 
-        tr_tags = content.find_elements(By.TAG_NAME, tag_name_one)
+        def scrape_page():
+            nonlocal all_scrapped
+            content= BeautifulSoup(driver.page_source, "html.parser")
+            content_container = content.select_one(content_selector)
 
-        for i, tr_tag in enumerate(tr_tags):
-            if i < 2 or i >= len(tr_tags) - 2:
-                continue
-            try:
-                td_tags = tr_tag.find_elements(By.CSS_SELECTOR, tag_name_second)
+            tr_tags = content_container.find_all(tag_name_one)
 
-                a_tags = td_tags[0].find_elements(By.TAG_NAME, "a")
+            for i, tr_tag in enumerate(tr_tags):
+                
+                if i < 2 or i >= len(tr_tags) - 2:
+                    continue
+                try:
+                    td_tags = tr_tag.select(tag_name_second)
+                    if td_tags:
+                        a_tags = td_tags[0].find(tag_name_third)
+                        if a_tags:
 
-                if a_tags:
-                    href = a_tags[0].get_attribute("href")
-                    driver.get(href)
-
-                    content = WebDriverWait(driver, 30).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, "#TableMain #lblTaxonDesc")
-                        )
-                    )
-                    if content:
-                        all_scrapped += f"Contenido de la página {href}:\n"
-                        all_scrapped += content.text.strip() + "\n\n"
+                            print("Ingresando")
+                            href = a_tags.get(attribute)
+                            page = "http://www.efloras.org/"+href
+                            if href:
+                                driver.get(page)
+                                WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located(
+                                        (By.CSS_SELECTOR, selector)
+                                    )
+                                )
+                                content = BeautifulSoup(driver.page_source, "html.parser")
+                                if content:
+                                    print(f"{href} scraped successfully.")
+                                    all_scrapped += f"Contenido de la página {href}:\n"
+                                    all_scrapped += content.text.strip() + "\n\n"
+                                else:
+                                    print(f"No content found for page: {href}")
+                                driver.back()
                     else:
-                        print(f"No content found for page: {href}")
-                    driver.back()
+                        print(f"No se encontraron td_tags en fila {i}.")
+                except Exception as e:
+                    print(f"Error procesando la fila {i}: {e}")
+
+        
+        scrape_page()
+        print("primera pagina scrapeada")
+        while(next_page_selector):
+            try:
+                next_page_button = WebDriverWait(driver, wait_time).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, next_page_selector))
+                )
+                next_page_button.click()
+                WebDriverWait(driver, wait_time).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
+                )
+                print("Navegando a la siguiente página...")
+                scrape_page()
             except Exception as e:
-                print(f"Error procesando la fila {i}: {e}")
-        
-        
+                print(f"Error al navegar a la siguiente página: {e}")
+                break
 
         output_dir = r"C:\web_scraping_files"
         folder_path = generate_directory(output_dir, url)

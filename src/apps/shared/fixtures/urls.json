@@ -160,7 +160,8 @@
         "tag_name_second": "td:nth-child(2)",
         "tag_name_third": "a",
         "attribute": "href",
-        "selector": "#TableMain #lblTaxonDesc"
+        "selector": "#TableMain #lblTaxonDesc",
+        "next_page_selector":"#TableMain #ucFloraTaxonList_panelTaxonList  span a[title='Page 2']"
       }
     }
   },
