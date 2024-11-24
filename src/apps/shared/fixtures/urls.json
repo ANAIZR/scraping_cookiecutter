@@ -26,7 +26,7 @@
         "search_button_selector": "#go",
         "content_selector": "ul.content.spec",
         "wait_time": 10,
-        "tag_name": "li"
+        "tag_name_first": "li"
       }
     }
   },
@@ -53,9 +53,28 @@
       "url": "http://aphid.aphidnet.org/",
       "type_file": 1,
       "time_choices": 2,
+      "sobrenombre": "APHID",
+      "mode_scrapeo": 6,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
+      "parameters": {
+        "wait_time": 10,
+        "search_button_selector": "nav.main #nav li:nth-child(4) a[href='species_list.php']",
+        "search_button_selector_second": "nav.main #nav li:nth-child(5)",
+        "content_selector": "#content",
+        "content_selector_second": "#content div.grid_12",
+        "content_selector_third": "nav.main #nav li:nth-child(5) ul",
+        "content_selector_fourth": "section#content div.grid_8",
+        "content_selector_fifth": "section.portfolio ul#portfolio",
+        "tag_name_first": ".grid_8 #faq",
+        "tag_name_second": "h3",
+        "tag_name_third": "ul",
+        "tag_name_fourth": "li",
+        "tag_name_fifth": "a",
+        "tag_name_sixth": "p",
+        "attribute": "href",
+        "title": "hgroup h1"
+      }
     }
   },
   {
@@ -157,7 +176,7 @@
         "page_principal": "http://www.efloras.org/",
         "search_button_selector": "#TableMain #ucEfloraHeader_tableHeaderWrapper tbody tr td:nth-of-type(2) input[type='submit']",
         "content_selector": "#ucFloraTaxonList_panelTaxonList span table",
-        "tag_name_one": "tr",
+        "tag_name_first": "tr",
         "tag_name_second": "td:nth-child(2)",
         "tag_name_third": "a",
         "attribute": "href",
@@ -219,9 +238,20 @@
       "url": "http://flora.huh.harvard.edu/china/",
       "type_file": 1,
       "time_choices": 1,
+      "mode_scrapeo":5,
+      "sobrenombre": "FLORA",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
+      "parameters": {
+        "search_button_selector": "body table tr:nth-child(2) td:nth-child(2) font p:nth-child(4) a",
+        "tag_name_first": "li",
+        "tag_name_second": "a",
+        "tag_name_third": "href",
+        "attribute": "href",
+        "content_selector": "ul",
+        "selector": "#tdContent",
+        "page_principal": ""
+      }
     }
   },
   {
@@ -289,21 +319,20 @@
     "fields": {
       "url": "https://www.habitas.org.uk/flora/index.html",
       "type_file": 1,
-      "sobrenombre" : "HABITAS",
+      "sobrenombre": "HABITAS",
       "time_choices": 1,
-      "mode_scrapeo":5,
+      "mode_scrapeo": 5,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {
-        "page_principal":"https://www.habitas.org.uk/flora/",
+        "page_principal": "https://www.habitas.org.uk/flora/",
         "search_button_selector": "#nav ul li:nth-of-type(2) a",
-        "content_selector":"#contents > table",
-        "selector":"#contents > #accounts",
+        "content_selector": "#contents > table",
+        "selector": "#contents > #accounts",
         "tag_name_first": "tr",
-        "tag_name_second":"td",
-        "tag_name_third":"a",
-        "attribute":"href"
-
+        "tag_name_second": "td",
+        "tag_name_third": "a",
+        "attribute": "href"
       }
     }
   },
