@@ -19,17 +19,18 @@ from rest_framework import status
 
 
 def scrape_mode_three(
-    url,
-    wait_time,
-    search_button_selector,
-    content_selector,
-    sobrenombre,
-    tag_name_one,
-    tag_name_second,
-    tag_name_third,
-    attribute,
-    selector,
-    next_page_selector,
+    url=None,
+    page_principal=None,
+    wait_time=None,
+    search_button_selector=None,
+    content_selector=None,
+    sobrenombre=None,
+    tag_name_one=None,
+    tag_name_second=None,
+    tag_name_third=None,
+    attribute=None,
+    selector=None,
+    next_page_selector=None,
 ):
     # options = webdriver.ChromeOptions()
     # options.add_argument("--headless")
@@ -39,7 +40,7 @@ def scrape_mode_three(
     collection = db["collection"]
     fs = gridfs.GridFS(db)
     all_scrapped = ""
-    is_first_page = True 
+    is_first_page = True
     try:
         driver.get(url)
         submit = WebDriverWait(driver, wait_time).until(
@@ -62,13 +63,13 @@ def scrape_mode_three(
 
         def scrape_page():
             nonlocal all_scrapped
-            content= BeautifulSoup(driver.page_source, "html.parser")
+            content = BeautifulSoup(driver.page_source, "html.parser")
             content_container = content.select_one(content_selector)
 
             tr_tags = content_container.find_all(tag_name_one)
 
             for i, tr_tag in enumerate(tr_tags):
-                
+
                 if is_first_page:
                     if i < 2 or i >= len(tr_tags) - 2:
                         continue
@@ -78,21 +79,23 @@ def scrape_mode_three(
                         a_tags = td_tags[0].find(tag_name_third)
                         if a_tags:
 
-                            print("Ingresando")
                             href = a_tags.get(attribute)
-                            page = "http://www.efloras.org/"+href
+                            page = page_principal + href
                             if href:
                                 driver.get(page)
-                                WebDriverWait(driver, 30).until(
+                                WebDriverWait(driver, wait_time).until(
                                     EC.presence_of_element_located(
                                         (By.CSS_SELECTOR, selector)
                                     )
                                 )
-                                content = BeautifulSoup(driver.page_source, "html.parser")
-                                if content:
+                                content = BeautifulSoup(
+                                    driver.page_source, "html.parser"
+                                )
+                                content_container = content.select_one(selector)
+
+                                if content_container:
                                     all_scrapped += f"Contenido de la página {href}:\n"
-                                    all_scrapped+="Ingresooo"
-                                    cleaned_text = " ".join(content.text.split()) 
+                                    cleaned_text = " ".join(content_container.text.split()) 
                                     all_scrapped += cleaned_text + "\n\n"
                                 else:
                                     print(f"No content found for page: {href}")
@@ -102,14 +105,15 @@ def scrape_mode_three(
                 except Exception as e:
                     print(f"Error procesando la fila {i}: {e}")
 
-        
         scrape_page()
         is_first_page = False
 
         if next_page_selector:
             try:
                 next_page_button = WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, next_page_selector))
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, next_page_selector)
+                    )
                 )
                 next_page_button.click()
                 WebDriverWait(driver, wait_time).until(

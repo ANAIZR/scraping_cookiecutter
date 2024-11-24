@@ -5,7 +5,8 @@ from ...models.scraperURL import ScraperURL
 from ..utils.mode_one import scrape_mode_one
 from ..utils.mode_two import scrape_mode_two
 from ..utils.mode_three import scrape_mode_three
-
+from ..utils.mode_four import scrape_mode_four
+from ..utils.mode_five import scrape_mode_five
 
 class ScraperAPIView(APIView):
     def post(self, request):
@@ -28,11 +29,12 @@ class ScraperAPIView(APIView):
         parameters = scraper_url.parameters
         mode_scrapeo = scraper_url.mode_scrapeo
         search_button_selector = parameters.get("search_button_selector")
+        page_principal = parameters.get("page_principal")
         content_selector = parameters.get("content_selector")
         wait_time = parameters.get("wait_time", 10)
         tag_name = parameters.get("tag_name")
         sobrenombre = scraper_url.sobrenombre
-        tag_name_one = parameters.get("tag_name_one")
+        tag_name_first = parameters.get("tag_name_first")
         tag_name_second = parameters.get("tag_name_second")
         attribute = parameters.get("attribute")
         selector = parameters.get("selector")
@@ -57,18 +59,41 @@ class ScraperAPIView(APIView):
         elif mode_scrapeo == 3:
             return scrape_mode_three(
                 url,
+                page_principal,
                 wait_time,
                 search_button_selector,
                 content_selector,
                 sobrenombre,
-                tag_name_one,
+                tag_name_first,
                 tag_name_second,
                 tag_name_third,
                 attribute,
                 selector,
                 next_page_selector,
             )
-
+        elif mode_scrapeo == 4:
+            return scrape_mode_four(
+                url,
+                search_button_selector,
+                selector,
+                attribute,
+                content_selector,
+                tag_name_first,
+                tag_name_second,
+                wait_time,
+                sobrenombre,
+            )
+        elif mode_scrapeo == 5:
+            return scrape_mode_five(
+                url,
+                search_button_selector,
+                content_selector,
+                tag_name_first,
+                tag_name_second,
+                attribute,
+                wait_time,
+                sobrenombre,
+            )
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,

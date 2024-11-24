@@ -154,13 +154,14 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "sobrenombre":"FLORAS",
       "parameters": {
+        "page_principal":"http://www.efloras.org/",
         "search_button_selector": "#TableMain #ucEfloraHeader_tableHeaderWrapper tbody tr td:nth-of-type(2) input[type='submit']",
         "content_selector": "#ucFloraTaxonList_panelTaxonList span table",
         "tag_name_one": "tr",
         "tag_name_second": "td:nth-child(2)",
         "tag_name_third": "a",
         "attribute": "href",
-        "selector": "#TableMain #lblTaxonDesc",
+        "selector": "#TableMain #panelTaxonTreatment #lblTaxonDesc",
         "next_page_selector":"#TableMain #ucFloraTaxonList_panelTaxonList  span a[title='Page 2']"
       }
     }
@@ -172,9 +173,18 @@
       "url": "http://www.ansci.cornell.edu/plants/php/plants.php",
       "type_file": 1,
       "time_choices": 1,
+      "mode_scrapeo": 4,
+      "sobrenombre": "ANSCI",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
+      "parameters": {
+        "search_button_selector":"#section-navigation li:nth-of-type(3)",
+        "selector":"#pagebody div[style*='float: left; width:32%;']",
+        "content_selector":"#mainContent #pagebody #main",
+        "tag_name_one":"p",
+        "tag_name_second":"a",
+        "attribute":"href"
+      }
     }
   },
   {
@@ -238,7 +248,14 @@
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
+      "mode_scrapeo":5,
+      "parameters": {
+        "search_button_selector": "#content no-print uf-button-side-borders ",
+        "selector":"#app section.plant-cards ul",
+        "tag_name_first":"li",
+        "tag_name_second":"a",
+        "attribute":"href"
+      }
     }
   },
   {
