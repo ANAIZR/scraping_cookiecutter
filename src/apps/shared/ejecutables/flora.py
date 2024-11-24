@@ -44,7 +44,7 @@ db = client["scrapping-can"]
 collection = db["collection"]
 fs = gridfs.GridFS(db)
 
-url = "http://www.efloras.org/flora_page.aspx?flora_id=5"
+url = "http://flora.huh.harvard.edu/china/"
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 all_scrapped = ""
@@ -56,68 +56,60 @@ try:
         EC.element_to_be_clickable(
             (
                 By.CSS_SELECTOR,
-                "#TableMain #ucEfloraHeader_tableHeaderWrapper tbody tr td:nth-of-type(2) input[type='submit']",
+                "body table tr:nth-child(2) td:nth-child(2) font p:nth-child(4) a",
             )
         )
     )
     search_button.click()
-
-    # Esperar a que la tabla esté presente
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located(
             (
                 By.CSS_SELECTOR,
-                "#ucFloraTaxonList_panelTaxonList table",
+                "ul",
             )
         )
     )
-    
-    body_table = driver.find_element(
-        By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList table"
-    )
-    tr_tags = body_table.find_elements(By.TAG_NAME, "tr")
+    body_table = driver.find_element(By.CSS_SELECTOR, "ul")
+    li_tags = body_table.find_elements(By.TAG_NAME, "li")
 
-    for i, tr_tag in enumerate(tr_tags):
-        if i < 2 or i >= len(tr_tags) - 2:
-            continue
-
+    for i, li_tag in enumerate(li_tags):
         try:
-            body_table = driver.find_element(By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList table")
-            tr_tags = body_table.find_elements(By.TAG_NAME, "tr")
-            tr_tag = tr_tags[i] 
-            
-            td_tags = tr_tag.find_elements(By.TAG_NAME, "td")  
+            a_tags = li_tag.find_elements(By.TAG_NAME, "a")
+            print(f"Fila {i} tiene {len(a_tags)} enlaces.")
 
-            if len(td_tags) >= 2:
-                second_td = td_tags[1]  
-                a_tag = second_td.find_element(By.TAG_NAME, "a") 
+            if a_tags:
+                first_a_tag = a_tags[0]
+                href = first_a_tag.get_attribute("href")
+                text = first_a_tag.text
+                print(f"Enlace: {href}, Texto: {text}")
 
-                if a_tag:  
-                    href = a_tag.get_attribute("href")  
-                    text = a_tag.text  
+                if href.endswith(".pdf"):
+                    continue
 
-                    print(f"Enlace: {href}, Texto: {text}")
-
-                    driver.get(href)
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#TableMain"))
+                driver.get(href)
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, "#tdContent ")
                     )
+                )
 
-                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    content = page_soup.find(id="TableMain")
+                try:
+                    td_content = driver.find_element(By.CSS_SELECTOR, "#tdContent ")
+                    if td_content:
+                        all_scrapped += td_content.text + "\n"
+                    else:
+                        print(f"No se encontró el contenido en la página: {href}")
+                        continue  # Continuar con la siguiente página
 
-                    if content:
-                        all_scrapped += f"Enlace: {href}, Texto: {text}\n"
-                        all_scrapped += f"Contenido de la página {href}:\n"
-                        all_scrapped += content.get_text(strip=True) + "\n\n"
+                except Exception as e:
+                    print(f"No se encontró el contenido en la página: {href}, Error: {e}")
+                    continue  # Continuar con la siguiente página
 
-                    driver.back()
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList table"))
-                    )
+            driver.back()
 
         except Exception as e:
-            print(f"Error procesando la fila {i}: {e}")
+                print(f"Error procesando la fila {i}: {e}")
+
 
     folder_path = generate_directory(output_dir, url)
     file_path = get_next_versioned_filename(folder_path, base_name="flora")
