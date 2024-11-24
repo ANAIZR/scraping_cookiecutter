@@ -21,7 +21,7 @@ from rest_framework import status
 def scrape_mode_five(
     url,
     search_button_selector,
-    content_selector,
+    selector,
     tag_name_first,
     tag_name_second,
     attribute,
@@ -44,9 +44,9 @@ def scrape_mode_five(
         search_button.click()
 
         WebDriverWait(driver, wait_time).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
+            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
         )
-        ul_tag = driver.find_element(By.CSS_SELECTOR, content_selector)
+        ul_tag = driver.find_element(By.CSS_SELECTOR, selector)
         li_tags = ul_tag.find_elements(By.TAG_NAME, tag_name_first)
 
         for li_tag in li_tags:
@@ -58,7 +58,7 @@ def scrape_mode_five(
                     driver.get(link_href)
                     WebDriverWait(driver, wait_time).until(
                         EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, content_selector)
+                            (By.CSS_SELECTOR, selector)
                         )
                     )
 

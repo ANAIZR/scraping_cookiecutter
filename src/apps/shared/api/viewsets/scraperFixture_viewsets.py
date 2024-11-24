@@ -8,6 +8,7 @@ from ..utils.mode_three import scrape_mode_three
 from ..utils.mode_four import scrape_mode_four
 from ..utils.mode_five import scrape_mode_five
 
+
 class ScraperAPIView(APIView):
     def post(self, request):
 
@@ -76,10 +77,10 @@ class ScraperAPIView(APIView):
                 url,
                 search_button_selector,
                 selector,
-                attribute,
                 content_selector,
                 tag_name_first,
                 tag_name_second,
+                attribute,
                 wait_time,
                 sobrenombre,
             )
@@ -87,10 +88,10 @@ class ScraperAPIView(APIView):
             return scrape_mode_five(
                 url,
                 search_button_selector,
+                selector,
                 content_selector,
                 tag_name_first,
                 tag_name_second,
-                attribute,
                 wait_time,
                 sobrenombre,
             )
