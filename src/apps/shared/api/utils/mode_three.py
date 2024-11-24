@@ -25,7 +25,7 @@ def scrape_mode_three(
     search_button_selector=None,
     content_selector=None,
     sobrenombre=None,
-    tag_name_one=None,
+    tag_name_first=None,
     tag_name_second=None,
     tag_name_third=None,
     attribute=None,
@@ -66,7 +66,7 @@ def scrape_mode_three(
             content = BeautifulSoup(driver.page_source, "html.parser")
             content_container = content.select_one(content_selector)
 
-            tr_tags = content_container.find_all(tag_name_one)
+            tr_tags = content_container.find_all(tag_name_first)
 
             for i, tr_tag in enumerate(tr_tags):
 

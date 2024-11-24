@@ -49,23 +49,32 @@ def scrape_mode_five(
         )
         page_soup = BeautifulSoup(driver.page_source, "html.parser")
         content = page_soup.select_one(content_selector)
-        tr_tags = content.find_all(tag_name_first)
-        for row in tr_tags[1:]:
-            td_tags = row.find_all(tag_name_second)
-            if td_tags:
-                a_tags = td_tags[0].find(tag_name_third)
+        if content:
 
-                if a_tags:
+            tag_content = content.find_all(tag_name_first) 
+            for row in tag_content[1:]: 
+                tag_row = row.find_all(tag_name_second) 
+                if tag_row:
+                    if tag_name_third =="href":
+                        href = tag_row[0].get(tag_name_third) 
+                    else:
+                        a_tags = tag_row[0].find(tag_name_third)
+                        if a_tags:
+                            href = a_tags.get(attribute)
+                        else:
+                            href = None 
+                    if href:
 
-                    href = a_tags.get(attribute)
-                    page = page_principal + href
-                    if page:
-                        driver.get(page)
+                        
+                        page = page_principal + href
+                        if page.endswith(".pdf"): 
+                            continue
+                        driver.get(page) 
                         WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-                        )
+                                EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                            )
                         content = BeautifulSoup(driver.page_source, "html.parser")
-                        content_container = content.select_one(selector)
+                        content_container = content.select_one(selector) 
 
                         if content_container:
                             all_scrapped += f"Contenido de la página {page}:\n"
@@ -75,10 +84,10 @@ def scrape_mode_five(
                             print(f"No content found for page: {href}")
                         driver.back()
                         WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located(
-                                (By.CSS_SELECTOR, "#contents > table")
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR, content_selector)
+                                )
                             )
-                        )
 
         output_dir = r"C:\web_scraping_files"
         folder_path = generate_directory(output_dir, url)
