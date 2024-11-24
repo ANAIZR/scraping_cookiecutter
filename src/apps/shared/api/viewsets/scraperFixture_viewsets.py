@@ -88,11 +88,13 @@ class ScraperAPIView(APIView):
             return scrape_mode_five(
                 url,
                 search_button_selector,
-                selector,
-                content_selector,
                 tag_name_first,
                 tag_name_second,
-                wait_time,
+                tag_name_third,
+                attribute,
+                content_selector,
+                selector,
+                page_principal,
                 sobrenombre,
             )
         return Response(

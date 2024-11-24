@@ -21,11 +21,13 @@ from rest_framework import status
 def scrape_mode_five(
     url,
     search_button_selector,
-    selector,
     tag_name_first,
     tag_name_second,
+    tag_name_third,
     attribute,
-    wait_time,
+    content_selector,
+    selector,
+    page_principal,
     sobrenombre,
 ):
     # options = webdriver.ChromeOptions()
@@ -35,43 +37,55 @@ def scrape_mode_five(
     db = client["scrapping-can"]
     collection = db["collection"]
     fs = gridfs.GridFS(db)
-
+    all_scrapped = ""
     try:
         driver.get(url)
-        search_button = WebDriverWait(driver, wait_time).until(
+        search_button = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, search_button_selector))
         )
         search_button.click()
-
-        WebDriverWait(driver, wait_time).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
         )
-        ul_tag = driver.find_element(By.CSS_SELECTOR, selector)
-        li_tags = ul_tag.find_elements(By.TAG_NAME, tag_name_first)
+        page_soup = BeautifulSoup(driver.page_source, "html.parser")
+        content = page_soup.select_one(content_selector)
+        tr_tags = content.find_all(tag_name_first)
+        for row in tr_tags[1:]:
+            td_tags = row.find_all(tag_name_second)
+            if td_tags:
+                a_tags = td_tags[0].find(tag_name_third)
 
-        for li_tag in li_tags:
-            a_tags = li_tag.find_elements(By.TAG_NAME, tag_name_second)
+                if a_tags:
 
-            for a_tag in a_tags:
-                link_href = a_tag.get_attribute(attribute)
-                if link_href:
-                    driver.get(link_href)
-                    WebDriverWait(driver, wait_time).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, selector)
+                    href = a_tags.get(attribute)
+                    page = page_principal + href
+                    if page:
+                        driver.get(page)
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
                         )
-                    )
+                        content = BeautifulSoup(driver.page_source, "html.parser")
+                        content_container = content.select_one(selector)
 
-                    driver.back()
+                        if content_container:
+                            all_scrapped += f"Contenido de la página {page}:\n"
+                            cleaned_text = " ".join(content_container.text.split())
+                            all_scrapped += cleaned_text + "\n\n"
+                        else:
+                            print(f"No content found for page: {href}")
+                        driver.back()
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located(
+                                (By.CSS_SELECTOR, "#contents > table")
+                            )
+                        )
 
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        text_content = soup.get_text(separator="\n", strip=True)
         output_dir = r"C:\web_scraping_files"
         folder_path = generate_directory(output_dir, url)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write(text_content)
+            file.write(all_scrapped)
 
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
