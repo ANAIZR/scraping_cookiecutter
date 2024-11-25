@@ -19,7 +19,7 @@ from rest_framework import status
 
 
 def scrape_mode_one(
-    url, search_button_selector, content_selector, tag_name, wait_time, sobrenombre
+    url, search_button_selector, content_selector, tag_name_first, wait_time, sobrenombre
 ):
     #options = webdriver.ChromeOptions()
     #options.add_argument("--headless")
@@ -40,11 +40,11 @@ def scrape_mode_one(
             EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
         )
         ul_tag = driver.find_element(By.CSS_SELECTOR, content_selector)
-        li_tags = ul_tag.find_elements(By.TAG_NAME, tag_name)
+        li_tags = ul_tag.find_elements(By.TAG_NAME, tag_name_first)
 
         for li_tag in li_tags:
             WebDriverWait(driver, wait_time).until(
-                EC.presence_of_element_located((By.TAG_NAME, tag_name))
+                EC.presence_of_element_located((By.TAG_NAME, tag_name_first))
             )
 
         soup = BeautifulSoup(driver.page_source, "html.parser")

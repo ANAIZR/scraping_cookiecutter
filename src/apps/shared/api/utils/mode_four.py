@@ -22,10 +22,10 @@ def scrape_mode_four(
     url,
     search_button_selector,
     selector,
-    attribute,
     content_selector,
     tag_name_first,
     tag_name_second,
+    attribute,
     wait_time,
     sobrenombre,
 ):
@@ -34,7 +34,6 @@ def scrape_mode_four(
     db = client["scrapping-can"]
     collection = db["collection"]
     fs = gridfs.GridFS(db)
-
     all_scraped = ""
     try:
         driver.get(url)

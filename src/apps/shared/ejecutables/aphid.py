@@ -53,114 +53,117 @@ try:
 
     driver.get(url)
 
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located(
-            (
-                By.CSS_SELECTOR,
-                'nav.main #nav li:nth-child(4) a[href="species_list.php"]',
+    def scraper_first():
+        global all_scraped_fact_sheets
+        nav_fact_sheets = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (
+                    By.CSS_SELECTOR,
+                    'nav.main #nav li:nth-child(4) a[href="species_list.php"]',
+                )
             )
         )
-    )
+        nav_fact_sheets.click()
+        content = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#content"))
+        )
+        page_soup = BeautifulSoup(driver.page_source, "html.parser")
+        faq_div = page_soup.select_one(".grid_8 #faq")
+        h3_tags = faq_div.find_all("h3")
 
-    nav_fact_sheets = driver.find_element(
-        By.CSS_SELECTOR, 'nav.main #nav li:nth-child(4) a[href="species_list.php"]'
-    )
-    nav_fact_sheets.click()
+        for h3 in h3_tags:
+            h3_id = h3.get("id")
 
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "content")))
+            ul_tag = h3.find_next("ul")
 
-    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-    faq_div = page_soup.find("div", class_="grid_8").find("div", id="faq")
+            if ul_tag:
+                li_tags = ul_tag.find_all("li")
 
-    h3_tags = faq_div.find_all("h3")
+                for li in li_tags:
+                    a_tag = li.find("a", href=True)
+                    if a_tag:
+                        href = a_tag["href"]
+                        text = a_tag.get_text(strip=True)
 
-    for h3 in h3_tags:
-        h3_id = h3.get("id")
-
-        ul_tag = h3.find_next("ul")
-
-        if ul_tag:
-            li_tags = ul_tag.find_all("li")
-
-            for li in li_tags:
-                a_tag = li.find("a", href=True)
-                if a_tag:
-                    href = a_tag["href"]
-                    text = a_tag.get_text(strip=True)
-
-                    print(f"Letra: {h3_id}, Enlace: {href}, Texto: {text}")
-
-                    driver.get(url + href)
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.ID, "content"))
-                    )
-
-                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    content = page_soup.find(id="content")
-
-                    if content:
-                        all_scraped_fact_sheets += (
-                            f"Letra: {h3_id}, Enlace: {href}, Texto: {text}\n"
+                        all_scraped_fact_sheets = f"Enlace: {href}\n + {text}\n\n"
+                        driver.get(url + href)
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located(
+                                (By.CSS_SELECTOR, "#content")
+                            )
                         )
-                        all_scraped_fact_sheets += f"Contenido de la página {href}:\n"
-                        all_scraped_fact_sheets += content.get_text(strip=True) + "\n\n"
 
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located(
-            (
-                By.CSS_SELECTOR,
-                "nav.main #nav li:nth-child(5)",
+                        page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                        content = page_soup.select_one("#content div.grid_12")
+                        if content:
+                            hgroup = content.select_one("hgroup h1")
+                            paragraphs = content.find_all("p", limit=4)
+                            if hgroup:
+                                all_scraped_fact_sheets += f"{hgroup.get_text()}\n"
+                            for i, p in enumerate(paragraphs, start=1):
+                                all_scraped_fact_sheets += f"{p.get_text()}\n"
+                                    
+                                
+
+                            all_scraped_fact_sheets += "\n\n"
+                        else:
+                            print(
+                                f"No se encontró contenido en #content div.grid_12 para el enlace: {href}"
+                            )
+
+    def scraper_second():
+        global all_scraped_morphology
+        nav_morphology = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "nav.main #nav li:nth-child(5)")
             )
         )
-    )
 
-    nav_morphology = driver.find_element(
-        By.CSS_SELECTOR, "nav.main #nav li:nth-child(5)"
-    )
-    actions = ActionChains(driver)
-    actions.move_to_element(nav_morphology).perform()
+        ActionChains(driver).move_to_element(nav_morphology).perform()
 
-    ul_tag = driver.find_element(By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul")
-    li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
+        ul_tag = driver.find_element(
+            By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul"
+        )
+        li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
 
-    for index, li in enumerate(li_tags):
-        try:
-            if index == 0:
-                continue
+        for index, li in enumerate(li_tags):
+            try:
+                if index == 0:
+                    continue
 
-            ul_tag = driver.find_element(
-                By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul"
-            )
-            li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
-            li = li_tags[index]
+                ul_tag = driver.find_element(
+                    By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul"
+                )
+                li_tags = ul_tag.find_elements(By.CSS_SELECTOR, "li")
+                li = li_tags[index]
 
-            a_tag = li.find_element(By.TAG_NAME, "a")
-            href = a_tag.get_attribute("href")
-            print(f"Enlace: {href}")
-            driver.get(href)
+                a_tag = li.find_element(By.CSS_SELECTOR, "a")
+                href = a_tag.get_attribute("href")
+                driver.get(href)
 
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "content"))
-            )
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "#content"))
+                )
 
-            page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                page_soup = BeautifulSoup(driver.page_source, "html.parser")
 
-            content = page_soup.find("section", id="content").find(
-                "div", class_="grid_8"
-            )
-            portfolio = page_soup.find("section", class_="portfolio").find(
-                "ul", id="portfolio"
-            )
+                content = page_soup.select_one("section#content div.grid_8")
+                if content:
+                    hgroup = content.select_one("hgroup h1")
+                    paragraphs = content.find("p")
+                    portfolio = page_soup.select_one("section.portfolio ul#portfolio")
 
-            if content and portfolio:
-                all_scraped_morphology += f" Enlace: {href}\n"
-                all_scraped_morphology += f"Contenido de la página {href}:\n"
-                all_scraped_morphology += content.get_text(strip=True) + "\n\n"
-                all_scraped_morphology += portfolio.get_text(strip=True) + "\n\n"
+                    if  portfolio:
+                        all_scraped_morphology += f"Enlace: {href}\n"
+                        all_scraped_morphology += f"{hgroup.get_text()}\n"
+                        all_scraped_morphology += f"{paragraphs.get_text(strip=True)}\n"
+                        all_scraped_morphology += f"{portfolio.get_text()}\n\n"
 
-        except Exception as e:
-            print(f"Error procesando un elemento: {e}")
+            except Exception as e:
+                print(f"Error procesando un elemento: {e}")
 
+    #scraper_first()
+    scraper_second()
     folder_path = generate_directory(output_dir, url)
     file_path = get_next_versioned_filename(folder_path, base_name="aphid")
 
