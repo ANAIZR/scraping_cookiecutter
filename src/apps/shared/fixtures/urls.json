@@ -6,6 +6,8 @@
       "url": "https://www.redalyc.org/pdf/1950/195018673003.pdf",
       "type_file": 2,
       "time_choices": 2,
+      "mode_scrapeo":7,
+      "sobrenombre":"REDALYC",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
@@ -94,6 +96,8 @@
     "pk": 6,
     "fields": {
       "url": "http://editorial.agrosavia.co/index.php/publicaciones/catalog/download/10/8/97-1?inline=1",
+      "mode_scrapeo":7,
+      "sobrenombre":"AGROSAVIA",
       "type_file": 2,
       "time_choices": 3,
       "created_at": "2024-09-16T12:00:00Z",
@@ -132,6 +136,8 @@
       "url": "http://www.sag.cl/sites/default/files/MANUAL_INSECTOS_MADERA.pdf",
       "type_file": 2,
       "time_choices": 1,
+      "mode_scrapeo":7,
+      "sobrenombre":"SAG",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
@@ -144,6 +150,8 @@
       "url": "http://www.iucngisd.org/gisd/pdf/100Spanish.pdf",
       "type_file": 2,
       "time_choices": 3,
+      "mode_scrapeo":7,
+      "sobrenombre":"IUCN_PDF",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
