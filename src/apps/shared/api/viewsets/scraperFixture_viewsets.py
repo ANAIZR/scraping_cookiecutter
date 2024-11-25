@@ -8,6 +8,7 @@ from ..utils.mode_three import scrape_mode_three
 from ..utils.mode_four import scrape_mode_four
 from ..utils.mode_five import scrape_mode_five
 from ..utils.mode_six import scrape_mode_sixth
+from ..utils.mode_seven import scrape_pdf
 
 
 class ScraperAPIView(APIView):
@@ -51,82 +52,88 @@ class ScraperAPIView(APIView):
         next_page_selector = parameters.get("next_page_selector")
         title = parameters.get("title")
         if mode_scrapeo == 1:
-                return scrape_mode_one(
-                    url,
-                    search_button_selector,
-                    content_selector,
-                    tag_name_first,
-                    wait_time,
-                    sobrenombre,
-                )
+            return scrape_mode_one(
+                url,
+                search_button_selector,
+                content_selector,
+                tag_name_first,
+                wait_time,
+                sobrenombre,
+            )
         elif mode_scrapeo == 2:
-                return scrape_mode_two(
-                    url,
-                    sobrenombre,
-                    content_selector,
-                )
+            return scrape_mode_two(
+                url,
+                sobrenombre,
+                content_selector,
+            )
         elif mode_scrapeo == 3:
-                return scrape_mode_three(
-                    url,
-                    page_principal,
-                    wait_time,
-                    search_button_selector,
-                    content_selector,
-                    sobrenombre,
-                    tag_name_first,
-                    tag_name_second,
-                    tag_name_third,
-                    attribute,
-                    selector,
-                    next_page_selector,
-                )
+            return scrape_mode_three(
+                url,
+                page_principal,
+                wait_time,
+                search_button_selector,
+                content_selector,
+                sobrenombre,
+                tag_name_first,
+                tag_name_second,
+                tag_name_third,
+                attribute,
+                selector,
+                next_page_selector,
+            )
         elif mode_scrapeo == 4:
-                return scrape_mode_four(
-                    url,
-                    search_button_selector,
-                    selector,
-                    content_selector,
-                    tag_name_first,
-                    tag_name_second,
-                    attribute,
-                    wait_time,
-                    sobrenombre,
-                )
+            return scrape_mode_four(
+                url,
+                search_button_selector,
+                selector,
+                content_selector,
+                tag_name_first,
+                tag_name_second,
+                attribute,
+                wait_time,
+                sobrenombre,
+            )
         elif mode_scrapeo == 5:
-                return scrape_mode_five(
-                    url,
-                    search_button_selector,
-                    tag_name_first,
-                    tag_name_second,
-                    tag_name_third,
-                    attribute,
-                    content_selector,
-                    selector,
-                    page_principal,
-                    sobrenombre,
-                )
+            return scrape_mode_five(
+                url,
+                search_button_selector,
+                tag_name_first,
+                tag_name_second,
+                tag_name_third,
+                attribute,
+                content_selector,
+                selector,
+                page_principal,
+                sobrenombre,
+            )
         elif mode_scrapeo == 6:
-                return scrape_mode_sixth(
-                    url,
-                    wait_time,
-                    sobrenombre,
-                    search_button_selector,
-                    search_button_selector_second,
-                    content_selector,
-                    content_selector_second,
-                    content_selector_third,
-                    content_selector_fourth,
-                    content_selector_fifth,
-                    tag_name_first,
-                    tag_name_second,
-                    tag_name_third,
-                    tag_name_fourth,
-                    tag_name_fifth,
-                    tag_name_sixth,
-                    attribute,
-                    title,
-                )
+            return scrape_mode_sixth(
+                url,
+                wait_time,
+                sobrenombre,
+                search_button_selector,
+                search_button_selector_second,
+                content_selector,
+                content_selector_second,
+                content_selector_third,
+                content_selector_fourth,
+                content_selector_fifth,
+                tag_name_first,
+                tag_name_second,
+                tag_name_third,
+                tag_name_fourth,
+                tag_name_fifth,
+                tag_name_sixth,
+                attribute,
+                title,
+            )
+        elif mode_scrapeo == 7:
+            return scrape_pdf(
+                url,
+                sobrenombre,
+            )
+
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,
-            )
+        )
