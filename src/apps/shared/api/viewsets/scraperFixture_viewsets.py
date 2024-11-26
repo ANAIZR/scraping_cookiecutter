@@ -2,13 +2,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ...models.scraperURL import ScraperURL
-from ..utils.mode_one import scrape_mode_one
-from ..utils.mode_two import scrape_mode_two
-from ..utils.mode_three import scrape_mode_three
-from ..utils.mode_four import scrape_mode_four
-from ..utils.mode_five import scrape_mode_five
-from ..utils.mode_six import scrape_mode_sixth
-from ..utils.mode_seven import scrape_pdf
+from ..utils.first_mode import scrape_first_mode
+from ..utils.second_mode import scrape_second_mode
+from ..utils.third_mode import scrape_third_mode
+from ..utils.fourth_mode import scrape_fourth_mode
+from ..utils.fifth_mode import scrape_fifth_mode
+from ..utils.sixth_mode import scrape_sixth_mode
+from ..utils.seventh_mode import scrape_pdf
 
 
 class ScraperAPIView(APIView):
@@ -51,8 +51,10 @@ class ScraperAPIView(APIView):
         tag_name_third = parameters.get("tag_name_third")
         next_page_selector = parameters.get("next_page_selector")
         title = parameters.get("title")
+        start_page = parameters.get("start_page", 1)
+        end_page = parameters.get("end_page", None)
         if mode_scrapeo == 1:
-            return scrape_mode_one(
+            return scrape_first_mode(
                 url,
                 search_button_selector,
                 content_selector,
@@ -61,13 +63,13 @@ class ScraperAPIView(APIView):
                 sobrenombre,
             )
         elif mode_scrapeo == 2:
-            return scrape_mode_two(
+            return scrape_second_mode(
                 url,
                 sobrenombre,
                 content_selector,
             )
         elif mode_scrapeo == 3:
-            return scrape_mode_three(
+            return scrape_third_mode(
                 url,
                 page_principal,
                 wait_time,
@@ -82,7 +84,7 @@ class ScraperAPIView(APIView):
                 next_page_selector,
             )
         elif mode_scrapeo == 4:
-            return scrape_mode_four(
+            return scrape_fourth_mode(
                 url,
                 search_button_selector,
                 selector,
@@ -94,7 +96,7 @@ class ScraperAPIView(APIView):
                 sobrenombre,
             )
         elif mode_scrapeo == 5:
-            return scrape_mode_five(
+            return scrape_fifth_mode(
                 url,
                 search_button_selector,
                 tag_name_first,
@@ -107,7 +109,7 @@ class ScraperAPIView(APIView):
                 sobrenombre,
             )
         elif mode_scrapeo == 6:
-            return scrape_mode_sixth(
+            return scrape_sixth_mode(
                 url,
                 wait_time,
                 sobrenombre,
@@ -129,8 +131,7 @@ class ScraperAPIView(APIView):
             )
         elif mode_scrapeo == 7:
             return scrape_pdf(
-                url,
-                sobrenombre,
+                url, sobrenombre, start_page=start_page, end_page=end_page
             )
 
         return Response(
