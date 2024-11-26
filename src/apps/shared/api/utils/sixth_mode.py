@@ -9,7 +9,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import gridfs
 import os
-from ..utils.functions import (
+from .functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
@@ -19,7 +19,7 @@ from rest_framework import status
 from selenium.webdriver.common.action_chains import ActionChains
 
 
-def scrape_mode_sixth(
+def scrape_sixth_mode(
     url=None,
     wait_time=None,
     sobrenombre=None,

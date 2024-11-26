@@ -9,7 +9,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import gridfs
 import os
-from ..utils.functions import (
+from .functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-def scrape_mode_three(
+def scrape_third_mode(
     url=None,
     page_principal=None,
     wait_time=None,

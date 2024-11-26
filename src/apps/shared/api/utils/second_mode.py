@@ -9,7 +9,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import gridfs
 import os
-from ..utils.functions import (
+from .functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
@@ -17,7 +17,7 @@ from ..utils.functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-def scrape_mode_two(url, sobrenombre, selector):
+def scrape_second_mode(url, sobrenombre, selector):
     # options = webdriver.ChromeOptions()
     # options.add_argument("--headless")
     # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
