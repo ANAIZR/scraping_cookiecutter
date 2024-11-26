@@ -1,5 +1,4 @@
 import requests
-from datetime import datetime
 import os
 import pdfplumber
 from io import BytesIO
@@ -8,11 +7,19 @@ import gridfs
 from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
-from ..utils.functions import (
+from pdfminer.high_level import extract_text
+from .functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
 )
+
+
+def extract_text_with_pdfminer(pdf_file):
+    try:
+        return extract_text(pdf_file)
+    except Exception as e:
+        raise Exception(f"Error al extraer texto con pdfminer: {e}")
 
 
 def scrape_pdf(url, sobrenombre, start_page=1, end_page=None):
@@ -23,8 +30,10 @@ def scrape_pdf(url, sobrenombre, start_page=1, end_page=None):
         db = client["scrapping-can"]
         collection = db["collection"]
         fs = gridfs.GridFS(db)
-
-        response = requests.get(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
+        }
+        response = requests.get(url, verify=False, headers=headers)
         response.raise_for_status()
 
         folder_path = generate_directory(output_dir, url)
@@ -37,13 +46,8 @@ def scrape_pdf(url, sobrenombre, start_page=1, end_page=None):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if "text/html" in response.headers["Content-Type"]:
-            print(response.headers["Content-Type"])
-            print(response.text[:1000])  # Muestra los primeros 1000 caracteres
-
             soup = BeautifulSoup(response.text, "html.parser")
             pages = soup.find_all("div#viewer div.page")
-            print(f"Encontradas {len(pages)} páginas.")
-
             extracted_pages = [
                 int(page["data-page-number"])
                 for page in pages
@@ -53,22 +57,27 @@ def scrape_pdf(url, sobrenombre, start_page=1, end_page=None):
 
         pdf_file = BytesIO(response.content)
         full_text = ""
-        with pdfplumber.open(pdf_file) as pdf:
-            total_pages = len(pdf.pages)
+        try:
+            with pdfplumber.open(pdf_file) as pdf:
+                total_pages = len(pdf.pages)
+                start = max(0, start_page - 1)
+                end = min(total_pages, end_page) if end_page else total_pages
+                if start >= total_pages:
+                    return Response(
+                        {
+                            "error": "El número de página inicial excede el total de páginas del PDF."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                for i in range(start, end):
+                    text = pdf.pages[i].extract_text()
+                    if text:
+                        full_text += text + "\n"
 
-            start = max(0, start_page - 1)  # Ajustar índice 0
-            end = min(total_pages, end_page) if end_page else total_pages
-            if start >= total_pages:
-                return Response(
-                    {
-                        "error": "El número de página inicial excede el total de páginas del PDF."
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            for i in range(start, end):
-                text = pdf.pages[i].extract_text()
-                if text:
-                    full_text += text + "\n"
+        except Exception as e:
+            print(f"pdfplumber falló: {e}")
+            pdf_file.seek(0)
+            full_text = extract_text_with_pdfminer(pdf_file)
 
         if not full_text.strip():
             raise Exception("No se pudo extraer texto del PDF.")
