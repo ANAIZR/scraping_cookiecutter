@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 def sanitize_filename(filename):
     sanitized = "".join(c if c.isalnum() or c in "-_." else "_" for c in filename)
-    return sanitized[:100]  # Limitar el tamaño del nombre del archivo
+    return sanitized[:100] 
 
 
 try:
@@ -20,7 +20,6 @@ try:
 
     sleep(5)
 
-    # Manejar cookies
     try:
         with open("cookies.pkl", "rb") as file:
             cookies = pickle.load(file)
@@ -31,7 +30,6 @@ try:
     except FileNotFoundError:
         print("No se encontraron cookies guardadas.")
 
-    # Aceptar cookies si es necesario
     try:
         cookie_button = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "#onetrust-pc-btn-handler"))
@@ -63,7 +61,6 @@ try:
         except Exception as e:
             print(f"Error al realizar la búsqueda: {e}")
 
-        # Navegación y extracción de datos con paginación
         try:
             print("Esperando a que el contenido sea visible...")
             content = WebDriverWait(driver, 30).until(
@@ -134,14 +131,11 @@ try:
                                 print(f"Contenido guardado en {file_path}")
                             except Exception as e:
                                 print(f"Error al esperar el contenido de la nueva página: {e}")
-            #driver.back()
-            # Verificar si existe una página siguiente
-            try:
-                # Regresar a la página base antes de hacer clic en el botón de búsqueda
-                driver.get(base_url)
-                sleep(3)  # Esperar a que se recargue la página
 
-                # Esperar y hacer clic en el botón de búsqueda
+            try:
+                driver.get(base_url)
+                sleep(3)  
+
                 search_button = WebDriverWait(driver, 30).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "div.page-top-banner div.container div.quick-search button.quick-search__button"))
                 )
@@ -151,13 +145,12 @@ try:
             except Exception as e:
                 print(f"Error al hacer clic en el botón de búsqueda para la siguiente página: {e}")
 
-            # Buscar el botón para la siguiente página
             try:
                 next_page_button = driver.find_element(By.CSS_SELECTOR, "nav.pagination li.next a")
                 next_page_link = next_page_button.get_attribute("href")
                 if next_page_link:
                     print(f"Navegando a la siguiente página: {next_page_link}")
-                    driver.get(next_page_link)  # Navegar al siguiente enlace de página
+                    driver.get(next_page_link)  
                     sleep(3)
                 else:
                     print("No hay más páginas disponibles.")
