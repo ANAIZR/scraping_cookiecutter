@@ -11,7 +11,7 @@ from pymongo import MongoClient
 import gridfs
 from datetime import datetime
 from selenium.webdriver.common.action_chains import ActionChains
-
+import time
 
 output_dir = r"C:\web_scraping_files"
 if not os.path.exists(output_dir):
@@ -42,7 +42,7 @@ db = client["scrapping-can"]
 collection = db["collection"]
 fs = gridfs.GridFS(db)
 
-url = "https://wiki.bugwood.org/Main_Page"
+url = "https://plant-directory.ifas.ufl.edu/plant-directory/"
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
@@ -50,20 +50,6 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 try:
     driver.get(url)
 
-    search_button = WebDriverWait(driver, 30).until(
-        EC.element_to_be_clickable(
-            (
-                By.CSS_SELECTOR,
-                "#mw-navigation container-fluid #mw-navigation-collapse #mainContent #content #pagebody #main div form table:nth-of-type(2) input[type='submit']",
-            )
-        )
-    )
-    search_button.click()
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#wrapper #nonFooter #container #mainContent #content #pagebody #main table"))  
-    )
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    text_content = soup.get_text(separator='\n', strip=True)
-    print(text_content)
+    time.sleep(5)
 finally:
     driver.quit()
