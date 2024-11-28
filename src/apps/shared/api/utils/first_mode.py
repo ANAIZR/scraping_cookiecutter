@@ -21,9 +21,9 @@ from rest_framework import status
 def scrape_first_mode(
     url, search_button_selector, content_selector, tag_name_first, wait_time, sobrenombre
 ):
-    #options = webdriver.ChromeOptions()
-    #options.add_argument("--headless")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]
     collection = db["collection"]

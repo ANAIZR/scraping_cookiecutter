@@ -10,7 +10,7 @@ import os
 from pymongo import MongoClient
 import gridfs
 from datetime import datetime
-
+import time
 # Directorio de salida para guardar los archivos
 output_dir = r"C:\web_scraping_files"
 if not os.path.exists(output_dir):
@@ -45,9 +45,12 @@ collection = db["collection"]
 fs = gridfs.GridFS(db)
 
 # URL a scrapear
-url = "http://poisonousplants.ansci.cornell.edu/php/plants.php"
+url = "https://www.mycobank.org/Simple%20names%20search"
 
 # Inicialización del driver de Selenium
+
+options = webdriver.ChromeOptions()
+options.add_argument("--start-maximized")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
 # Variable para guardar el contenido raspado
@@ -55,48 +58,67 @@ all_scraped = ""
 
 try:
     driver.get(url)
-
-    selector = WebDriverWait(driver, 10).until(
+    print(f"Entrando a la página: {url}")
+    print("Esperando a que cargue la página")
+    print("Buscando elementos")
+    boton = WebDriverWait(driver, 40).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "#search-btn")
+        )
+    )
+    print("Elemento encontrado")
+    time.sleep(2)  
+    driver.execute_script("arguments[0].click();", boton)
+    print("Botón clickeado")
+    time.sleep(5)
+    print("Esperando a que cargue el cuerpo")
+    WebDriverWait(driver, 20).until(
         EC.presence_of_element_located(
-            (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
+            (By.CSS_SELECTOR, "div.ps-content table.mat-table tbody")
         )
     )
-    second_a = selector.find_elements(By.TAG_NAME, "a")[1]
-    second_a.click()
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    content = soup.select_one("div.ps-content table.mat-table tbody")
+    print("Cuerpo cargado")
+    if content:
+        print("Cargando filas")
+        rows = content.select("tr")
 
-    target_divs = WebDriverWait(driver, 10).until(
-        EC.presence_of_all_elements_located(
-            (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
-        )
-    )
+        print(f"Encontradas {len(rows)} filas")
+        for row in rows:
+            second_td = row.select_one("td:nth-child(2)")
+            if second_td:
+                td_a = second_td.select_one("a")
+                if td_a and td_a.get("href"):
+                    link = td_a.get("href")
+                    print(f"Encontrado enlace: {link}")
+                    
+                    # Opcional: Si deseas navegar a este enlace, descomenta lo siguiente
+                    # print(f"Entrando a la página: {link}")
+                    # driver.get(link)
+                    # time.sleep(5)  # Espera adicional para la nueva página
 
-    for div_index, target_div in enumerate(target_divs, start=1):
-        urls = target_div.find_elements(By.TAG_NAME, "a")
-        for link_index, link in enumerate(urls, start=1):
-            link_href = link.get_attribute("href")
-            driver.get(link_href)
-            pageBody = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "#mainContent #pagebody #main") 
+                else:
+                    print("No se encontró un enlace válido en esta fila.")
+            else:
+                print("No se encontró la segunda celda en esta fila.")
+
+                        
+
+                """
+                    modal_html = driver.page_source
+                modal_soup = BeautifulSoup(modal_html, "html.parser")
+                modal_content = modal_soup.select_one("div.field-container > div.w-100")
+                if modal_content:
+                    all_scraped += modal_content.get_text(strip=True) + "\n"
+
+                close_modal = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div.dockmodal-header > a.action-close"))
                 )
-            )
-            p_tags = pageBody.find_elements(By.TAG_NAME, "p")[:5]
-
-
-            for i, p in enumerate(p_tags, start=1):
-
-                all_scraped += p.text + "\n"
-
-
-            driver.back()
-
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
-                )
-            )
-
-
+                close_modal.click()
+                    """       
+                
+                
     folder_path = generate_directory(output_dir, url)
     file_path = get_next_versioned_filename(folder_path, base_name="anscy")
 

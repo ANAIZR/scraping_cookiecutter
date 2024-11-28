@@ -18,10 +18,11 @@ from rest_framework.response import Response
 from rest_framework import status
 
 def scrape_second_mode(url, sobrenombre, selector):
-    # options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")
-    # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+        
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]

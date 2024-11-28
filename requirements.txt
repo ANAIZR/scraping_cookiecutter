@@ -33,4 +33,4 @@ beautifulsoup4
 pdfplumber
 requests
 pymongo==4.10.1
-
+undetected-chromedriver
