@@ -101,7 +101,7 @@ with open(output_file_path, "w", encoding="utf-8") as output_file:
                         time.sleep(2)
                         all_scrapped += content.text
                         print("Extrayendo datos...")
-
+                        print("SCRAPPED DATA: ", all_scrapped)
                         rows = content.find_elements(By.TAG_NAME, "tr")
 
                         for row in rows:
