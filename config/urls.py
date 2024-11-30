@@ -18,6 +18,7 @@ urlpatterns = [
         name="api-swagger",
     ),
     path("api/v1/", include("src.apps.shared.api.router")),
+    path('api/compare', compare, name='compare')
 ]
 
 if settings.DEBUG:
