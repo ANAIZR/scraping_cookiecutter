@@ -13,6 +13,10 @@ from ..utils.eighth_mode import scrape_eighth_mode
 from ..utils.ninth_mode import scrape_ninth_mode
 from ..utils.tenth_mode import scrape_tenth_mode
 from ..utils.eleventh_mode import scrape_eleventh_mode
+from ..utils.flmnh_ufl import scrape_flmnh_ufl
+from ..utils.iucnredlist import scrape_iucnredlist
+from ..utils.ala_org import scrape_ala_org
+from ..utils.pnw_hand_books import scrape_pnw_hand_books
 
 
 class ScraperAPIView(APIView):
@@ -201,7 +205,53 @@ class ScraperAPIView(APIView):
                 tag_name_second,
                 search_button_selector,
             )
-
+        elif mode_scrapeo == 12:
+            return scrape_flmnh_ufl(
+                url,
+                selector,
+                content_selector,
+                tag_name_first,
+                content_selector_second,
+                sobrenombre,
+            )
+        elif mode_scrapeo == 13:
+            return scrape_iucnredlist(
+                url,
+                selector,
+                search_button_selector,
+                content_selector,
+                content_selector_second,
+                attribute,
+                tag_name_first,
+                tag_name_second,
+                tag_name_third,
+                tag_name_fourth,
+                search_button_selector_second,
+                sobrenombre,
+            )
+        elif mode_scrapeo == 14:
+            return scrape_ala_org(
+                url,
+                search_button_selector,
+                tag_name_first,
+                selector,
+                tag_name_second,
+                attribute,
+                content_selector,
+                tag_name_third,
+                sobrenombre,
+            )
+        elif mode_scrapeo == 15:
+            return scrape_pnw_hand_books(
+                url,
+                selector,
+                content_selector,
+                attribute,
+                tag_name_first,
+                tag_name_second,
+                search_button_selector,
+                sobrenombre,
+            )
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,

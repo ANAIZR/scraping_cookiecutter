@@ -22,7 +22,7 @@
       "url": "http://www.iucngisd.org/gisd/",
 
       "time_choices": 3,
-      "sobrenombre": "IUCN",
+      "sobrenombre": "IUCNGISD",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "mode_scrapeo": 1,
@@ -336,6 +336,73 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 30,
+    "fields": {
+      "url": "http://www.flmnh.ufl.edu/scripts/dbs/malatp_pub.asp",
+      "sobrenombre": "FLMNH_UFL",
+      "time_choices": 1,
+      "mode_scrapeo": 12,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "selector": "table.x-grid-table tbody tr",
+        "content_selector": "table.x-grid-table tbody tr:not(.x-grid-header-row)",
+        "content_selector_second":"#adv-srch-btn-btnInnerEl",
+        "tag_name_first":"td"
+
+        
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 44,
+    "fields": {
+      "url": "https://www.iucnredlist.org/",
+      "sobrenombre": "IUCNREDLIST",
+      "time_choices": 1,
+      "mode_scrapeo": 13,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "selector": "#redlist-js",
+        "search_button_selector":"button.search--site__button",
+        "search_button_selector_second":".section__link-out",
+        "content_selector":"div.cards--narrow article",
+        "content_selector_second":"div.cards--narrow article a",
+        "attribute":"href",
+        "tag_name_first":"body",
+        "tag_name_second":"h1.headline__title",
+        "tag_name_third":"#taxonomy",
+        "tag_name_fourth":"#habitat-ecology"
+
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 48,
+    "fields": {
+      "url": "http://www.ala.org.au/",
+      "sobrenombre": "ALA_ORG",
+      "time_choices": 1,
+      "mode_scrapeo": 14,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "search_button_selector":"button[type='submit']",
+        "tag_name_first":"ol",
+        "selector":"ol li.search-result",
+        "content_selector":"section.container-fluid",
+        "tag_name_second":"a",
+        "tag_name_third":"li.next a",
+        "attribute":"href"
+
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 56,
     "fields": {
       "url": "https://agritrop.cirad.fr/461853/1/ID461853.pdf",
@@ -398,6 +465,27 @@
       "parameters": {
         "start_page": 5,
         "end_page": 65
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 61,
+    "fields": {
+      "url": "http://pnwhandbooks.org/plantdisease/",
+      "sobrenombre": "PNW_HAND_BOOKS",
+      "time_choices": 1,
+      "mode_scrapeo": 15,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "selector":"div.view-content div.views-row",
+        "content_selector":"div.views-field-title a",
+        "attribute":"href",
+        "tag_name_first":"h1",
+        "tag_name_second":"li.next a",
+        "search_button_selector":"#edit-submit-plant-subarticles-autocomplete"
+
       }
     }
   },
