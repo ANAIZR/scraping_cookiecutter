@@ -57,7 +57,7 @@ try:
 
     for row in rows:
         try:
-            second_td = row.find_elements(By.TAG_NAME, "td")[1]
+            second_td = row.find_elements(By.TAG_NAME, "td")
             a_tag = second_td.find_element(By.TAG_NAME, "a")
             href = a_tag.get_attribute("href")
             if href:
@@ -81,7 +81,7 @@ try:
                 content_elements = driver.find_elements(By.CSS_SELECTOR, "div.bg-content-custom")
                 if len(content_elements) == 2:
                     content = content_elements[0].text + "\n" + content_elements[1].text  # Concatenar los textos
-                    all_scraped += content  # Agregar el contenido a la variable all_scraped
+                    all_scraped += content  
                 else:
                     print(f"Se esperaba encontrar exactamente 2 elementos, pero se encontraron {len(content_elements)}.")
 

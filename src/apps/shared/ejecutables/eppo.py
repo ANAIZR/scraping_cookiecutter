@@ -49,29 +49,37 @@ try:
 
     # Espera a que la tabla esté completamente cargada
     WebDriverWait(driver, 30).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#dttable"))
+        EC.presence_of_element_located((By.CSS_SELECTOR, "#dttable tbody tr"))
     )
 
-    rows = driver.find_elements(By.CSS_SELECTOR, "#dttable tbody tr")
+    # Proceso iterativo
+    while True:
+        rows = driver.find_elements(By.CSS_SELECTOR, "#dttable tbody tr")
+        print(f"Encontré {len(rows)} filas.")
 
-    for row in rows:
-        try:
-            second_td = row.find_elements(By.TAG_NAME, "td")
-            if len(second_td) > 1:
-                a_tag = second_td[1].find_elements(By.TAG_NAME, "a")
-                if a_tag:
-                    href = a_tag[0].get_attribute("href")
+        for i in range(len(rows)):
+            try:
+                # Volver a obtener las filas cada vez que regresamos
+                rows = driver.find_elements(By.CSS_SELECTOR, "#dttable tbody tr")
+                row = rows[i]
+
+                cells = row.find_elements(By.TAG_NAME, "td")
+                if len(cells) > 1:  # Validar que la fila tenga al menos 2 celdas
+                    second_td = cells[1]
+                    a_tag = second_td.find_element(By.TAG_NAME, "a")
+                    href = a_tag.get_attribute("href")
+
                     if href:
                         print(f"Haciendo clic en el enlace: {href}")
                         driver.get(href)
 
+                        # Esperar a que la página destino esté cargada
                         WebDriverWait(driver, 30).until(
                             EC.presence_of_element_located(
                                 (By.CSS_SELECTOR, "div.row>div.col-md-12>div.row>div.col-md-9")
                             )
                         )
-
-                        # Obtención del HTML de la página con BeautifulSoup
+                        time.sleep(5)
                         page_source = driver.page_source
                         soup = BeautifulSoup(page_source, "html.parser")
 
@@ -81,22 +89,20 @@ try:
                             all_scraped += content.get_text() + "\n"
 
                         time.sleep(5)
-
                         driver.back()
 
                         # Esperar la recarga de la tabla
                         WebDriverWait(driver, 30).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "#dttable"))
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "#dttable tbody tr"))
                         )
                         print("Volviendo a la tabla, esperando recarga...")
-                        time.sleep(5)
+                    else:
+                        print("No se encontró un enlace en esta celda.")
                 else:
-                    print("No se encontró un enlace en esta celda.")
-            else:
-                print("Fila no tiene suficientes celdas.")
-        except Exception as e:
-            print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
-
+                    print("Fila no tiene suficientes celdas.")
+            except Exception as e:
+                print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
+        break
 
     # Guardar datos en un archivo local
     folder_path = generate_directory(output_dir, url)

@@ -20,7 +20,14 @@ import time
 
 
 def scrape_pnw_hand_books(
-    url, selector, content_selector, attribute, tag_name_first, tag_name_second,search_button_selector,sobrenombre
+    url,
+    selector,
+    content_selector,
+    attribute,
+    tag_name_first,
+    tag_name_second,
+    search_button_selector,
+    sobrenombre,
 ):
     options = webdriver.ChromeOptions()
     # options.add_argument("--headless")
@@ -41,6 +48,7 @@ def scrape_pnw_hand_books(
 
     try:
         driver.get(url)
+
         def scrape_current_page():
             try:
                 WebDriverWait(driver, 10).until(
@@ -88,31 +96,37 @@ def scrape_pnw_hand_books(
 
         except Exception as e:
             print(f"Error durante el proceso de scraping: {e}")
-        folder_path = generate_directory(output_dir, url)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+        if all_scrapped.strip():
+            folder_path = generate_directory(output_dir, url)
+            file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(all_scrapped)
+            with open(file_path, "w", encoding="utf-8") as file:
+                file.write(all_scrapped)
 
-        with open(file_path, "rb") as file_data:
-            object_id = fs.put(file_data, filename=os.path.basename(file_path))
+            with open(file_path, "rb") as file_data:
+                object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
 
-        collection.insert_one(data)
+            collection.insert_one(data)
 
-        delete_old_documents(url, collection, fs)
+            delete_old_documents(url, collection, fs)
 
-        return Response(
-            {"message": "Scraping completado y datos guardados en MongoDB."},
-            status=status.HTTP_200_OK,
-        )
+            return Response(
+                {"message": "Scraping completado y datos guardados en MongoDB."},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {"message": "No se encontró contenido para guardar."},
+                status=status.HTTP_204_NO_CONTENT,
+            )
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

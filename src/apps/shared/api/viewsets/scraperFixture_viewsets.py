@@ -17,6 +17,8 @@ from ..utils.flmnh_ufl import scrape_flmnh_ufl
 from ..utils.iucnredlist import scrape_iucnredlist
 from ..utils.ala_org import scrape_ala_org
 from ..utils.pnw_hand_books import scrape_pnw_hand_books
+from ..utils.ipm_illinois import scrape_ipm_illinoes
+from ..utils.pest_alerts import scrape_pest_alerts
 
 
 class ScraperAPIView(APIView):
@@ -250,6 +252,21 @@ class ScraperAPIView(APIView):
                 tag_name_first,
                 tag_name_second,
                 search_button_selector,
+                sobrenombre,
+            )
+        elif mode_scrapeo == 16:
+            return scrape_ipm_illinoes(
+                url, content_selector, attribute, attribute_second
+            )
+        elif mode_scrapeo == 17:
+            return scrape_pest_alerts(
+                url,
+                selector,
+                content_selector,
+                tag_name_first,
+                tag_name_second,
+                attribute,
+                content_selector_second,
                 sobrenombre,
             )
         return Response(

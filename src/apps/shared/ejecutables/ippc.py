@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select  # Importar Select
 from bs4 import BeautifulSoup
 from webdriver_manager.chrome import ChromeDriverManager
 import os
@@ -22,6 +23,20 @@ try:
     print("Ingresando a la URL")
     
     WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.container>div.row")))
+
+    # Esperar a que el select esté presente antes de interactuar con él
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.NAME, "publications_length")))
+
+    # Encontrar el elemento <select> y seleccionar la opción "All"
+    select_element = driver.find_element(By.NAME, "publications_length")
+    select = Select(select_element)
+    
+    # Seleccionar la opción "All"
+    select.select_by_value("-1")
+    print("Seleccionada la opción 'All'.")
+
+    # Esperar que la página se actualice después de seleccionar "All"
+    time.sleep(3)  # Esperar un poco para que la página recargue
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
     

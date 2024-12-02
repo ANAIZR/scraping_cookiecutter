@@ -24,7 +24,7 @@ try:
     WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent")))
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
-    containers = soup.select("#MainContent .volumes") 
+    containers = soup.select("#MainContent .volumes .column") 
 
     if not containers:
         print("No se encontraron contenedores en la página.")
@@ -75,7 +75,7 @@ try:
             time.sleep(3) 
 
             soup = BeautifulSoup(driver.page_source, "html.parser")
-            containers = soup.select("#MainContent .volumes")  
+            containers = soup.select("#MainContent .volumes .column")  
             print(f"Se encontraron {len(containers)} contenedores después de regresar a la página.")
 
             if len(containers) <= index + 1:
