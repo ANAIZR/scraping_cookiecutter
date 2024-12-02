@@ -10,7 +10,8 @@
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {
-        "start_page": 2
+        "start_page": 2,
+        "end_page":6
       }
     }
   },
@@ -130,6 +131,31 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 12,
+    "fields": {
+      "url": "https://jb.utad.pt/chavedicotomica/inversa/todas",
+      "time_choices": 3,
+      "mode_scrapeo": 8,
+      "sobrenombre": "AGUIAR",
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "content_selector":"#DataTables_Table_0_wrapper tbody",
+        "content_selector_second":"section.container div.rfInv",
+        "content_selector_third":"div.col-md-2",
+        "content_selector_fourth":"main.container div.parteesq",
+        "content_selector_fifth":"#DataTables_Table_0_next a",
+        "selector":"#DataTables_Table_0_wrapper tbody tr",
+        "tag_name_first":"td a",
+        "tag_name_second":"a",
+        "attribute":"href",
+        "attribute_second":"class"
+        
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 13,
     "fields": {
       "url": "http://www.efloras.org/flora_page.aspx?flora_id=5",
@@ -175,6 +201,34 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 15,
+    "fields": {
+      "url": "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_en.php",
+      "time_choices": 1,
+      "mode_scrapeo": 9,
+      "sobrenombre": "GENE",
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "selector": "form#search div:nth-child(7) span:nth-child(2) input[type='checkbox']",
+        "content_selector": "div.table-responsive",
+        "content_selector_second":"td:nth-child(2) a",
+        "content_selector_third":"div.container div>table tbody",
+        "content_selector_fourth":"div.table-responsive tbody tr",
+        "content_selector_fifth":"div.container table.table",
+        "attribute": "value",
+        "attribute_second":"href",
+        "search_button_selector": "form#search input[type='submit']",
+        "tag_name_first":"pagination",
+        "tag_name_second":"tr",
+        "tag_name_third":"td",
+        "tag_name_fourth":"th",
+        "wait_time": 20
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 17,
     "fields": {
       "url": "http://flora.huh.harvard.edu/china/",
@@ -214,17 +268,21 @@
     "model": "shared.ScraperURL",
     "pk": 19,
     "fields": {
-      "url": "http://plants.ifas.ufl.edu/",
-      "time_choices": 3,
+      "url": "https://plant-directory.ifas.ufl.edu/plant-directory/",
+      "time_choices": 2,
+      "mode_scrapeo": 10,
+      "sobrenombre": "IFAS",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "mode_scrapeo": 5,
       "parameters": {
-        "search_button_selector": "a[href='https://plant-directory.ifas.ufl.edu/plant-directory/",
-        "selector": "#app section.plant-cards ul",
-        "tag_name_first": "li",
-        "tag_name_second": "a",
-        "attribute": "href"
+        "selector":"#app section.plant-cards",
+        "content_selector": "ul.plants li.plant",
+        "content_selector_second":"section.plant-page",
+        "content_selector_third":"div.content",
+        "content_selector_fourth":"div.primary div[style*='margin:2rem']",
+        "content_selector_fifth":"div.primary div[style*='margin-bottom:2rem']",
+        "tag_name_first":"a",
+        "attribute":"href"
       }
     }
   },
@@ -247,6 +305,32 @@
         "tag_name_second": "td",
         "tag_name_third": "a",
         "attribute": "href"
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 23,
+    "fields": {
+      "url": "http://www.plantatlas.usf.edu",
+      "sobrenombre": "ATLAS",
+      "time_choices": 1,
+      "mode_scrapeo": 11,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "selector":"#ctl00_cphBody_Grid1",
+        "content_selector":"#aspnetForm",
+        "content_selector_second":"ctl00_cphHeader_ctrlHeader_btnBrowseSearch",
+        "content_selector_third":"section#partners div.container",
+        "content_selector_fourth":"div.partner-list",
+        "content_selector_fifth":"div.col-lg-3",
+        "tag_name_first":"tr",
+        "tag_name_second":"td",
+        "tag_name_third":"h3",
+        "tag_name_fourth":"a",
+        "search_button_selector":"ctl00_cphBody_Grid1_ctl01_ibNext",
+        "attribute":"href"
       }
     }
   },

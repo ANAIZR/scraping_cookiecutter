@@ -9,7 +9,7 @@ import os
 from pymongo import MongoClient
 import gridfs
 from datetime import datetime
-
+import time
 # Directorio de salida donde se guardarán los archivos
 output_dir = r"C:\web_scraping_files"
 if not os.path.exists(output_dir):
@@ -57,6 +57,7 @@ while True:
         )
         
         rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
+        print(f"Filas encontrads {len(rows)}")
         for row in rows:
             first_td = row.find_element(By.CSS_SELECTOR, "td a")
             link = first_td.get_attribute("href")
@@ -68,31 +69,30 @@ while True:
                 EC.presence_of_element_located((By.CSS_SELECTOR, "section.container div.rfInv"))
             )
             cards = driver.find_elements(By.CSS_SELECTOR, "div.col-md-2")
+            print(f"Cantidad de cards encontradas {len(cards)}")
             for card in cards:
                 link_in_card = card.find_element(By.CSS_SELECTOR, "a")
                 card_href = link_in_card.get_attribute("href")
                 link_in_card.click()
-                print(f"Haciendo clic en el enlace dentro del card: {card_href}")
 
                 original_window = driver.current_window_handle
                 all_windows = driver.window_handles
                 new_window = [window for window in all_windows if window != original_window][0]
 
                 driver.switch_to.window(new_window)
-                print(f"Ahora en la nueva pestaña: {driver.current_url}")
 
                 new_page_content = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "main.container div.parteesq"))
                 )
-                
-                print(f"Datos extraídos de la nueva pestaña en: {driver.current_url}")
-                all_scrapped += f"Datos extraídos de {driver.current_url}\n"
+                extracted_text = new_page_content.text 
 
+                all_scrapped += f"Datos extraídos de {driver.current_url}\n"
+                all_scrapped += extracted_text + "\n" 
                 driver.close()
                 driver.switch_to.window(original_window)
-                print("Regresando a la pestaña original de los cards.")
             
             driver.back() 
+            time.sleep(2)
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
             )
@@ -106,15 +106,12 @@ while True:
             break  
         
         next_button.click()
-        print("Navegando a la siguiente página...")
 
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
         )
-        print("cargo la tabla ")
 
     except Exception as e:
-        print(f"Ocurrió un error durante la paginación o el scraping: {e}")
         break  
 
 folder_path = generate_directory(output_dir, url)

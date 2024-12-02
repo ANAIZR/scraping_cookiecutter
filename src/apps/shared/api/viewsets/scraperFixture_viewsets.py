@@ -9,6 +9,10 @@ from ..utils.fourth_mode import scrape_fourth_mode
 from ..utils.fifth_mode import scrape_fifth_mode
 from ..utils.sixth_mode import scrape_sixth_mode
 from ..utils.seventh_mode import scrape_pdf
+from ..utils.eighth_mode import scrape_eighth_mode
+from ..utils.ninth_mode import scrape_ninth_mode
+from ..utils.tenth_mode import scrape_tenth_mode
+from ..utils.eleventh_mode import scrape_eleventh_mode
 
 
 class ScraperAPIView(APIView):
@@ -47,6 +51,7 @@ class ScraperAPIView(APIView):
         tag_name_fifth = parameters.get("tag_name_fifth")
         tag_name_sixth = parameters.get("tag_name_sixth")
         attribute = parameters.get("attribute")
+        attribute_second = parameters.get("attribute_second")
         selector = parameters.get("selector")
         tag_name_third = parameters.get("tag_name_third")
         next_page_selector = parameters.get("next_page_selector")
@@ -132,6 +137,69 @@ class ScraperAPIView(APIView):
         elif mode_scrapeo == 7:
             return scrape_pdf(
                 url, sobrenombre, start_page=start_page, end_page=end_page
+            )
+        elif mode_scrapeo == 8:
+            return scrape_eighth_mode(
+                url,
+                wait_time,
+                content_selector,
+                selector,
+                tag_name_first,
+                attribute,
+                content_selector_second,
+                content_selector_third,
+                tag_name_second,
+                content_selector_fourth,
+                content_selector_fifth,
+                attribute_second,
+                sobrenombre,
+            )
+        elif mode_scrapeo == 9:
+            return scrape_ninth_mode(
+                url,
+                selector,
+                attribute,
+                search_button_selector,
+                tag_name_first,
+                content_selector,
+                content_selector_fourth,
+                content_selector_second,
+                content_selector_third,
+                content_selector_fifth,
+                tag_name_second,
+                tag_name_third,
+                tag_name_fourth,
+                sobrenombre,
+                wait_time,
+            )
+        elif mode_scrapeo == 10:
+            return scrape_tenth_mode(
+                url,
+                selector,
+                content_selector,
+                tag_name_first,
+                attribute,
+                content_selector_second,
+                content_selector_third,
+                content_selector_fourth,
+                content_selector_fifth,
+                sobrenombre,
+            )
+        elif mode_scrapeo == 11:
+            return scrape_eleventh_mode(
+                url,
+                content_selector_third,
+                content_selector_fourth,
+                content_selector_fifth,
+                tag_name_fourth,
+                sobrenombre,
+                attribute,
+                content_selector,
+                content_selector_second,
+                selector,
+                tag_name_first,
+                tag_name_second,
+                search_button_selector,
             )
 
         return Response(
