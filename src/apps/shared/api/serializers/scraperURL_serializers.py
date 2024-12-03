@@ -3,9 +3,7 @@ from ...models.scraperURL import ScraperURL
 
 
 class ScraperURLSerializer(serializers.ModelSerializer):
-    type_file_display = serializers.CharField(
-        source="get_type_file_display", read_only=True
-    )
+
     time_choices_display = serializers.CharField(
         source="get_time_choices_display", read_only=True
     )
@@ -14,8 +12,7 @@ class ScraperURLSerializer(serializers.ModelSerializer):
         model = ScraperURL
         fields = (
             "id",
-            "type_file",
-            "type_file_display",
+            "sobrenombre",
             "url",
             "time_choices",
             "time_choices_display",
