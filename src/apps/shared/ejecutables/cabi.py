@@ -1,6 +1,6 @@
 import os
 import pickle
-from time import sleep
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -18,7 +18,7 @@ try:
     base_url = "https://www.cabidigitallibrary.org/product/qc"
     driver.get(base_url)
 
-    sleep(5)
+    time.sleep(5)
 
     try:
         with open("cookies.pkl", "rb") as file:
@@ -50,6 +50,7 @@ try:
 
     print("Empezaremos a buscar el código...")
 
+        
     while True:
         try:
             search_button = WebDriverWait(driver, 30).until(
@@ -95,7 +96,7 @@ try:
                                 os.makedirs(link_folder_path)
 
                             driver.get(full_url)
-                            sleep(3)
+                            time.sleep(3)
 
                             print(f"Entrando a la página: {full_url}")
 
@@ -131,27 +132,27 @@ try:
                                 print(f"Contenido guardado en {file_path}")
                             except Exception as e:
                                 print(f"Error al esperar el contenido de la nueva página: {e}")
-
+            print("Terminamos de imprimir la primera pagina") 
             try:
                 driver.get(base_url)
-                sleep(3)  
+                time.sleep(3)  
 
                 search_button = WebDriverWait(driver, 30).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "div.page-top-banner div.container div.quick-search button.quick-search__button"))
                 )
-                print(f"Botón de búsqueda encontrado para la siguiente página.")
+                print(f"Botón de búsqueda encontrado para pasar a la siguiente página.")
                 search_button.click()
-                print(f"Botón de búsqueda clicado para la siguiente página.")
+                print(f"Botón de búsqueda ya clicado para la siguiente página.")
             except Exception as e:
                 print(f"Error al hacer clic en el botón de búsqueda para la siguiente página: {e}")
 
             try:
-                next_page_button = driver.find_element(By.CSS_SELECTOR, "nav.pagination li.next a")
+                next_page_button = driver.find_element(By.CSS_SELECTOR, "nav.pagination span a")
                 next_page_link = next_page_button.get_attribute("href")
                 if next_page_link:
                     print(f"Navegando a la siguiente página: {next_page_link}")
                     driver.get(next_page_link)  
-                    sleep(3)
+                    time.sleep(3)
                 else:
                     print("No hay más páginas disponibles.")
                     break

@@ -10,7 +10,7 @@ import hashlib
 from pymongo import MongoClient
 import gridfs
 from datetime import datetime
-
+import time
 # Crear carpeta de salida
 output_dir = r"C:\web_scraping_files"
 if not os.path.exists(output_dir):
@@ -52,72 +52,44 @@ try:
     table = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "div.content1 table tbody"))
     )
-
+    soup = BeautifulSoup(driver.page_source, "html.parser")
     # Obtener las filas de la tabla
-    tr_tags = table.find_elements(By.CSS_SELECTOR, "tr")
+    tr_tags = soup.select("div.content1 table tbody tr")
     print(f"Se encontraron {len(tr_tags)} filas.")
 
     for index, tr in enumerate(tr_tags[1:], start=2):
         try:
-            # Buscar enlace en la primera celda
-            first_td = tr.find_element(By.CSS_SELECTOR, "td:first-child a")
-
-            # Desplazarse al enlace antes de interactuar
-            driver.execute_script("arguments[0].scrollIntoView(true);", first_td)
-
-            # Esperar hasta que el loader desaparezca si existe
-            WebDriverWait(driver, 10).until(
-                EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.next-page.row.loading"))
-            )
-
-            # Hacer clic usando JavaScript como fallback
-            href = first_td.get_attribute("href")
-            driver.execute_script("arguments[0].click();", first_td)
-
-            print(f"Fila {index}: Enlace encontrado: {href}")
-
-            # Esperar las pestañas de navegación
-            nav_tabs = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "ul.nav.nav-tabs"))
-            )
-
-            # Hacer clic en "About This Subject"
-            about_this_subject_link = nav_tabs.find_elements(
-                By.XPATH, ".//a[contains(text(), 'About This Subject')]"
-            )
-            if not about_this_subject_link:
-                print(f"No se encontró 'About This Subject' en la fila {index}.")
-                # Regresar a la página principal
-                driver.back()
-                continue
-
-            about_this_subject_link[0].click()
-            print(f"Se hizo clic en 'About This Subject' en la fila {index}.")
-
-            # Esperar el contenido en la nueva página
-            content = WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "#overview"))
-            )
-            if content:
-                all_scraped += content.text + "\n\n"
+            first_td = tr.select_one("td:first-child a")
+            print(first_td)
+            if first_td:
+                href = first_td.get("href")
+                print(f"Fila {index}: Enlace encontrado: {href}")
+                driver.get(href)
+                time.sleep(5)
+                nav_fact_sheets = WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located(
+                    (
+                        By.CSS_SELECTOR,
+                        'div.container ul.nav li:nth-child(1)',
+                        )
+                    )
+                )
+                nav_fact_sheets.click()
+                time.sleep(5)
+                soup = BeautifulSoup(driver.page_source, "html.parser")
+                content = soup.find("#overview")
+                if(content):
+                    all_scraped += content.text
+                else:
+                    continue
+                
+            
             else:
-                print(f"No se encontró contenido en 'About This Subject' para la fila {index}.")
-                continue
-
-            # Regresar a la página principal
-            driver.back()
-
+                print(f"Fila {index}: No se encontró enlace en esta fila.")
         except Exception as e:
             print(f"Error en la fila {index}: {e}")
             import traceback
             traceback.print_exc()
-
-            # Regresar a la página principal si ocurre un error
-            driver.get(url)
-            table = WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div.content1 table tbody"))
-            )
-            tr_tags = table.find_elements(By.CSS_SELECTOR, "tr")
 
     # Guardar datos en archivo
     folder_path = generate_directory(output_dir, url)
