@@ -14,7 +14,7 @@
         "end_page":6
       }
     }
-  },  
+  },
   {
     "model": "shared.ScraperURL",
     "pk": 2,
@@ -99,7 +99,7 @@
   },
   {
     "model": "shared.ScraperURL",
-    "pk": 4,
+    "pk": 10,
     "fields": {
       "url": "https://www.sag.gob.cl/sites/default/files/MANUAL_INSECTOS_MADERA.pdf",
       "time_choices": 1,
@@ -115,7 +115,7 @@
   },
   {
     "model": "shared.ScraperURL",
-    "pk": 5,
+    "pk": 11,
     "fields": {
       "url": "https://www.iucngisd.org/gisd/pdf/100Spanish.pdf",
       "time_choices": 3,
@@ -201,7 +201,7 @@
   },
   {
     "model": "shared.ScraperURL",
-    "pk": 6,
+    "pk": 15,
     "fields": {
       "url": "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_en.php",
       "time_choices": 1,
@@ -782,5 +782,4 @@
       }
     }
   }
-  
 ]
