@@ -115,7 +115,7 @@ with open(output_file_path, "w", encoding="utf-8") as output_file:
                 # Verificar el selector para el botón de la siguiente página
                 next_button = driver.find_element(By.CSS_SELECTOR, ".search-pager__item")  # Cambiar a tu selector si es diferente
                 print("Botón 'Siguiente' encontrado. Haciendo clic...")
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
                 if next_button:
                     next_button.click()  # Hacer clic en el siguiente botón
                     print("Pasando a la siguiente página...")
