@@ -19,6 +19,7 @@ from ..utils.ala_org import scrape_ala_org
 from ..utils.pnw_hand_books import scrape_pnw_hand_books
 from ..utils.ipm_illinois import scrape_ipm_illinoes
 from ..utils.pest_alerts import scrape_pest_alerts
+from ..utils.cabi_digital import scrape_cabi_digital
 
 
 class ScraperAPIView(APIView):
@@ -269,6 +270,8 @@ class ScraperAPIView(APIView):
                 content_selector_second,
                 sobrenombre,
             )
+        elif mode_scrapeo ==18:
+            return scrape_cabi_digital()
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,
