@@ -32,9 +32,17 @@ $ pip install -r requirements.txt
 ```sh
 $ python manage.py makemigrations
 $ python manage.py migrate
-$ python manage.py runserver
+
+```
+```sh
+$ python manage.py loaddata urls.json
+
 ```
 
+
+```sh
+$ python manage.py runserver
+```
 ### SuperUser Account
 
 ```sh
