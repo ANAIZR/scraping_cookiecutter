@@ -5,7 +5,7 @@ import requests
 import os
 import hashlib
 
-BASE_DIR = r"D:\Ramo Peru\Ramo Peru - Desarrollo"
+BASE_DIR = r"C:\web_scraping_files"
 
 def obtener_carpeta_asociada(url):
     """
@@ -29,7 +29,7 @@ def obtener_ultimos_archivos(carpeta):
 
 def leer_archivo(ruta_archivo):
     """
-    Lee el contenido de un archivo.
+    Lee el contenido de un archivo y lo retorna como string.
     """
     try:
         with open(ruta_archivo, 'r', encoding='utf-8') as archivo:
@@ -68,10 +68,53 @@ def compare(request):
         if archivo_txt1 is None or archivo_txt2 is None:
             return JsonResponse({"error": "Uno o ambos archivos no se pudieron leer."}, status=400)
 
+        contenido_txt = f"Texto 2:\n{archivo_txt2}"
+
         prompt = (
-            f"Compara los siguientes textos:\n\nTexto 1:\n{archivo_txt1}\n\nTexto 2:\n{archivo_txt2} "
-            "y dime si hay alguna diferencia entre ellos, en caso no tenga diferencia, decir en español que no hay diferencia y de qué habla los txt"
+            f"Eres un experto en fitosanidad y tu tarea es analizar el siguiente texto extraído de una web fitosanitaria. "
+            f"A partir de esta información, genera un registro estructurado en formato JSON que contenga datos válidos. "
+            f"Un registro debe incluir al menos información de una plaga, un hospedante, o una interacción entre ambos para ser considerado válido. "
+            f"Completa tantos campos como sea posible y deja vacíos (`null`) aquellos que no puedan ser llenados. La respuesta debe ser exclusivamente del JSON y no me des ninguna observación del archivo. Usa el siguiente formato:\n\n"
+            
+            f"**Campos Comunes:**\n"
+            f"- `tipo_registro`: Indica si el texto se refiere a una \"plaga\", \"hospedante\", o \"interacción\".\n"
+            f"- `fuente`: URL o nombre de la fuente de donde proviene el texto.\n"
+            f"- `tipo_fuente`: Tipo de fuente (Informe, Boletín, Noticia, Investigación, Libro).\n"
+            f"- `idioma`: Idioma del texto analizado.\n"
+            f"- `fecha_extraccion`: Fecha en la que se obtuvo el texto.\n\n"
+
+            f"**Plagas:**\n"
+            f"- `id_plaga`: Identificador único de la plaga (si no hay, usa null).\n"
+            f"- `nombre_comun_plaga`: Nombre común de la plaga (si no hay, usa null).\n"
+            f"- `nombre_cientifico_plaga`: Nombre científico de la plaga (si no hay, usa null).\n"
+            f"- `clasificacion`: Clasificación de la plaga (e.g., Artropodo, Nematodo, Virus) (si no hay, usa null).\n"
+            f"- `descripcion_plaga`: Descripción breve de la plaga (si no hay, usa null).\n"
+            f"- `impacto`: Nivel de impacto (e.g., bajo, medio, alto) (si no hay, usa null).\n\n"
+
+            f"**Hospedantes:**\n"
+            f"- `id_hospedante`: Identificador único del hospedante (si no hay, usa null).\n"
+            f"- `nombre_comun_hospedante`: Nombre común del hospedante (si no hay, usa null).\n"
+            f"- `nombre_cientifico_hospedante`: Nombre científico del hospedante (si no hay, usa null).\n"
+            f"- `tipo_hospedante`: Tipo de hospedante (e.g., agrícola, forestal, ornamental) (si no hay, usa null).\n"
+            f"- `familia_taxonomica`: Familia taxonómica del hospedante (si no hay, usa null).\n"
+            f"- `zona_geografica`: Zonas geográficas relevantes para el hospedante (si no hay, usa null).\n"
+            f"- `descripcion_hospedante`: Descripción breve del hospedante (si no hay, usa null).\n\n"
+
+            f"**Interacciones (Plaga-Hospedante):**\n"
+            f"- `organos_afectados`: Órganos del hospedante afectados por la plaga (si no hay, usa null).\n"
+            f"- `organos_no_afectados`: Órganos no afectados por la plaga (si no hay, usa null).\n"
+            f"- `descripcion_afectacion`: Descripción del daño causado (si no hay, usa null).\n"
+            f"- `id_zona`: Relación con zona geográfica (si no hay, usa null).\n"
+            f"- `temperatura_minima`: Temperatura mínima registrada en la interacción (°C) (si no hay, usa null).\n"
+            f"- `temperatura_maxima`: Temperatura máxima registrada en la interacción (°C) (si no hay, usa null).\n"
+            f"- `humedad_porcentaje`: Porcentaje de humedad relativo (%) (si no hay, usa null).\n"
+            f"- `precipitacion_minima`: Precipitación mínima registrada (mm) (si no hay, usa null).\n"
+            f"- `precipitacion_maxima`: Precipitación máxima registrada (mm) (si no hay, usa null).\n"
+            f"- `probabilidad_riesgo`: Probabilidad de ocurrencia (en porcentaje) (si no hay, usa null).\n\n"
+
+            f"Ahora, por favor analiza el siguiente texto y genera el registro estructurado correspondiente:\n\n{contenido_txt}"
         )
+
 
         url = "http://localhost:11434/api/generate"
         datos = {
