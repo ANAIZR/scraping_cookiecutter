@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-def scrape_cabi_digital():
+def scrape_cabi_digital(sobrenombre):
     driver = uc.Chrome()
     driver.set_page_load_timeout(60)
     base_url = "https://www.cabidigitallibrary.org/product/qc"
@@ -155,7 +155,7 @@ def scrape_cabi_digital():
                                 if abstract_text and body_text:
                                     contenido = f"{abstract_text}\n\n\n{body_text}"
                                     file_path = get_next_versioned_filename(
-                                        folder_path, base_name="CABI"
+                                        folder_path, base_name=sobrenombre
                                     )
                                     with open(file_path, "w", encoding="utf-8") as file:
                                         file.write(contenido)

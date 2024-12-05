@@ -19,7 +19,7 @@ from rest_framework import status
 import time
 from selenium.webdriver.support.ui import Select
 
-def scrape_ndrs_org():
+def scrape_ndrs_org(sobrenombre):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]
@@ -86,8 +86,8 @@ def scrape_ndrs_org():
 
                     print(f"Título del artículo: {article_title_text}")
                     if article_title_text and body_text:
-                        contenido = f"{body_text}"
-                        file_path = get_next_versioned_filename(folder_path, base_name="NDRS")
+                        contenido = f"{body_text.text}"
+                        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
                         with open(file_path, "w", encoding="utf-8") as file:
                             file.write(contenido)
 

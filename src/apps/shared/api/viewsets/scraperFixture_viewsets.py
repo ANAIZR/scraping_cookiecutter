@@ -20,6 +20,7 @@ from ..utils.pnw_hand_books import scrape_pnw_hand_books
 from ..utils.ipm_illinois import scrape_ipm_illinoes
 from ..utils.pest_alerts import scrape_pest_alerts
 from ..utils.cabi_digital import scrape_cabi_digital
+from ..utils.ndrs_org import scrape_ndrs_org
 
 
 class ScraperAPIView(APIView):
@@ -270,8 +271,10 @@ class ScraperAPIView(APIView):
                 content_selector_second,
                 sobrenombre,
             )
-        elif mode_scrapeo ==18:
-            return scrape_cabi_digital()
+        elif mode_scrapeo == 18:
+            return scrape_cabi_digital(sobrenombre)
+        elif mode_scrapeo == 19:
+            return scrape_ndrs_org(sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,
