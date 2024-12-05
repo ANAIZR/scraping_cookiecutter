@@ -192,7 +192,7 @@ def scrape_cabi_digital():
 
             try:
                 next_page_button = driver.find_element(
-                    By.CSS_SELECTOR, "nav.pagination span a"
+                    By.CSS_SELECTOR, "nav.pagination span>a.pagination__btn--next"
                 )
                 next_page_link = next_page_button.get_attribute("href")
                 if next_page_link:

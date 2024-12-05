@@ -524,6 +524,21 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 66,
+    "fields": {
+      "url": "https://www.ndrs.org.uk/search.php",
+      "sobrenombre": "NDRS",
+      "time_choices": 1,
+      "mode_scrapeo": 19,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 68,
     "fields": {
       "url": "https://www.pestalerts.org/nappo/emerging-pest-alerts/",

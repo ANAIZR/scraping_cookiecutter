@@ -65,8 +65,10 @@ try:
 
                 article_soup = BeautifulSoup(driver.page_source, "html.parser")
                 article_title_text = article_soup.title.text if article_soup.title else 'No Title'
+                body = article_soup.select_one("#repbody")
                 print(f"Título del artículo: {article_title_text}")
-
+                print(body.text)
+                
 
             print("Regresando a la página de contenedores...")
             driver.get(volumes_url)
