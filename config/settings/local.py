@@ -6,8 +6,7 @@ from .base import env
 # GENERAL
 DEBUG = True
 SECRET_KEY = env(
-    "DJANGO_SECRET_KEY",
-    default="N7kmzntDILhNukNbBQwbXXRsDW9qNOj4bc5HD7QZk4OIca7S0bA0ZwtEGYnzJOkO",
+    "SECRET_KEY",
 )
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
