@@ -17,12 +17,15 @@ LANGUAGE_CODE = "en-us"
 USE_I18N = True
 USE_TZ = True
 
-# DATABASES
 DATABASES = {
-    "default": env.db(
-        "DATABASE_URL",
-        default="postgres://postgres:admin@localhost:5432/portal_scraping",
-    ),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "USER": env("DB_USER"),
+        "NAME": env("DB_NAME"),
+        "PASSWORD": env("DB_PASS"),
+        "HOST": env("DB_HOST"),
+        "PORT": env("DB_PORT"),
+    }
 }
 
 DATABASES["default"]["ATOMIC_REQUESTS"] = True

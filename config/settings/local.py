@@ -11,14 +11,13 @@ SECRET_KEY = env(
 )
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
-# EMAIL
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True
-EMAIL_PORT = 587
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST = "smtp.gmail.com"
-EMAIL_HOST_USER = "test.soporteramo@gmail.com"
-EMAIL_HOST_PASSWORD = "rkwimztoxomoonzv"
-DEFAULT_FROM_EMAIL = "test.soporteramo@gmail.com"
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 
 # django-debug-toolbar
 INSTALLED_APPS += ["debug_toolbar"]
