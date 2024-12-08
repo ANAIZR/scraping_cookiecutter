@@ -17,12 +17,11 @@ from .functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-def scrape_second_mode(url, sobrenombre, selector):
+def scrape_coleoptera_neotropical(url, sobrenombre):
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
         
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]
@@ -33,9 +32,9 @@ def scrape_second_mode(url, sobrenombre, selector):
         driver.get(url)
 
         WebDriverWait(driver, 10).until(
-            EC.visibility_of_all_elements_located((By.CSS_SELECTOR, selector))
+            EC.visibility_of_all_elements_located((By.CSS_SELECTOR, "body tbody"))
         )
-        content = driver.find_element(By.CSS_SELECTOR, selector)
+        content = driver.find_element(By.CSS_SELECTOR, "body tbody")
         text_content = content.text
         output_dir = r"C:\web_scraping_files"
         folder_path = generate_directory(output_dir, url)
@@ -47,17 +46,25 @@ def scrape_second_mode(url, sobrenombre, selector):
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
-        collection.insert_one(data)
-        delete_old_documents(url, collection, fs)
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            response_data = {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": data["Fecha_scrapper"],
+                    "Etiquetas": data["Etiquetas"],
+                    "Mensaje": "Los datos han sido scrapeados correctamente.",
+
+                }
+            collection.insert_one(data)
+            delete_old_documents(url, collection, fs)
         return Response(
-            {"message": "Scraping completado y datos guardados en MongoDB."},
+            response_data,
             status=status.HTTP_200_OK,
         )
 

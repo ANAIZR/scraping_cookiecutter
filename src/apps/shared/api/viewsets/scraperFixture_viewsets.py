@@ -2,17 +2,17 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ...models.scraperURL import ScraperURL
+from ..utils.iucngisd import scrape_iucngisd
+from ..utils.coleoptera_neotropical import scrape_coleoptera_neotropical
+from ..utils.e_floras import scrape_e_floras
+from ..utils.ansci_cornell import scrape_ansci_cornell
 from ..utils.first_mode import scrape_first_mode
-from ..utils.second_mode import scrape_second_mode
-from ..utils.third_mode import scrape_third_mode
-from ..utils.fourth_mode import scrape_fourth_mode
-from ..utils.fifth_mode import scrape_fifth_mode
-from ..utils.sixth_mode import scrape_sixth_mode
-from ..utils.seventh_mode import scrape_pdf
-from ..utils.eighth_mode import scrape_eighth_mode
-from ..utils.ninth_mode import scrape_ninth_mode
-from ..utils.tenth_mode import scrape_tenth_mode
-from ..utils.eleventh_mode import scrape_eleventh_mode
+from ..utils.aphidnet import scrape_aphidnet
+from ..utils.method_pdf import scrape_pdf
+from ..utils.aguiar_hvr import scrape_aguiar_hvr
+from ..utils.gene_affrc import scrape_gene_affrc
+from ..utils.plant_ifas import scrape_plant_ifas
+from ..utils.plant_atlas import scrape_plant_atlas
 from ..utils.flmnh_ufl import scrape_flmnh_ufl
 from ..utils.iucnredlist import scrape_iucnredlist
 from ..utils.ala_org import scrape_ala_org
@@ -47,69 +47,46 @@ class ScraperAPIView(APIView):
         page_principal = parameters.get("page_principal")
         content_selector = parameters.get("content_selector")
         content_selector_second = parameters.get("content_selector_second")
-        content_selector_third = parameters.get("content_selector_third")
-        content_selector_fourth = parameters.get("content_selector_fourth")
-        content_selector_fifth = parameters.get("content_selector_fifth")
         wait_time = parameters.get("wait_time", 10)
         sobrenombre = scraper_url.sobrenombre
         tag_name_first = parameters.get("tag_name_first")
         tag_name_second = parameters.get("tag_name_second")
         tag_name_third = parameters.get("tag_name_third")
         tag_name_fourth = parameters.get("tag_name_fourth")
-        tag_name_fifth = parameters.get("tag_name_fifth")
-        tag_name_sixth = parameters.get("tag_name_sixth")
         attribute = parameters.get("attribute")
         attribute_second = parameters.get("attribute_second")
         selector = parameters.get("selector")
         tag_name_third = parameters.get("tag_name_third")
         next_page_selector = parameters.get("next_page_selector")
-        title = parameters.get("title")
         start_page = parameters.get("start_page", 1)
         end_page = parameters.get("end_page", None)
         if mode_scrapeo == 1:
-            return scrape_first_mode(
+            return scrape_iucngisd(
                 url,
-                search_button_selector,
-                content_selector,
-                tag_name_first,
                 wait_time,
                 sobrenombre,
             )
         elif mode_scrapeo == 2:
-            return scrape_second_mode(
+            return scrape_coleoptera_neotropical(
                 url,
                 sobrenombre,
-                content_selector,
             )
         elif mode_scrapeo == 3:
-            return scrape_third_mode(
+            return scrape_e_floras(
                 url,
                 page_principal,
                 wait_time,
-                search_button_selector,
-                content_selector,
                 sobrenombre,
-                tag_name_first,
-                tag_name_second,
-                tag_name_third,
-                attribute,
-                selector,
                 next_page_selector,
             )
         elif mode_scrapeo == 4:
-            return scrape_fourth_mode(
+            return scrape_ansci_cornell(
                 url,
-                search_button_selector,
-                selector,
-                content_selector,
-                tag_name_first,
-                tag_name_second,
-                attribute,
                 wait_time,
                 sobrenombre,
             )
         elif mode_scrapeo == 5:
-            return scrape_fifth_mode(
+            return scrape_first_mode(
                 url,
                 search_button_selector,
                 tag_name_first,
@@ -122,92 +99,37 @@ class ScraperAPIView(APIView):
                 sobrenombre,
             )
         elif mode_scrapeo == 6:
-            return scrape_sixth_mode(
+            return scrape_aphidnet(
                 url,
                 wait_time,
                 sobrenombre,
-                search_button_selector,
-                search_button_selector_second,
-                content_selector,
-                content_selector_second,
-                content_selector_third,
-                content_selector_fourth,
-                content_selector_fifth,
-                tag_name_first,
-                tag_name_second,
-                tag_name_third,
-                tag_name_fourth,
-                tag_name_fifth,
-                tag_name_sixth,
-                attribute,
-                title,
             )
         elif mode_scrapeo == 7:
             return scrape_pdf(
                 url, sobrenombre, start_page=start_page, end_page=end_page
             )
         elif mode_scrapeo == 8:
-            return scrape_eighth_mode(
+            return scrape_aguiar_hvr(
                 url,
                 wait_time,
-                content_selector,
-                selector,
-                tag_name_first,
-                attribute,
-                content_selector_second,
-                content_selector_third,
-                tag_name_second,
-                content_selector_fourth,
-                content_selector_fifth,
-                attribute_second,
                 sobrenombre,
             )
         elif mode_scrapeo == 9:
-            return scrape_ninth_mode(
+            return scrape_gene_affrc(
                 url,
-                selector,
-                attribute,
-                search_button_selector,
-                tag_name_first,
-                content_selector,
-                content_selector_fourth,
-                content_selector_second,
-                content_selector_third,
-                content_selector_fifth,
-                tag_name_second,
-                tag_name_third,
-                tag_name_fourth,
                 sobrenombre,
                 wait_time,
             )
         elif mode_scrapeo == 10:
-            return scrape_tenth_mode(
+            return scrape_plant_ifas(
                 url,
-                selector,
-                content_selector,
-                tag_name_first,
-                attribute,
-                content_selector_second,
-                content_selector_third,
-                content_selector_fourth,
-                content_selector_fifth,
                 sobrenombre,
             )
         elif mode_scrapeo == 11:
-            return scrape_eleventh_mode(
+            return scrape_plant_atlas(
                 url,
-                content_selector_third,
-                content_selector_fourth,
-                content_selector_fifth,
-                tag_name_fourth,
                 sobrenombre,
-                attribute,
-                content_selector,
-                content_selector_second,
-                selector,
-                tag_name_first,
-                tag_name_second,
-                search_button_selector,
+                
             )
         elif mode_scrapeo == 12:
             return scrape_flmnh_ufl(

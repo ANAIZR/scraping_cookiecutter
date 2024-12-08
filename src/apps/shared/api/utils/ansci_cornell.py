@@ -18,14 +18,8 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-def scrape_fourth_mode(
+def scrape_ansci_cornell(
     url,
-    search_button_selector,
-    selector,
-    content_selector,
-    tag_name_first,
-    tag_name_second,
-    attribute,
     wait_time,
     sobrenombre,
 ):
@@ -41,25 +35,25 @@ def scrape_fourth_mode(
             WebDriverWait(driver, wait_time)
             .until(
                 EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, search_button_selector)
+                    (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
                 )
             )
-            .find_elements(By.TAG_NAME, tag_name_second)[1]
+            .find_elements(By.TAG_NAME, "a")[1]
         )
         search_button.click()
 
         target_divs = WebDriverWait(driver, wait_time).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector))
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']"))
         )
         for div_index, target_div in enumerate(target_divs, start=1):
-            urls = target_div.find_elements(By.TAG_NAME, tag_name_second)
+            urls = target_div.find_elements(By.TAG_NAME, "a")
             for link_index, link in enumerate(urls, start=1):
-                link_href = link.get_attribute(attribute)
+                link_href = link.get_attribute("href")
                 driver.get(link_href)
                 pageBody = WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
                 )
-                p_tags = pageBody.find_elements(By.TAG_NAME, tag_name_first)[:5]
+                p_tags = pageBody.find_elements(By.TAG_NAME, "p")[:5]
 
                 for i, p in enumerate(p_tags, start=1):
 
@@ -69,7 +63,7 @@ def scrape_fourth_mode(
 
                 WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, search_button_selector)
+                        (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
                     )
                 )
         output_dir = r"C:\web_scraping_files"
@@ -89,7 +83,14 @@ def scrape_fourth_mode(
                 "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Etiquetas": ["planta", "plaga"],
             }
+            response_date = {
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
 
+            }
             collection.insert_one(data)
             delete_old_documents(url, collection, fs)
         return Response(

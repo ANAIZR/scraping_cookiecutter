@@ -17,23 +17,14 @@ from rest_framework.response import Response
 from rest_framework import status
 import time
 
-def scrape_eighth_mode(
+
+def scrape_aguiar_hvr(
     url,
     wait_time,
-    content_selector,
-    selector,
-    tag_name_first,
-    attribute,
-    content_selector_second,
-    content_selector_third,
-    tag_name_second,
-    content_selector_fourth,
-    content_selector_fifth,
-    attribute_second,
-    sobrenombre
+    sobrenombre,
 ):
     options = webdriver.ChromeOptions()
-    #options.add_argument("--headless")
+    # options.add_argument("--headless")
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
@@ -48,36 +39,33 @@ def scrape_eighth_mode(
         os.makedirs(output_dir)
 
     all_scrapped = ""
-
+    driver.get(url)
     try:
-        driver.get(url)
-
         while True:
             try:
-                content = WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, content_selector))
+                WebDriverWait(driver, wait_time).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
+                    )
                 )
 
-                rows = driver.find_elements(By.CSS_SELECTOR, selector)
+                rows = driver.find_elements(
+                    By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr"
+                )
                 for row in rows:
-                    first_td = row.find_element(By.CSS_SELECTOR, tag_name_first)
-                    link = first_td.get_attribute(attribute)
+                    first_td = row.find_element(By.CSS_SELECTOR, "td a")
+                    link = first_td.get_attribute("href")
 
                     driver.get(link)
 
-                    content = WebDriverWait(driver, wait_time).until(
+                    WebDriverWait(driver, wait_time).until(
                         EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, content_selector_second)
+                            (By.CSS_SELECTOR, "section.container div.rfInv")
                         )
                     )
-                    cards = driver.find_elements(
-                        By.CSS_SELECTOR, content_selector_third
-                    )
+                    cards = driver.find_elements(By.CSS_SELECTOR, "div.col-md-2")
                     for card in cards:
-                        link_in_card = card.find_element(
-                            By.CSS_SELECTOR, tag_name_second
-                        )
-                        card_href = link_in_card.get_attribute(attribute)
+                        link_in_card = card.find_element(By.CSS_SELECTOR, "a")
                         link_in_card.click()
 
                         original_window = driver.current_window_handle
@@ -91,14 +79,14 @@ def scrape_eighth_mode(
 
                         new_page_content = WebDriverWait(driver, wait_time).until(
                             EC.presence_of_element_located(
-                                (By.CSS_SELECTOR, content_selector_fourth)
+                                (By.CSS_SELECTOR, "main.container div.parteesq")
                             )
                         )
-                        extracted_text = new_page_content.text 
+                        extracted_text = new_page_content.text
 
                         all_scrapped += f"Datos extraídos de {driver.current_url}\n"
                         all_scrapped += extracted_text + "\n\n"
-                        all_scrapped += f"*************************" 
+                        all_scrapped += f"*************************"
                         driver.close()
                         driver.switch_to.window(original_window)
 
@@ -106,23 +94,23 @@ def scrape_eighth_mode(
                     time.sleep(2)
                     WebDriverWait(driver, wait_time).until(
                         EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, content_selector)
+                            (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
                         )
                     )
 
                 next_button = WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, content_selector_fifth)
+                        (By.CSS_SELECTOR, "#DataTables_Table_0_next a")
                     )
                 )
 
-                if "disabled" in next_button.get_attribute(attribute_second):
+                if "disabled" in next_button.get_attribute("class"):
                     break
 
                 next_button.click()
                 WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, content_selector_fifth)
+                        (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
                     )
                 )
 
@@ -138,21 +126,28 @@ def scrape_eighth_mode(
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
 
-        collection.insert_one(data)
+            response_data = {
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": data["Fecha_scrapper"],
+                "Etiquetas": data["Etiquetas"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
+            }
 
-        delete_old_documents(url, collection, fs)
+            collection.insert_one(data)
 
-        print(f"Los datos se han guardado en MongoDB y en el archivo: {file_path}")
+            delete_old_documents(url, collection, fs)
+
         return Response(
-            {"message": "Scraping completado y datos guardados en MongoDB."},
+            response_data,
             status=status.HTTP_200_OK,
         )
 

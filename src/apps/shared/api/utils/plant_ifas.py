@@ -19,16 +19,8 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-def scrape_tenth_mode(
+def scrape_plant_ifas(
     url,
-    selector,
-    content_selector,
-    tag_name_first,
-    attribute,
-    content_selector_second,
-    content_selector_third,
-    content_selector_fourth,
-    content_selector_fifth,
     sobrenombre,
 ):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
@@ -41,30 +33,30 @@ def scrape_tenth_mode(
         driver.get(url)
         time.sleep(5)
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#app section.plant-cards"))
         )
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        content = soup.select_one(selector)
+        content = soup.select_one("#app section.plant-cards")
         if content:
-            cards = content.select(content_selector)
+            cards = content.select("ul.plants li.plant")
 
             for i, card in enumerate(cards, start=1):
-                link_card_element = card.select_one(tag_name_first)
+                link_card_element = card.select_one("a")
                 if link_card_element:
-                    link_card = link_card_element.get(attribute)
+                    link_card = link_card_element.get("href")
                     if link_card:
                         base_url = f"{url+link_card}"
                         driver.get(base_url)
                         WebDriverWait(driver, 10).until(
                             EC.presence_of_element_located(
-                                (By.CSS_SELECTOR, content_selector_second)
+                                (By.CSS_SELECTOR, "section.plant-page")
                             )
                         )
                         soup = BeautifulSoup(driver.page_source, "html.parser")
-                        conteiner = soup.select_one(content_selector_third)
+                        conteiner = soup.select_one("div.content")
                         if conteiner:
-                            primary_content = conteiner.select(content_selector_fourth)
-                            second_content = conteiner.select(content_selector_fifth)
+                            primary_content = conteiner.select("div.primary div[style*='margin:2rem']")
+                            second_content = conteiner.select("div.primary div[style*='margin-bottom:2rem']")
                             all_content = "\n".join(
                                 [
                                     element.get_text(strip=True)
@@ -72,8 +64,7 @@ def scrape_tenth_mode(
                                 ]
                             )
                             all_scrapper += all_content
-            else:
-                print(f"No se encontró un enlace en la tarjeta {i}.")
+            
             time.sleep(1)
         output_dir = r"C:\web_scraping_files"
         folder_path = generate_directory(output_dir, url)
@@ -85,17 +76,25 @@ def scrape_tenth_mode(
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
-        collection.insert_one(data)
-        delete_old_documents(url, collection, fs)
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            response_data = {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": data["Fecha_scrapper"],
+                    "Etiquetas": data["Etiquetas"],
+                    "Mensaje": "Los datos han sido scrapeados correctamente.",
+
+                }
+            collection.insert_one(data)
+            delete_old_documents(url, collection, fs)
         return Response(
-            {"message": "Scraping completado y datos guardados en MongoDB."},
+            response_data,
             status=status.HTTP_200_OK,
         )
 

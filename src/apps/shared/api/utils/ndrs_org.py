@@ -19,6 +19,7 @@ from rest_framework import status
 import time
 from selenium.webdriver.support.ui import Select
 
+
 def scrape_ndrs_org(sobrenombre):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     client = MongoClient("mongodb://localhost:27017/")
@@ -33,44 +34,56 @@ def scrape_ndrs_org(sobrenombre):
 
     base_folder_path = generate_directory(output_dir, base_url)
 
-    data_collected = []  
+    data_collected = []
 
     try:
         driver.get(volumes_url)
-        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent")))
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent"))
+        )
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        containers = soup.select("#MainContent .volumes .column") 
+        containers = soup.select("#MainContent .volumes .column")
 
         if not containers:
             print("No se encontraron contenedores en la página.")
             driver.quit()
-        
+
         for index, container in enumerate(containers):
-            title = container.select_one("h2").text.strip() if container.select_one("h2") else 'No Title'
+            title = (
+                container.select_one("h2").text.strip()
+                if container.select_one("h2")
+                else "No Title"
+            )
             print(f"Procesando contenedor {index + 1}: {title}")
 
-            enlace = container.select_one("a")['href'] if container.select_one("a") else None
+            enlace = (
+                container.select_one("a")["href"] if container.select_one("a") else None
+            )
             if enlace:
                 container_url = base_url + enlace
                 print(f"Accediendo al contenedor {index + 1}: {container_url}")
 
                 driver.get(container_url)
-                WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
+                WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+                )
 
-                print("Esperando que la página de contenedor se cargue completamente...")
-                time.sleep(3) 
+                print(
+                    "Esperando que la página de contenedor se cargue completamente..."
+                )
+                time.sleep(3)
 
                 page_soup = BeautifulSoup(driver.page_source, "html.parser")
                 article_list = page_soup.select("ul.clist li a")
 
                 if not article_list:
                     print("No se encontraron artículos dentro de este contenedor.")
-                    continue  
+                    continue
 
                 for article in article_list:
                     article_title = article.text.strip()
-                    article_url = article['href']
+                    article_url = article["href"]
                     article_full_url = base_url + article_url
 
                     print(f"Articulo: {article_title}")
@@ -78,61 +91,70 @@ def scrape_ndrs_org(sobrenombre):
                     folder_path = generate_directory(base_folder_path, article_full_url)
 
                     driver.get(article_full_url)
-                    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "body")))
+                    WebDriverWait(driver, 20).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+                    )
 
                     article_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    article_title_text = article_soup.title.text if article_soup.title else 'No Title'
+                    article_title_text = (
+                        article_soup.title.text if article_soup.title else "No Title"
+                    )
                     body_text = article_soup.select_one("#repbody")
 
                     print(f"Título del artículo: {article_title_text}")
                     if article_title_text and body_text:
                         contenido = f"{body_text.text}"
-                        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+                        file_path = get_next_versioned_filename(
+                            folder_path, base_name=sobrenombre
+                        )
                         with open(file_path, "w", encoding="utf-8") as file:
                             file.write(contenido)
 
                         with open(file_path, "rb") as file_data:
                             object_id = fs.put(
-                                                    file_data,
-                                                    filename=os.path.basename(file_path),
-                                                )
+                                file_data,
+                                filename=os.path.basename(file_path),
+                            )
                             data = {
-                                                "Objeto": object_id,
-                                                "Tipo": "Web",
-                                                "Url": article_full_url,
-                                                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                                "Etiquetas": ["planta", "plaga"],
+                                "Objeto": object_id,
+                                "Tipo": "Web",
+                                "Url": article_full_url,
+                                "Fecha_scrapper": datetime.now().strftime(
+                                    "%Y-%m-%d %H:%M:%S"
+                                ),
+                                "Etiquetas": ["planta", "plaga"],
                             }
                             collection = db["collection"]
                             collection.insert_one(data)
                             delete_old_documents(article_full_url, collection, fs)
 
                             data_collected.append(
-                                                {
-                                        "Url": article_full_url,
-                                        "Fecha_scrapper": data["Fecha_scrapper"],
-                                                    "Etiquetas": data["Etiquetas"],
-                                                }
-                                            )
-
+                                {
+                                    "Url": article_full_url,
+                                    "Fecha_scrapper": data["Fecha_scrapper"],
+                                    "Etiquetas": data["Etiquetas"],
+                                }
+                            )
 
                 print("Regresando a la página de contenedores...")
                 driver.get(volumes_url)
-                WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent")))
+                WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent"))
+                )
 
-                time.sleep(3) 
+                time.sleep(3)
 
                 soup = BeautifulSoup(driver.page_source, "html.parser")
-                containers = soup.select("#MainContent .volumes .column")  
-                print(f"Se encontraron {len(containers)} contenedores después de regresar a la página.")
+                containers = soup.select("#MainContent .volumes .column")
+                print(
+                    f"Se encontraron {len(containers)} contenedores después de regresar a la página."
+                )
 
                 if len(containers) <= index + 1:
                     print("No hay más contenedores para procesar.")
-                    break  
+                    break
                 print("Listo para procesar el siguiente contenedor.")
                 time.sleep(2)
-
-        
 
     except Exception as e:
         print(f"Ocurrió un error: {e}")
@@ -148,8 +170,6 @@ def scrape_ndrs_org(sobrenombre):
         )
     else:
         return Response(
-            {
-                "message": "No se generaron datos. Volver a realizar el scraping"
-            },
+            {"message": "No se generaron datos. Volver a realizar el scraping"},
             status=status.HTTP_400_BAD_REQUEST,
         )

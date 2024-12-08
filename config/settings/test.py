@@ -1,7 +1,6 @@
 from .base import *
 from .base import TEMPLATES
 from .base import env
-
 # GENERAL
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
