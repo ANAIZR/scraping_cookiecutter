@@ -20,7 +20,7 @@ import time
 from selenium.webdriver.support.ui import Select
 
 
-def scrape_ndrs_org(sobrenombre):
+def scrape_ndrs_org(url,sobrenombre):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]
@@ -30,14 +30,13 @@ def scrape_ndrs_org(sobrenombre):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     base_url = "https://www.ndrs.org.uk/"
-    volumes_url = "https://www.ndrs.org.uk/volumes.php"
 
     base_folder_path = generate_directory(output_dir, base_url)
 
     data_collected = []
 
     try:
-        driver.get(volumes_url)
+        driver.get(url)
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent"))
         )
@@ -55,30 +54,24 @@ def scrape_ndrs_org(sobrenombre):
                 if container.select_one("h2")
                 else "No Title"
             )
-            print(f"Procesando contenedor {index + 1}: {title}")
 
             enlace = (
                 container.select_one("a")["href"] if container.select_one("a") else None
             )
             if enlace:
                 container_url = base_url + enlace
-                print(f"Accediendo al contenedor {index + 1}: {container_url}")
 
                 driver.get(container_url)
                 WebDriverWait(driver, 20).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
                 )
 
-                print(
-                    "Esperando que la página de contenedor se cargue completamente..."
-                )
                 time.sleep(3)
 
                 page_soup = BeautifulSoup(driver.page_source, "html.parser")
                 article_list = page_soup.select("ul.clist li a")
 
                 if not article_list:
-                    print("No se encontraron artículos dentro de este contenedor.")
                     continue
 
                 for article in article_list:
@@ -86,8 +79,6 @@ def scrape_ndrs_org(sobrenombre):
                     article_url = article["href"]
                     article_full_url = base_url + article_url
 
-                    print(f"Articulo: {article_title}")
-                    print(f"Enlace del artículo: {article_full_url}")
                     folder_path = generate_directory(base_folder_path, article_full_url)
 
                     driver.get(article_full_url)
@@ -101,7 +92,6 @@ def scrape_ndrs_org(sobrenombre):
                     )
                     body_text = article_soup.select_one("#repbody")
 
-                    print(f"Título del artículo: {article_title_text}")
                     if article_title_text and body_text:
                         contenido = f"{body_text.text}"
                         file_path = get_next_versioned_filename(
@@ -137,7 +127,7 @@ def scrape_ndrs_org(sobrenombre):
                             )
 
                 print("Regresando a la página de contenedores...")
-                driver.get(volumes_url)
+                driver.get(url)
                 WebDriverWait(driver, 20).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent"))
                 )
@@ -146,14 +136,10 @@ def scrape_ndrs_org(sobrenombre):
 
                 soup = BeautifulSoup(driver.page_source, "html.parser")
                 containers = soup.select("#MainContent .volumes .column")
-                print(
-                    f"Se encontraron {len(containers)} contenedores después de regresar a la página."
-                )
+                
 
                 if len(containers) <= index + 1:
-                    print("No hay más contenedores para procesar.")
                     break
-                print("Listo para procesar el siguiente contenedor.")
                 time.sleep(2)
 
     except Exception as e:

@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 def sanitize_filename(filename):
     sanitized = "".join(c if c.isalnum() or c in "-_." else "_" for c in filename)
-    return sanitized[:100] 
+    return sanitized[:100]
 
 
 try:
@@ -41,7 +41,9 @@ try:
 
     try:
         preferences_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "#accept-recommended-btn-handler"))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
+            )
         )
         preferences_button.click()
         print("Botón de 'Guardar preferencias' clicado correctamente.")
@@ -50,11 +52,15 @@ try:
 
     print("Empezaremos a buscar el código...")
 
-        
     while True:
         try:
             search_button = WebDriverWait(driver, 30).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "div.page-top-banner div.container div.quick-search button.quick-search__button"))
+                EC.element_to_be_clickable(
+                    (
+                        By.CSS_SELECTOR,
+                        "div.page-top-banner div.container div.quick-search button.quick-search__button",
+                    )
+                )
             )
             print("Botón de búsqueda encontrado.")
             search_button.click()
@@ -89,9 +95,15 @@ try:
                         href = first_link.get("href")
                         if href:
                             print(f"Enlace encontrado: {href}")
-                            full_url = href if href.startswith("http") else f"https://www.cabidigitallibrary.org{href}"
+                            full_url = (
+                                href
+                                if href.startswith("http")
+                                else f"https://www.cabidigitallibrary.org{href}"
+                            )
                             link_folder_name = sanitize_filename(full_url)
-                            link_folder_path = os.path.join(base_folder_name, link_folder_name)
+                            link_folder_path = os.path.join(
+                                base_folder_name, link_folder_name
+                            )
                             if not os.path.exists(link_folder_path):
                                 os.makedirs(link_folder_path)
 
@@ -118,40 +130,67 @@ try:
                                     )
                                 )
                                 print("Página cargada correctamente.")
-                                page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                                abstracts = page_soup.select_one("article div#abstracts section#abstract")
-                                body = page_soup.select_one("article section#bodymatter div.core-container")
+                                page_soup = BeautifulSoup(
+                                    driver.page_source, "html.parser"
+                                )
+                                abstracts = page_soup.select_one(
+                                    "article div#abstracts section#abstract"
+                                )
+                                body = page_soup.select_one(
+                                    "article section#bodymatter div.core-container"
+                                )
 
-                                abstract_text = abstracts.get_text(strip=True) if abstracts else "No abstract found"
-                                body_text = body.get_text(strip=True) if body else "No body found"
+                                abstract_text = (
+                                    abstracts.get_text(strip=True)
+                                    if abstracts
+                                    else "No abstract found"
+                                )
+                                body_text = (
+                                    body.get_text(strip=True)
+                                    if body
+                                    else "No body found"
+                                )
 
                                 contenido = f"{abstract_text}\n\n\n{body_text}"
-                                file_path = os.path.join(link_folder_path, "contenido.txt")
+                                file_path = os.path.join(
+                                    link_folder_path, "contenido.txt"
+                                )
                                 with open(file_path, "w", encoding="utf-8") as file:
                                     file.write(contenido)
                                 print(f"Contenido guardado en {file_path}")
                             except Exception as e:
-                                print(f"Error al esperar el contenido de la nueva página: {e}")
-            print("Terminamos de imprimir la primera pagina") 
+                                print(
+                                    f"Error al esperar el contenido de la nueva página: {e}"
+                                )
+            print("Terminamos de imprimir la primera pagina")
             try:
                 driver.get(base_url)
-                time.sleep(3)  
+                time.sleep(3)
 
                 search_button = WebDriverWait(driver, 30).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div.page-top-banner div.container div.quick-search button.quick-search__button"))
+                    EC.element_to_be_clickable(
+                        (
+                            By.CSS_SELECTOR,
+                            "div.page-top-banner div.container div.quick-search button.quick-search__button",
+                        )
+                    )
                 )
                 print(f"Botón de búsqueda encontrado para pasar a la siguiente página.")
                 search_button.click()
                 print(f"Botón de búsqueda ya clicado para la siguiente página.")
             except Exception as e:
-                print(f"Error al hacer clic en el botón de búsqueda para la siguiente página: {e}")
+                print(
+                    f"Error al hacer clic en el botón de búsqueda para la siguiente página: {e}"
+                )
 
             try:
-                next_page_button = driver.find_element(By.CSS_SELECTOR, "nav.pagination span a")
+                next_page_button = driver.find_element(
+                    By.CSS_SELECTOR, "nav.pagination span a"
+                )
                 next_page_link = next_page_button.get_attribute("href")
                 if next_page_link:
                     print(f"Navegando a la siguiente página: {next_page_link}")
-                    driver.get(next_page_link)  
+                    driver.get(next_page_link)
                     time.sleep(3)
                 else:
                     print("No hay más páginas disponibles.")

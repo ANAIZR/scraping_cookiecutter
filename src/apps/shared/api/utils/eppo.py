@@ -19,7 +19,7 @@ from rest_framework import status
 import time
 
 
-def scrape_pest_alerts(
+def scrape_eppo(
     url,
     sobrenombre,
 ):
@@ -39,59 +39,64 @@ def scrape_pest_alerts(
         os.makedirs(output_dir)
 
     all_scrapped = ""
-
     try:
         driver.get(url)
+        time.sleep(2)
         WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#dttable tbody tr"))
         )
+        while True:
+            rows = driver.find_elements(By.CSS_SELECTOR, "#dttable tbody tr")
 
-        rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
+            for i in range(len(rows)):
+                try:
+                    rows = driver.find_elements(By.CSS_SELECTOR, "#dttable tbody tr")
+                    row = rows[i]
 
-        original_window = driver.current_window_handle
+                    cells = row.find_elements(By.TAG_NAME, "td")
+                    if len(cells) > 1:
+                        second_td = cells[1]
+                        a_tag = second_td.find_element(By.TAG_NAME, "a")
+                        href = a_tag.get_attribute("href")
 
-        for row in rows:
-            try:
-                second_td = row.find_elements(By.TAG_NAME, "td")[1]
-                a_tag = second_td.find_element(By.TAG_NAME, "a")
-                href = a_tag.get_attribute("href")
-                if href:
-                    if href.startswith("/"):
-                        href = url + href[1:]
+                        if href:
+                            driver.get(href)
 
-                    print(f"Haciendo clic en el enlace: {href}")
+                            WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located(
+                                    (
+                                        By.CSS_SELECTOR,
+                                        "div.row>div.col-md-12>div.row>div.col-md-9",
+                                    )
+                                )
+                            )
+                            time.sleep(5)
+                            page_source = driver.page_source
+                            soup = BeautifulSoup(page_source, "html.parser")
 
-                    driver.execute_script("window.open(arguments[0]);", href)
+                            content = soup.select_one(
+                                "div.row>div.col-md-12>div.row>div.col-md-9"
+                            )
+                            if content:
+                                all_scrapped += content.get_text() + "\n"
 
-                    WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+                            time.sleep(5)
+                            driver.back()
 
-                    new_window = driver.window_handles[1]
-                    driver.switch_to.window(new_window)
-
-                    WebDriverWait(driver, 30).until(
-                        EC.presence_of_all_elements_located(
-                            (By.CSS_SELECTOR, "div.bg-content-custom")
-                        )
-                    )
-
-                    content_elements = driver.find_elements(
-                        By.CSS_SELECTOR, "div.bg-content-custom"
-                    )
-                    if len(content_elements) == 2:
-                        content = (
-                            content_elements[0].text + "\n" + content_elements[1].text
-                        )
-                        all_scrapped += content
-
-                    driver.close()
-
-                    driver.switch_to.window(original_window)
-
-                    time.sleep(2)
-
-            except Exception as e:
-                print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
-        if all_scrapped.strip():
+                            WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR, "#dttable tbody tr")
+                                )
+                            )
+                            print("Volviendo a la tabla, esperando recarga...")
+                        else:
+                            print("No se encontró un enlace en esta celda.")
+                    else:
+                        print("Fila no tiene suficientes celdas.")
+                except Exception as e:
+                    print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
+            break
+        if all_scrapped:
             folder_path = generate_directory(output_dir, url)
             file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
@@ -124,11 +129,7 @@ def scrape_pest_alerts(
                 response_data,
                 status=status.HTTP_200_OK,
             )
-        else:
-            return Response(
-                {"message": "No se encontró contenido para guardar."},
-                status=status.HTTP_204_NO_CONTENT,
-            )
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

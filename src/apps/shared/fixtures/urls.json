@@ -252,12 +252,7 @@
       "mode_scrapeo": 12,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "selector": "table.x-grid-table tbody tr",
-        "content_selector": "table.x-grid-table tbody tr:not(.x-grid-header-row)",
-        "content_selector_second": "#adv-srch-btn-btnInnerEl",
-        "tag_name_first": "td"
-      }
+      "parameters": {}
     }
   },
   {
@@ -270,18 +265,7 @@
       "mode_scrapeo": 13,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "selector": "#redlist-js",
-        "search_button_selector": "button.search--site__button",
-        "search_button_selector_second": ".section__link-out",
-        "content_selector": "div.cards--narrow article",
-        "content_selector_second": "div.cards--narrow article a",
-        "attribute": "href",
-        "tag_name_first": "body",
-        "tag_name_second": "h1.headline__title",
-        "tag_name_third": "#taxonomy",
-        "tag_name_fourth": "#habitat-ecology"
-      }
+      "parameters": {}
     }
   },
   {
@@ -294,15 +278,7 @@
       "mode_scrapeo": 14,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "search_button_selector": "button[type='submit']",
-        "tag_name_first": "ol",
-        "selector": "ol li.search-result",
-        "content_selector": "section.container-fluid",
-        "tag_name_second": "a",
-        "tag_name_third": "li.next a",
-        "attribute": "href"
-      }
+      "parameters": {}
     }
   },
   {
@@ -382,14 +358,7 @@
       "mode_scrapeo": 15,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "selector": "div.view-content div.views-row",
-        "content_selector": "div.views-field-title a",
-        "attribute": "href",
-        "tag_name_first": "h1",
-        "tag_name_second": "li.next a",
-        "search_button_selector": "#edit-submit-plant-subarticles-autocomplete"
-      }
+      "parameters": {}
     }
   },
   {
@@ -417,21 +386,30 @@
       "mode_scrapeo": 16,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "content_selector": "table:nth-child(3)",
-        "attribute": "a[href$='.pdf']",
-        "attribute_second": "href"
-      }
+      "parameters": {}
     }
   },
   {
     "model": "shared.ScraperURL",
     "pk": 66,
     "fields": {
-      "url": "https://www.ndrs.org.uk/search.php",
+      "url": "https://www.ndrs.org.uk/volumes.php",
       "sobrenombre": "NDRS",
       "time_choices": 1,
       "mode_scrapeo": 19,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 67,
+    "fields": {
+      "url": "https://www.ippc.int/en/countries/south-africa/pestreports/",
+      "sobrenombre": "IPPC",
+      "time_choices": 1,
+      "mode_scrapeo": 20,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
@@ -447,14 +425,7 @@
       "mode_scrapeo": 17,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "selector": "table",
-        "content_selector": "table tbody tr",
-        "tag_name_first": "td",
-        "tag_name_second": "a",
-        "attribute": "href",
-        "content_selector_second": "div.bg-content-custom"
-      }
+      "parameters": {}
     }
   },
   {
@@ -464,7 +435,6 @@
       "url": "http://biblioteca.usac.edu.gt/tesis/01/01_3129.pdf",
       "mode_scrapeo": 7,
       "sobrenombre": "USAC",
-
       "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
@@ -504,6 +474,19 @@
         "start_page": 6,
         "end_page": 28
       }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 81,
+    "fields": {
+      "url": "https://gd.eppo.int/datasheets/",
+      "sobrenombre": "EPPO",
+      "time_choices": 1,
+      "mode_scrapeo": 21,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
     }
   },
   {

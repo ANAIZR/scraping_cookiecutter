@@ -21,13 +21,6 @@ import time
 
 def scrape_ala_org(
     url,
-    search_button_selector,
-    tag_name_first,
-    selector,
-    tag_name_second,
-    attribute,
-    content_selector,
-    tag_name_third,
     sobrenombre,
 ):
     options = webdriver.ChromeOptions()
@@ -49,38 +42,37 @@ def scrape_ala_org(
     try:
         driver.get(url)
         btn = WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, search_button_selector))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "button[type='submit']"))
         )
         btn.click()
         time.sleep(2)
 
         while True:
             WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, tag_name_first))
+                EC.presence_of_element_located((By.CSS_SELECTOR, "ol"))
             )
 
-            lis = driver.find_elements(By.CSS_SELECTOR, selector)
+            lis = driver.find_elements(By.CSS_SELECTOR, "ol li.search-result")
 
             for li in lis:
                 try:
-                    a_tag = li.find_element(By.TAG_NAME, tag_name_second)
-                    href = a_tag.get_attribute(attribute)
+                    a_tag = li.find_element(By.CSS_SELECTOR, "a")
+                    href = a_tag.get_attribute("href")
                     if href:
                         if href.startswith("/"):
                             href = url + href[1:]
-
-                        print(f"Haciendo clic en el enlace: {href}")
 
                         a_tag.click()
 
                         WebDriverWait(driver, 30).until(
                             EC.presence_of_element_located(
-                                (By.CSS_SELECTOR, content_selector)
+                                (By.CSS_SELECTOR, "section.container-fluid")
                             )
                         )
 
-                        print("Nueva página cargada. Realizando acciones...")
-                        content = driver.find_element(By.CSS_SELECTOR, content_selector)
+                        content = driver.find_element(
+                            By.CSS_SELECTOR, "section.container-fluid"
+                        )
                         all_scrapped += content.text
 
                         driver.back()
@@ -93,8 +85,8 @@ def scrape_ala_org(
                     )
 
             try:
-                next_page_btn = driver.find_element(By.CSS_SELECTOR, tag_name_third)
-                next_page_url = next_page_btn.get_attribute(attribute)
+                next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
+                next_page_url = next_page_btn.get_attribute("href")
                 if next_page_url:
                     driver.get(next_page_url)
                     time.sleep(3)
@@ -112,21 +104,27 @@ def scrape_ala_org(
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            response_data = {
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": data["Fecha_scrapper"],
+                "Etiquetas": data["Etiquetas"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
+            }
 
-        collection.insert_one(data)
+            collection.insert_one(data)
 
-        delete_old_documents(url, collection, fs)
+            delete_old_documents(url, collection, fs)
 
-        print(f"Los datos se han guardado en MongoDB y en el archivo: {file_path}")
         return Response(
-            {"message": "Scraping completado y datos guardados en MongoDB."},
+            response_data,
             status=status.HTTP_200_OK,
         )
     finally:

@@ -21,7 +21,8 @@ from ..utils.ipm_illinois import scrape_ipm_illinoes
 from ..utils.pest_alerts import scrape_pest_alerts
 from ..utils.cabi_digital import scrape_cabi_digital
 from ..utils.ndrs_org import scrape_ndrs_org
-
+from ..utils.ippc import scrape_ippc
+from ..utils.eppo import scrape_eppo
 
 class ScraperAPIView(APIView):
     def post(self, request):
@@ -129,74 +130,42 @@ class ScraperAPIView(APIView):
             return scrape_plant_atlas(
                 url,
                 sobrenombre,
-                
             )
         elif mode_scrapeo == 12:
             return scrape_flmnh_ufl(
                 url,
-                selector,
-                content_selector,
-                tag_name_first,
-                content_selector_second,
                 sobrenombre,
             )
         elif mode_scrapeo == 13:
             return scrape_iucnredlist(
                 url,
-                selector,
-                search_button_selector,
-                content_selector,
-                content_selector_second,
-                attribute,
-                tag_name_first,
-                tag_name_second,
-                tag_name_third,
-                tag_name_fourth,
-                search_button_selector_second,
                 sobrenombre,
             )
         elif mode_scrapeo == 14:
             return scrape_ala_org(
                 url,
-                search_button_selector,
-                tag_name_first,
-                selector,
-                tag_name_second,
-                attribute,
-                content_selector,
-                tag_name_third,
                 sobrenombre,
             )
         elif mode_scrapeo == 15:
             return scrape_pnw_hand_books(
                 url,
-                selector,
-                content_selector,
-                attribute,
-                tag_name_first,
-                tag_name_second,
-                search_button_selector,
                 sobrenombre,
             )
         elif mode_scrapeo == 16:
-            return scrape_ipm_illinoes(
-                url, content_selector, attribute, attribute_second
-            )
+            return scrape_ipm_illinoes(url)
         elif mode_scrapeo == 17:
             return scrape_pest_alerts(
                 url,
-                selector,
-                content_selector,
-                tag_name_first,
-                tag_name_second,
-                attribute,
-                content_selector_second,
                 sobrenombre,
             )
         elif mode_scrapeo == 18:
-            return scrape_cabi_digital(sobrenombre)
+            return scrape_cabi_digital(url, sobrenombre)
         elif mode_scrapeo == 19:
-            return scrape_ndrs_org(sobrenombre)
+            return scrape_ndrs_org(url, sobrenombre)
+        elif mode_scrapeo == 20:
+            return scrape_ippc(url, sobrenombre)
+        elif mode_scrapeo == 21:
+            return scrape_eppo(url, sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,

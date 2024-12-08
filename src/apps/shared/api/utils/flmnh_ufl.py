@@ -18,16 +18,13 @@ from rest_framework.response import Response
 from rest_framework import status
 import time
 
+
 def scrape_flmnh_ufl(
     url,
-    selector,
-    content_selector,
-    tag_name_first,
-    content_selector_second,
-    sobrenombre
+    sobrenombre,
 ):
     options = webdriver.ChromeOptions()
-    #options.add_argument("--headless")
+    # options.add_argument("--headless")
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
@@ -42,66 +39,80 @@ def scrape_flmnh_ufl(
         os.makedirs(output_dir)
 
     all_scrapped = ""
+
     def scrape_page():
-        # Esperar a que las filas de la tabla se carguen
-        WebDriverWait(driver, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector)))
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "table.x-grid-table tbody tr")
+            )
+        )
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        rows = soup.select(content_selector)
-
+        rows = soup.select("table.x-grid-table tbody tr:not(.x-grid-header-row)")
 
         all_scraped_data = []
         for row in rows:
-            cols = row.find_all(tag_name_first)
+            cols = row.find_all("td")
             data = [col.text.strip() for col in cols]
             all_scraped_data.append(data)
 
     def go_to_next_page():
         try:
-            WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "button-1065-btnEl")))
+            WebDriverWait(driver, 20).until(
+                EC.element_to_be_clickable((By.ID, "button-1065-btnEl"))
+            )
 
             next_button = driver.find_element(By.ID, "button-1065-btnEl")
             next_button.click()
             return True
         except Exception as e:
-            return False    
+            return False
+
     try:
         driver.get(url)
-        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, content_selector_second)))
-        btn = driver.find_element(By.CSS_SELECTOR, content_selector_second)
-        btn.click()  
-        
+        WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "#adv-srch-btn-btnInnerEl"))
+        )
+        btn = driver.find_element(By.CSS_SELECTOR, "#adv-srch-btn-btnInnerEl")
+        btn.click()
+
         scrape_page()
 
         while go_to_next_page():
-            time.sleep(2)  
+            time.sleep(2)
             scrape_page()
 
         folder_path = generate_directory(output_dir, url)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
         with open(file_path, "w", encoding="utf-8") as file:
-                file.write(all_scrapped)
+            file.write(all_scrapped)
 
         with open(file_path, "rb") as file_data:
-                object_id = fs.put(file_data, filename=os.path.basename(file_path))
+            object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-        data = {
+            data = {
                 "Objeto": object_id,
                 "Tipo": "Web",
                 "Url": url,
                 "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Etiquetas": ["planta", "plaga"],
             }
+            response_data = {
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": data["Fecha_scrapper"],
+                "Etiquetas": data["Etiquetas"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
+            }
 
-        collection.insert_one(data)
+            collection.insert_one(data)
 
-        delete_old_documents(url, collection, fs)
+            delete_old_documents(url, collection, fs)
 
-        print(f"Los datos se han guardado en MongoDB y en el archivo: {file_path}")
         return Response(
-                {"message": "Scraping completado y datos guardados en MongoDB."},
-                status=status.HTTP_200_OK,
+            response_data,
+            status=status.HTTP_200_OK,
         )
 
     except Exception as e:

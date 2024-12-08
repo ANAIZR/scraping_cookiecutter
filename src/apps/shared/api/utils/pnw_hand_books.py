@@ -21,13 +21,7 @@ import time
 
 def scrape_pnw_hand_books(
     url,
-    selector,
-    content_selector,
-    attribute,
-    tag_name_first,
-    tag_name_second,
-    search_button_selector,
-    sobrenombre,
+    sobrenombre
 ):
     options = webdriver.ChromeOptions()
     # options.add_argument("--headless")
@@ -52,19 +46,25 @@ def scrape_pnw_hand_books(
         def scrape_current_page():
             try:
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector))
+                    EC.presence_of_all_elements_located(
+                        (By.CSS_SELECTOR, "div.view-content div.views-row")
+                    )
                 )
-                containers = driver.find_elements(By.CSS_SELECTOR, selector)
+                containers = driver.find_elements(
+                    By.CSS_SELECTOR, "div.view-content div.views-row"
+                )
 
                 for container in containers:
-                    link = container.find_element(By.CSS_SELECTOR, content_selector)
-                    href = link.get_attribute(attribute)
+                    link = container.find_element(
+                        By.CSS_SELECTOR, "div.views-field-title a"
+                    )
+                    href = link.get_attribute("href")
 
                     driver.get(href)
                     time.sleep(2)
                     soup = BeautifulSoup(driver.page_source, "html.parser")
 
-                    title = soup.find(tag_name_first)
+                    title = soup.find("h1")
 
                     driver.back()
                     time.sleep(2)
@@ -74,7 +74,7 @@ def scrape_pnw_hand_books(
 
         def go_to_next_page():
             try:
-                next_button = driver.find_element(By.CSS_SELECTOR, tag_name_second)
+                next_button = driver.find_element(By.CSS_SELECTOR, "li.next a")
                 next_button.click()
                 time.sleep(3)
                 return True
@@ -84,7 +84,9 @@ def scrape_pnw_hand_books(
 
         try:
             time.sleep(5)
-            boton = driver.find_element(By.CSS_SELECTOR, search_button_selector)
+            boton = driver.find_element(
+                By.CSS_SELECTOR, "#edit-submit-plant-subarticles-autocomplete"
+            )
             boton.click()
             time.sleep(3)
 
@@ -106,20 +108,26 @@ def scrape_pnw_hand_books(
             with open(file_path, "rb") as file_data:
                 object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
+                data = {
+                    "Objeto": object_id,
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Etiquetas": ["planta", "plaga"],
+                }
+                response_data = {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": data["Fecha_scrapper"],
+                    "Etiquetas": data["Etiquetas"],
+                    "Mensaje": "Los datos han sido scrapeados correctamente.",
+                }
+                collection.insert_one(data)
 
-            collection.insert_one(data)
-
-            delete_old_documents(url, collection, fs)
+                delete_old_documents(url, collection, fs)
 
             return Response(
-                {"message": "Scraping completado y datos guardados en MongoDB."},
+                response_data,
                 status=status.HTTP_200_OK,
             )
         else:

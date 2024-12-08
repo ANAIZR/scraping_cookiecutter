@@ -4,7 +4,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from datetime import datetime
 import gridfs
@@ -19,20 +18,7 @@ from rest_framework import status
 import time
 
 
-def scrape_iucnredlist(
-    url,
-    selector,
-    search_button_selector,
-    content_selector,
-    content_selector_second,
-    attribute,
-    tag_name_first,
-    tag_name_second,
-    tag_name_third,
-    tag_name_fourth,
-    search_button_selector_second,
-    sobrenombre
-):
+def scrape_iucnredlist(url, sobrenombre):
     options = webdriver.ChromeOptions()
     # options.add_argument("--headless")
     driver = webdriver.Chrome(
@@ -49,26 +35,30 @@ def scrape_iucnredlist(
         os.makedirs(output_dir)
 
     all_scrapped = ""
-    visited_urls = set()  # Conjunto para almacenar enlaces ya visitados
+    visited_urls = set()
     try:
         driver.get(url)
         WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#redlist-js"))
         )
         btn = WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, search_button_selector))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search--site__button"))
         )
         btn.click()
 
         WebDriverWait(driver, 30).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, content_selector))
+            EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "div.cards--narrow article")
+            )
         )
 
         while True:
-            articles = driver.find_elements(By.CSS_SELECTOR, content_selector_second)
+            articles = driver.find_elements(
+                By.CSS_SELECTOR, "div.cards--narrow article a"
+            )
 
             for index, article in enumerate(articles):
-                href = article.get_attribute(attribute)
+                href = article.get_attribute("href")
 
                 if href in visited_urls:
                     continue
@@ -76,59 +66,63 @@ def scrape_iucnredlist(
                 driver.get(href)
 
                 WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located((By.TAG_NAME, tag_name_first))
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
                 )
-
                 try:
-                    title = WebDriverWait(driver, 30).until(
-                        lambda d: d.find_element(
-                            By.CSS_SELECTOR, tag_name_second
-                        ).text.strip()
-                    )
-                except Exception as e:
-                    print(f"Error al obtener el título: {e}")
-                try:
-                    taxonomy = WebDriverWait(driver, 30).until(
-                        lambda d: d.find_element(
-                            By.CSS_SELECTOR, tag_name_third
-                        ).text.strip()
-                    )
-                except Exception as e:
-                    print(f"Error al obtener la taxonomia: {e}")
-                try:
-                    habitat = WebDriverWait(driver, 30).until(
-                        lambda d: d.find_element(
-                            By.CSS_SELECTOR, tag_name_fourth
-                        ).text.strip()
-                    )
-                except Exception as e:
-                    print(f"Error al obtener el hábitat: {e}")
+                    # Inicializar variables
+                    title = ""
+                    taxonomy = ""
+                    habitat = ""
+                    try:
+                        title = WebDriverWait(driver, 30).until(
+                            lambda d: d.find_element(
+                                By.CSS_SELECTOR,
+                                "h1.headline__title",
+                            ).text.strip()
+                        )
+                    except Exception as e:
+                        print(f"Error al obtener el título: {e}")
+                    try:
+                        taxonomy = WebDriverWait(driver, 30).until(
+                            lambda d: d.find_element(
+                                By.CSS_SELECTOR, "#taxonomy"
+                            ).text.strip()
+                        )
+                    except Exception as e:
+                        print(f"Error al obtener la taxonomia: {e}")
+                    try:
+                        habitat = WebDriverWait(driver, 30).until(
+                            lambda d: d.find_element(
+                                By.CSS_SELECTOR, "#habitat-ecology"
+                            ).text.strip()
+                        )
+                    except Exception as e:
+                        print(f"Error al obtener el hábitat: {e}")
 
-                text_content = title + taxonomy + habitat
-                if title:
-                    all_scrapped += text_content
-
+                    text_content = title + taxonomy + habitat
+                    if title:
+                        all_scrapped += text_content
+                except Exception as e:
+                    print(f"Error procesando el artículo: {e}")
                 visited_urls.add(href)
-
+                time.sleep(5)
                 driver.back()
                 print("Regresando a la página principal...")
 
             try:
                 show_more_btn = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable(
-                        (By.CSS_SELECTOR, search_button_selector_second)
-                    )
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".section__link-out"))
                 )
                 show_more_btn.click()
-                
+
                 WebDriverWait(driver, 30).until(
                     EC.presence_of_all_elements_located(
-                        (By.CSS_SELECTOR, content_selector)
+                        (By.CSS_SELECTOR, "div.cards--narrow article")
                     )
                 )
             except Exception as e:
                 print("No se encontró el botón 'Show more' o no se pudo hacer clic.")
-                break  
+                break
 
         folder_path = generate_directory(output_dir, url)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
@@ -139,21 +133,27 @@ def scrape_iucnredlist(
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            response_data = {
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": data["Fecha_scrapper"],
+                "Etiquetas": data["Etiquetas"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
+            }
 
-        collection.insert_one(data)
+            collection.insert_one(data)
 
-        delete_old_documents(url, collection, fs)
+            delete_old_documents(url, collection, fs)
 
-        print(f"Los datos se han guardado en MongoDB y en el archivo: {file_path}")
         return Response(
-            {"message": "Scraping completado y datos guardados en MongoDB."},
+            response_data,
             status=status.HTTP_200_OK,
         )
 

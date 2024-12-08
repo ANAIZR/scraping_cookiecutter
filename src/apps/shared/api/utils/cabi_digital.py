@@ -19,11 +19,10 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-def scrape_cabi_digital(sobrenombre):
+def scrape_cabi_digital(url, sobrenombre):
     driver = uc.Chrome()
     driver.set_page_load_timeout(60)
-    base_url = "https://www.cabidigitallibrary.org/product/qc"
-    driver.get(base_url)
+    driver.get(url)
 
     time.sleep(5)
 
@@ -36,7 +35,7 @@ def scrape_cabi_digital(sobrenombre):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    base_folder_path = generate_directory(output_dir, base_url)
+    base_folder_path = generate_directory(output_dir, url)
 
     data_collected = []  # Lista para almacenar los datos recolectados
 
@@ -66,7 +65,6 @@ def scrape_cabi_digital(sobrenombre):
         preferences_button.click()
     except Exception:
         print("El botón de 'Guardar preferencias' no apareció o no fue clicable.")
-
 
     while True:
         try:
@@ -113,7 +111,6 @@ def scrape_cabi_digital(sobrenombre):
 
                             driver.get(full_url)
                             time.sleep(5)
-
 
                             try:
                                 WebDriverWait(driver, 60).until(
@@ -169,7 +166,9 @@ def scrape_cabi_digital(sobrenombre):
                                         "Objeto": object_id,
                                         "Tipo": "Web",
                                         "Url": full_url,
-                                        "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                        "Fecha_scrapper": datetime.now().strftime(
+                                            "%Y-%m-%d %H:%M:%S"
+                                        ),
                                         "Etiquetas": ["planta", "plaga"],
                                     }
                                     collection = db["collection"]
@@ -188,17 +187,37 @@ def scrape_cabi_digital(sobrenombre):
                                 print(
                                     f"Error al esperar el contenido de la nueva página: {e}"
                                 )
+            print("Terminamos de imprimir la primera pagina")
+            try:
+                driver.get(url)
+                time.sleep(3)
 
-
+                search_button = WebDriverWait(driver, 30).until(
+                    EC.element_to_be_clickable(
+                        (
+                            By.CSS_SELECTOR,
+                            "div.page-top-banner div.container div.quick-search button.quick-search__button",
+                        )
+                    )
+                )
+                print(f"Botón de búsqueda encontrado para pasar a la siguiente página.")
+                search_button.click()
+                print(f"Botón de búsqueda ya clicado para la siguiente página.")
+            except Exception as e:
+                print(
+                    f"Error al hacer clic en el botón de búsqueda para la siguiente página: {e}"
+                )
             try:
                 next_page_button = driver.find_element(
-                    By.CSS_SELECTOR, "nav.pagination span>a.pagination__btn--next"
+                    By.CSS_SELECTOR, "nav.pagination span a"
                 )
                 next_page_link = next_page_button.get_attribute("href")
                 if next_page_link:
+                    print(f"Navegando a la siguiente página: {next_page_link}")
                     driver.get(next_page_link)
                     time.sleep(3)
                 else:
+                    print("No hay más páginas disponibles.")
                     break
             except Exception:
                 print("No se encontró el siguiente enlace de página.")
@@ -220,8 +239,6 @@ def scrape_cabi_digital(sobrenombre):
         )
     else:
         return Response(
-            {
-                "message": "No se generaron datos. Volver a realizar el scraping"
-            },
+            {"message": "No se generaron datos. Volver a realizar el scraping"},
             status=status.HTTP_400_BAD_REQUEST,
         )
