@@ -22,7 +22,7 @@ def scrape_ansci_cornell(
     collection = db["collection"]
     fs = gridfs.GridFS(db)
     all_scrapped = ""
-    output_dir = r"C:\web_scraping_files"
+    
 
     try:
         driver.get(url)
@@ -67,8 +67,9 @@ def scrape_ansci_cornell(
                 )
         if all_scrapped.strip():
             response_data = save_scraped_data(
-                all_scrapped, url, sobrenombre, output_dir, collection, fs
+                all_scrapped, url, sobrenombre, collection, fs
             )
+
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response(

@@ -4,16 +4,10 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 from pymongo import MongoClient
-from datetime import datetime
 import gridfs
 import os
-from .functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-)
+from .functions import save_scraped_data
 from rest_framework.response import Response
 from rest_framework import status
 import time
@@ -34,9 +28,6 @@ def scrape_ala_org(
     collection = db["collection"]
     fs = gridfs.GridFS(db)
 
-    output_dir = r"C:\web_scraping_files"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
     all_scrapped = ""
     try:
@@ -96,39 +87,11 @@ def scrape_ala_org(
                 break
 
         if all_scrapped.strip():
-            folder_path = generate_directory(output_dir, url)
-            file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(all_scrapped)
-
-            with open(file_path, "rb") as file_data:
-                object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-                data = {
-                    "Objeto": object_id,
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Etiquetas": ["planta", "plaga"],
-                }
-
-                response_data = {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scrapper": data["Fecha_scrapper"],
-                    "Etiquetas": data["Etiquetas"],
-                    "Mensaje": "Los datos han sido scrapeados correctamente.",
-                }
-
-                collection.insert_one(data)
-
-                delete_old_documents(url, collection, fs)
-
-            return Response(
-                response_data,
-                status=status.HTTP_200_OK,
+            response_data = save_scraped_data(
+                all_scrapped, url, sobrenombre, collection, fs
             )
+
+            return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response(
                 {

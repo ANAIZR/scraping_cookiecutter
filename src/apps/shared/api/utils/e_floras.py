@@ -106,11 +106,11 @@ def scrape_e_floras(
             except Exception as e:
                 print(f"Error al navegar a la siguiente página: {e}")
 
-        output_dir = r"C:\web_scraping_files"
         if all_scrapped.strip():
             response_data = save_scraped_data(
-                all_scrapped, url, sobrenombre, output_dir, collection, fs
+                all_scrapped, url, sobrenombre, collection, fs
             )
+
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response(
@@ -121,7 +121,6 @@ def scrape_e_floras(
                 },
                 status=status.HTTP_204_NO_CONTENT,
             )
-
     except Exception as e:
         print(f"Error: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

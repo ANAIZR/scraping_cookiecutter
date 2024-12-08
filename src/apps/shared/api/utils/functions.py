@@ -1,6 +1,10 @@
 import os
 import hashlib
 from datetime import datetime
+OUTPUT_DIR = r"C:\web_scraping_files"
+
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
 
 def generate_directory(output_dir, url):
     url_hash = hashlib.md5(url.encode()).hexdigest()
@@ -42,8 +46,8 @@ def delete_old_documents(url, collection, fs, limit=2):
     return docs_count > limit
 
 
-def save_scraped_data(all_scrapped, url, sobrenombre, output_dir, collection, fs):
-    folder_path = generate_directory(output_dir, url)
+def save_scraped_data(all_scrapped, url, sobrenombre, collection, fs):
+    folder_path = generate_directory(OUTPUT_DIR, url)
     file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
     with open(file_path, "w", encoding="utf-8") as file:

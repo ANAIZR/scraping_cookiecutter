@@ -51,11 +51,11 @@ def scrape_iucngisd(url, wait_time, sobrenombre):
 
             all_scrapped += text_content + "\n\n"
 
-        output_dir = r"C:\web_scraping_files"
         if all_scrapped.strip():
             response_data = save_scraped_data(
-                all_scrapped, url, sobrenombre, output_dir, collection, fs
+                all_scrapped, url, sobrenombre, collection, fs
             )
+
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response(
