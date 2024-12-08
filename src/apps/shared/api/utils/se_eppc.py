@@ -4,6 +4,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
 from pymongo import MongoClient
 import gridfs
 import os
@@ -13,7 +14,7 @@ from rest_framework import status
 import time
 
 
-def scrape_pest_alerts(
+def scrape_se_eppc(
     url,
     sobrenombre,
 ):
@@ -33,58 +34,52 @@ def scrape_pest_alerts(
         os.makedirs(output_dir)
 
     all_scrapped = ""
-
     try:
         driver.get(url)
+
         WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "div.content1 table tbody")
+            )
         )
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        tr_tags = soup.select("div.content1 table tbody tr")
+        print(f"Se encontraron {len(tr_tags)} filas.")
 
-        rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
-
-        original_window = driver.current_window_handle
-
-        for row in rows:
+        for index, tr in enumerate(tr_tags[1:], start=2):
             try:
-                second_td = row.find_elements(By.TAG_NAME, "td")[1]
-                a_tag = second_td.find_element(By.TAG_NAME, "a")
-                href = a_tag.get_attribute("href")
-                if href:
-                    if href.startswith("/"):
-                        href = url + href[1:]
-
-                    print(f"Haciendo clic en el enlace: {href}")
-
-                    driver.execute_script("window.open(arguments[0]);", href)
-
-                    WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
-
-                    new_window = driver.window_handles[1]
-                    driver.switch_to.window(new_window)
-
-                    WebDriverWait(driver, 30).until(
-                        EC.presence_of_all_elements_located(
-                            (By.CSS_SELECTOR, "div.bg-content-custom")
+                first_td = tr.select_one("td:first-child a")
+                print(first_td)
+                if first_td:
+                    href = first_td.get("href")
+                    print(f"Fila {index}: Enlace encontrado: {href}")
+                    driver.get(href)
+                    time.sleep(5)
+                    nav_fact_sheets = WebDriverWait(driver, 60).until(
+                        EC.presence_of_element_located(
+                            (
+                                By.CSS_SELECTOR,
+                                "div.container ul.nav li:nth-child(1)",
+                            )
                         )
                     )
+                    nav_fact_sheets.click()
+                    time.sleep(5)
+                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                    content = soup.find("#overview")
+                    if content:
+                        all_scraped += content.text
+                    else:
+                        continue
 
-                    content_elements = driver.find_elements(
-                        By.CSS_SELECTOR, "div.bg-content-custom"
-                    )
-                    if len(content_elements) == 2:
-                        content = (
-                            content_elements[0].text + "\n" + content_elements[1].text
-                        )
-                        all_scrapped += content
-
-                    driver.close()
-
-                    driver.switch_to.window(original_window)
-
-                    time.sleep(2)
-
+                else:
+                    print(f"Fila {index}: No se encontró enlace en esta fila.")
             except Exception as e:
-                print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
+                print(f"Error en la fila {index}: {e}")
+                import traceback
+
+                traceback.print_exc()
+
         if all_scrapped.strip():
             response_data = save_scraped_data(
                 all_scrapped, url, sobrenombre, output_dir, collection, fs

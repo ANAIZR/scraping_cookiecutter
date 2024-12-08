@@ -23,7 +23,7 @@ from ..utils.cabi_digital import scrape_cabi_digital
 from ..utils.ndrs_org import scrape_ndrs_org
 from ..utils.ippc import scrape_ippc
 from ..utils.eppo import scrape_eppo
-
+from ..utils.se_eppc import scrape_se_eppc
 class ScraperAPIView(APIView):
     def post(self, request):
         url = request.data.get("url")
@@ -166,6 +166,8 @@ class ScraperAPIView(APIView):
             return scrape_ippc(url, sobrenombre)
         elif mode_scrapeo == 21:
             return scrape_eppo(url, sobrenombre)
+        elif mode_scrapeo == 22:
+            return scrape_se_eppc(url, sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,

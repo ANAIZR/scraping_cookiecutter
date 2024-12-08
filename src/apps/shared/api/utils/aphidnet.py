@@ -33,6 +33,7 @@ def scrape_aphidnet(
     fs = gridfs.GridFS(db)
     all_scraped_fact_sheets = ""
     all_scraped_morphology = ""
+    output_dir = r"C:\web_scraping_files"
 
     try:
         driver.get(url)
@@ -157,41 +158,49 @@ def scrape_aphidnet(
         scraper_first()
         scraper_second()
 
-        output_dir = r"C:\web_scraping_files"
-        folder_path = generate_directory(output_dir, url)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+        if all_scraped_fact_sheets.strip() and all_scraped_fact_sheets.strip():
+            folder_path = generate_directory(output_dir, url)
+            file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(all_scraped_fact_sheets + all_scraped_morphology)
+            with open(file_path, "w", encoding="utf-8") as file:
+                file.write(all_scraped_fact_sheets + all_scraped_morphology)
 
-        with open(file_path, "rb") as file_data:
-            object_id = fs.put(
-                file_data,
-                filename=os.path.basename(file_path),
+            with open(file_path, "rb") as file_data:
+                object_id = fs.put(
+                    file_data,
+                    filename=os.path.basename(file_path),
+                )
+
+                data = {
+                    "Objeto": object_id,
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Etiquetas": ["planta", "plaga"],
+                }
+                response_data = {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": data["Fecha_scrapper"],
+                    "Etiquetas": data["Etiquetas"],
+                    "Mensaje": "Los datos han sido scrapeados correctamente.",
+                }
+                collection.insert_one(data)
+                delete_old_documents(url, collection, fs)
+
+            return Response(
+                response_data,
+                status=status.HTTP_200_OK,
             )
-
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": data["Fecha_scrapper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-
-            }
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-
-        return Response(
-            response_data,
-            status=status.HTTP_200_OK,
-        )
+        else:
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

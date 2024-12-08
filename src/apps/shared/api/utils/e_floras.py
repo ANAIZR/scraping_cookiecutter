@@ -6,14 +6,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
-from datetime import datetime
 import gridfs
 import os
-from .functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-)
+from .functions import save_scraped_data
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -34,7 +29,6 @@ def scrape_e_floras(
     try:
         driver.get(url)
         
-        # Try to find and click the submit button
         submit = WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located(
                 (
@@ -113,37 +107,20 @@ def scrape_e_floras(
                 print(f"Error al navegar a la siguiente página: {e}")
 
         output_dir = r"C:\web_scraping_files"
-        folder_path = generate_directory(output_dir, url)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(all_scrapped)
-
-        with open(file_path, "rb") as file_data:
-            object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": data["Fecha_scrapper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-
-        return Response(
-            response_data,
-            status=status.HTTP_200_OK,
-        )
+        if all_scrapped.strip():
+            response_data = save_scraped_data(
+                all_scrapped, url, sobrenombre, output_dir, collection, fs
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
 
     except Exception as e:
         print(f"Error: {e}")

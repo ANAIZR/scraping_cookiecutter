@@ -10,11 +10,7 @@ from datetime import datetime
 import gridfs
 import time
 import os
-from .functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-)
+from .functions import save_scraped_data
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -28,12 +24,14 @@ def scrape_plant_ifas(
     db = client["scrapping-can"]
     collection = db["collection"]
     fs = gridfs.GridFS(db)
-    all_scrapper=""
+    all_scrapped = ""
     try:
         driver.get(url)
         time.sleep(5)
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "#app section.plant-cards"))
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "#app section.plant-cards")
+            )
         )
         soup = BeautifulSoup(driver.page_source, "html.parser")
         content = soup.select_one("#app section.plant-cards")
@@ -55,48 +53,36 @@ def scrape_plant_ifas(
                         soup = BeautifulSoup(driver.page_source, "html.parser")
                         conteiner = soup.select_one("div.content")
                         if conteiner:
-                            primary_content = conteiner.select("div.primary div[style*='margin:2rem']")
-                            second_content = conteiner.select("div.primary div[style*='margin-bottom:2rem']")
+                            primary_content = conteiner.select(
+                                "div.primary div[style*='margin:2rem']"
+                            )
+                            second_content = conteiner.select(
+                                "div.primary div[style*='margin-bottom:2rem']"
+                            )
                             all_content = "\n".join(
                                 [
                                     element.get_text(strip=True)
                                     for element in primary_content + second_content
                                 ]
                             )
-                            all_scrapper += all_content
-            
+                            all_scrapped += all_content
+
             time.sleep(1)
         output_dir = r"C:\web_scraping_files"
-        folder_path = generate_directory(output_dir, url)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(all_scrapper)
-
-        with open(file_path, "rb") as file_data:
-            object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
+        if all_scrapped.strip():
+            response_data = save_scraped_data(
+                all_scrapped, url, sobrenombre, output_dir, collection, fs
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {
                     "Tipo": "Web",
                     "Url": url,
-                    "Fecha_scrapper": data["Fecha_scrapper"],
-                    "Etiquetas": data["Etiquetas"],
-                    "Mensaje": "Los datos han sido scrapeados correctamente.",
-
-                }
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-        return Response(
-            response_data,
-            status=status.HTTP_200_OK,
-        )
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
 
     except Exception as e:
         return Response(

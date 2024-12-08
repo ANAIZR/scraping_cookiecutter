@@ -95,37 +95,48 @@ def scrape_ala_org(
             except Exception as e:
                 break
 
-        folder_path = generate_directory(output_dir, url)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+        if all_scrapped.strip():
+            folder_path = generate_directory(output_dir, url)
+            file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(all_scrapped)
+            with open(file_path, "w", encoding="utf-8") as file:
+                file.write(all_scrapped)
 
-        with open(file_path, "rb") as file_data:
-            object_id = fs.put(file_data, filename=os.path.basename(file_path))
+            with open(file_path, "rb") as file_data:
+                object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": data["Fecha_scrapper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
+                data = {
+                    "Objeto": object_id,
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Etiquetas": ["planta", "plaga"],
+                }
 
-            collection.insert_one(data)
+                response_data = {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scrapper": data["Fecha_scrapper"],
+                    "Etiquetas": data["Etiquetas"],
+                    "Mensaje": "Los datos han sido scrapeados correctamente.",
+                }
 
-            delete_old_documents(url, collection, fs)
+                collection.insert_one(data)
 
-        return Response(
-            response_data,
-            status=status.HTTP_200_OK,
-        )
+                delete_old_documents(url, collection, fs)
+
+            return Response(
+                response_data,
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
     finally:
         driver.quit()
