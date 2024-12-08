@@ -1,23 +1,23 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-from webdriver_manager.chrome import ChromeDriverManager
-import hashlib
-import os
-from pymongo import MongoClient
-import gridfs
-from datetime import datetime
 import time
-# Directorio de salida para guardar los archivos
+import os
+import hashlib
+
+# Configurar Selenium (aquí con Chrome)
+options = webdriver.ChromeOptions()
+options.add_argument("--start-maximized")  # Maximiza la ventana
+driver = webdriver.Chrome(options=options)
+
+
 output_dir = r"C:\web_scraping_files"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 
-# Función para generar un directorio basado en la URL
 def generate_directory(output_dir, url):
     url_hash = hashlib.md5(url.encode()).hexdigest()
     folder_name = url.split("//")[-1].replace("/", "_") + "_" + url_hash[:8]
@@ -27,7 +27,6 @@ def generate_directory(output_dir, url):
     return folder_path
 
 
-# Función para generar nombres de archivo versionados
 def get_next_versioned_filename(folder_path, base_name="archivo"):
     version = 0
     while True:
@@ -38,113 +37,84 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
         version += 1
 
 
-# Conexión a MongoDB y GridFS
-client = MongoClient("mongodb://localhost:27017/")
-db = client["scrapping-can"]
-collection = db["collection"]
-fs = gridfs.GridFS(db)
-
-# URL a scrapear
+# Navegar a la página deseada
 url = "https://www.mycobank.org/Simple%20names%20search"
+driver.get(url)
 
-# Inicialización del driver de Selenium
-
-options = webdriver.ChromeOptions()
-options.add_argument("--start-maximized")
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-
-# Variable para guardar el contenido raspado
-all_scraped = ""
+# Esperar a que la página cargue completamente
+time.sleep(5)  # Ajusta este tiempo según sea necesario
 
 try:
-    driver.get(url)
-    print(f"Entrando a la página: {url}")
-    print("Esperando a que cargue la página")
-    print("Buscando elementos")
-    boton = WebDriverWait(driver, 40).until(
-        EC.element_to_be_clickable(
-            (By.CSS_SELECTOR, "#search-btn")
-        )
-    )
-    print("Elemento encontrado")
-    time.sleep(2)  
-    driver.execute_script("arguments[0].click();", boton)
-    print("Botón clickeado")
-    time.sleep(5)
-    print("Esperando a que cargue el cuerpo")
-    WebDriverWait(driver, 20).until(
-        EC.presence_of_element_located(
-            (By.CSS_SELECTOR, "div.ps-content table.mat-table tbody")
-        )
-    )
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    content = soup.select_one("div.ps-content table.mat-table tbody")
-    print("Cuerpo cargado")
-    if content:
-        print("Cargando filas")
-        rows = content.select("tr")
-
-        print(f"Encontradas {len(rows)} filas")
-        for row in rows:
-            second_td = row.select_one("td:nth-child(2)")
-            if second_td:
-                td_a = second_td.select_one("a")
-                if td_a and td_a.get("href"):
-                    link = td_a.get("href")
-                    print(f"Encontrado enlace: {link}")
-                    
-                    # Opcional: Si deseas navegar a este enlace, descomenta lo siguiente
-                    # print(f"Entrando a la página: {link}")
-                    # driver.get(link)
-                    # time.sleep(5)  # Espera adicional para la nueva página
-
-                else:
-                    print("No se encontró un enlace válido en esta fila.")
-            else:
-                print("No se encontró la segunda celda en esta fila.")
-
-                        
-
-                """
-                    modal_html = driver.page_source
-                modal_soup = BeautifulSoup(modal_html, "html.parser")
-                modal_content = modal_soup.select_one("div.field-container > div.w-100")
-                if modal_content:
-                    all_scraped += modal_content.get_text(strip=True) + "\n"
-
-                close_modal = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div.dockmodal-header > a.action-close"))
-                )
-                close_modal.click()
-                    """       
-                
-                
-    folder_path = generate_directory(output_dir, url)
-    file_path = get_next_versioned_filename(folder_path, base_name="anscy")
-
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(all_scraped)
-
-    # Guardar en MongoDB
-    with open(file_path, "rb") as file_data:
-        object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-    data = {
-        "Objeto": object_id,
-        "Tipo": "Web",
-        "Url": url,
-        "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Etiquetas": ["planta", "plaga"],
-    }
-    collection.insert_one(data)
-
-    docs_count = collection.count_documents({"Url": url})
-    if docs_count > 2:
-        docs_for_url = collection.find({"Url": url}).sort("Fecha_scrapper", -1)
-        for doc in docs_for_url[2:]:
-            collection.delete_one({"_id": doc["_id"]})
-            fs.delete(doc["Objeto"])
-
-    print(f"Datos guardados en MongoDB y archivo: {file_path}")
-finally:
+    wait = WebDriverWait(driver, 10)  # Esperar hasta 10 segundos
+    search_button = wait.until(EC.element_to_be_clickable((By.ID, "search-btn")))
+    search_button.click()
+    print("Se hizo clic en el botón de búsqueda.")
+except Exception as e:
+    print(f"Error al hacer clic en el botón Search: {e}")
     driver.quit()
+    exit()
+
+# Obtener el HTML de la página
+time.sleep(5)
+html_content = driver.page_source
+
+# Usar BeautifulSoup para analizar el HTML
+soup = BeautifulSoup(html_content, "html.parser")
+
+# Esperar a que la tabla cargue
+wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "tbody[role='rowgroup']")))
+
+# Recoger todas las filas sin depender del scroll
+rows = driver.find_elements(By.CSS_SELECTOR, "tbody[role='rowgroup'] tr")
+print(f"Número total de filas encontradas: {len(rows)}")
+
+# Crear carpeta y archivo para almacenar el contenido
+folder_path = generate_directory(output_dir, url)
+file_path = get_next_versioned_filename(folder_path, base_name="scrape")
+
+# Abrir el archivo en modo 'a' para agregar contenido después de cada ciclo
+with open(file_path, 'w', encoding='utf-8') as f:
+    # Iterar sobre cada fila y abrir el popup
+    for index, row in enumerate(rows, start=1):
+        try:
+            # Obtener el enlace dentro de la fila
+            time.sleep(1)
+            link = row.find_element(By.CSS_SELECTOR, "td a")
+            time.sleep(1)
+            link_name = link.find_element(By.CSS_SELECTOR, "div.text-overflow").text.strip()
+            #link_name=link.text.strip()  # Asegúrate de obtener el texto correctamente
+            print(f"Haciendo clic en {index}: : {link_name}")
+            
+            driver.execute_script("arguments[0].click();", link)  # Usar JavaScript para asegurar el clic
+
+            time.sleep(2)
+
+            # Esperar a que el popup se haga visible
+            popup = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.dockmodal-body")))
+
+            # Extraer el contenido de texto dentro del popup
+            popup_content = popup.text.strip()
+
+            # Guardar el contenido del popup en el archivo durante cada ciclo
+            f.write(f"Contenido del listado {index}: {link_name}:\n")
+            f.write(f"{popup_content}\n")
+            f.write("-" * 80 + "\n")  # Separador entre los contenidos
+            f.flush()
+            # Imprimir el contenido del popup para verificar
+            #print(f"Contenido del popup para {link_text}:")
+            #print(popup_content)
+
+            # Cerrar el popup
+            close_button = driver.find_element(By.CSS_SELECTOR, "a.header-action.action-close")
+            driver.execute_script("arguments[0].click();", close_button)  # Usar JavaScript para asegurar el clic
+            print(f"Popup cerrado para {index}: {link_name}")
+            time.sleep(1)
+        except Exception as e:
+            print(f"Error al procesar el enlace en la fila {index}: {e}")
+            continue
+
+
+
+# Cerrar el navegador al finalizar
+driver.quit()
+print(f"Contenido guardado en: {file_path}")
