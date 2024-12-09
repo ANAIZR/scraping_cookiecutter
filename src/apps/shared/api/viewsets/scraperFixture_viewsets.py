@@ -24,6 +24,13 @@ from ..utils.ndrs_org import scrape_ndrs_org
 from ..utils.ippc import scrape_ippc
 from ..utils.eppo import scrape_eppo
 from ..utils.se_eppc import scrape_se_eppc
+from ..utils.mycobank_org import scrape_mycobank_org
+from ..utils.nematode import scrape_nematode
+from ..utils.diaspididae import scrape_diaspididae
+from ..utils.genome_jp import scrape_genome_jp
+from ..utils.plants_usda_gov import scrape_plants_usda_gov
+from ..utils.fws_gov import scrape_fws_gov
+
 class ScraperAPIView(APIView):
     def post(self, request):
         url = request.data.get("url")
@@ -44,18 +51,14 @@ class ScraperAPIView(APIView):
         parameters = scraper_url.parameters
         mode_scrapeo = scraper_url.mode_scrapeo
         search_button_selector = parameters.get("search_button_selector")
-        search_button_selector_second = parameters.get("search_button_selector_second")
         page_principal = parameters.get("page_principal")
         content_selector = parameters.get("content_selector")
-        content_selector_second = parameters.get("content_selector_second")
         wait_time = parameters.get("wait_time", 10)
         sobrenombre = scraper_url.sobrenombre
         tag_name_first = parameters.get("tag_name_first")
         tag_name_second = parameters.get("tag_name_second")
         tag_name_third = parameters.get("tag_name_third")
-        tag_name_fourth = parameters.get("tag_name_fourth")
         attribute = parameters.get("attribute")
-        attribute_second = parameters.get("attribute_second")
         selector = parameters.get("selector")
         tag_name_third = parameters.get("tag_name_third")
         next_page_selector = parameters.get("next_page_selector")
@@ -168,6 +171,18 @@ class ScraperAPIView(APIView):
             return scrape_eppo(url, sobrenombre)
         elif mode_scrapeo == 22:
             return scrape_se_eppc(url, sobrenombre)
+        elif mode_scrapeo == 23:
+            return scrape_mycobank_org(url, sobrenombre)
+        elif mode_scrapeo == 24:
+            return scrape_nematode(url, sobrenombre)
+        elif mode_scrapeo == 25:
+            return scrape_diaspididae(url, sobrenombre)
+        elif mode_scrapeo == 26:
+            return scrape_genome_jp(url, wait_time, sobrenombre)
+        elif mode_scrapeo == 27:
+            return scrape_plants_usda_gov(url, sobrenombre)
+        elif mode_scrapeo == 28:
+            return scrape_fws_gov(url, sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,

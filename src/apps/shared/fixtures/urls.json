@@ -209,6 +209,19 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 20,
+    "fields": {
+      "url": "https://plants.usda.gov/",
+      "time_choices": 2,
+      "mode_scrapeo": 27,
+      "sobrenombre": "PLANTS_USDA",
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 22,
     "fields": {
       "url": "https://www.habitas.org.uk/flora/index.html",
@@ -244,12 +257,79 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 26,
+    "fields": {
+      "url": "https://www.genome.jp/virushostdb/view/",
+      "sobrenombre": "GENOME",
+      "time_choices": 1,
+      "mode_scrapeo": 26,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {
+        "wait_time":30
+      }
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 27,
+    "fields": {
+      "url": "https://www.mycobank.org/Simple%20names%20search",
+      "sobrenombre": "MYCOBANK",
+      "time_choices": 1,
+      "mode_scrapeo": 23,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 30,
     "fields": {
       "url": "http://www.flmnh.ufl.edu/scripts/dbs/malatp_pub.asp",
       "sobrenombre": "FLMNH_UFL",
       "time_choices": 1,
       "mode_scrapeo": 12,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 36,
+    "fields": {
+      "url": "https://nematode.ars.usda.gov/",
+      "sobrenombre": "NEMATODE",
+      "time_choices": 1,
+      "mode_scrapeo": 24,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 40,
+    "fields": {
+      "url": "http://diaspididae.linnaeus.naturalis.nl/linnaeus_ng/app/views/species/taxon.php?id=113067&epi=155",
+      "sobrenombre": "DIASPIDIDAE",
+      "time_choices": 1,
+      "mode_scrapeo": 25,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 42,
+    "fields": {
+      "url": "https://www.fws.gov/species/search",
+      "sobrenombre": "FWS_GOV",
+      "time_choices": 1,
+      "mode_scrapeo": 28,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}

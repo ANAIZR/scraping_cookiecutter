@@ -32,8 +32,9 @@ def scrape_aguiar_hvr(
     fs = gridfs.GridFS(db)
 
     all_scrapped = ""
-    driver.get(url)
+
     try:
+        driver.get(url)
         while True:
             try:
                 WebDriverWait(driver, wait_time).until(
