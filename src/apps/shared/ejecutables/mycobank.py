@@ -6,12 +6,11 @@ from bs4 import BeautifulSoup
 import time
 import os
 import hashlib
-
 # Configurar Selenium (aquí con Chrome)
 options = webdriver.ChromeOptions()
-options.add_argument("--start-maximized")  # Maximiza la ventana
+options.add_argument("--headless")  # Ejecutar en modo headless (sin interfaz)
+options.add_argument("--window-size=1920,1080")  # Forzar resolución fija
 driver = webdriver.Chrome(options=options)
-
 
 output_dir = r"C:\web_scraping_files"
 if not os.path.exists(output_dir):
@@ -36,16 +35,22 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
             return file_path
         version += 1
 
+if not os.path.exists(os.path.dirname(output_dir)):
+    os.makedirs(os.path.dirname(output_dir))
+
+def save_to_file(content, file_path):
+    with open(file_path, "a", encoding="utf-8") as f:
+        f.write(content + "\n")
+        f.write("*" * 40 + "\n")
 
 # Navegar a la página deseada
 url = "https://www.mycobank.org/Simple%20names%20search"
 driver.get(url)
-
-# Esperar a que la página cargue completamente
-time.sleep(5)  # Ajusta este tiempo según sea necesario
-
+# Crear carpeta y archivo para almacenar el contenido
+folder_path = generate_directory(output_dir, url)
+file_path = get_next_versioned_filename(folder_path, base_name="mycobank")
 try:
-    wait = WebDriverWait(driver, 10)  # Esperar hasta 10 segundos
+    wait = WebDriverWait(driver, 10)
     search_button = wait.until(EC.element_to_be_clickable((By.ID, "search-btn")))
     search_button.click()
     print("Se hizo clic en el botón de búsqueda.")
@@ -54,67 +59,32 @@ except Exception as e:
     driver.quit()
     exit()
 
-# Obtener el HTML de la página
-time.sleep(5)
-html_content = driver.page_source
-
-# Usar BeautifulSoup para analizar el HTML
-soup = BeautifulSoup(html_content, "html.parser")
-
-# Esperar a que la tabla cargue
-wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "tbody[role='rowgroup']")))
-
-# Recoger todas las filas sin depender del scroll
+time.sleep(5)  # Esperar carga inicial
 rows = driver.find_elements(By.CSS_SELECTOR, "tbody[role='rowgroup'] tr")
+
 print(f"Número total de filas encontradas: {len(rows)}")
 
-# Crear carpeta y archivo para almacenar el contenido
-folder_path = generate_directory(output_dir, url)
-file_path = get_next_versioned_filename(folder_path, base_name="scrape")
+# Iterar sobre las filas
+for index, row in enumerate(rows, start=1):
+    try:
+        time.sleep(1)
+        link = row.find_element(By.CSS_SELECTOR, "td a")
+        link_name = link.text.strip()
+        driver.execute_script("arguments[0].click();", link)
+        
+        time.sleep(2)
+        popup = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.dockmodal-body")))
+        popup_content = popup.text.strip()
+        
+        content_to_save = f"# {index} - SITIO: {link_name}\nContenido:\n{popup_content}"
+        save_to_file(content_to_save, output_dir)
+        
+        close_button = driver.find_element(By.CSS_SELECTOR, "a.header-action.action-close")
+        driver.execute_script("arguments[0].click();", close_button)
+        print(f"Popup procesado y cerrado para {link_name}.")
+    except Exception as e:
+        print(f"Error al procesar la fila {index}: {e}")
+        continue
 
-# Abrir el archivo en modo 'a' para agregar contenido después de cada ciclo
-with open(file_path, 'w', encoding='utf-8') as f:
-    # Iterar sobre cada fila y abrir el popup
-    for index, row in enumerate(rows, start=1):
-        try:
-            # Obtener el enlace dentro de la fila
-            time.sleep(1)
-            link = row.find_element(By.CSS_SELECTOR, "td a")
-            time.sleep(1)
-            link_name = link.find_element(By.CSS_SELECTOR, "div.text-overflow").text.strip()
-            #link_name=link.text.strip()  # Asegúrate de obtener el texto correctamente
-            print(f"Haciendo clic en {index}: : {link_name}")
-            
-            driver.execute_script("arguments[0].click();", link)  # Usar JavaScript para asegurar el clic
-
-            time.sleep(2)
-
-            # Esperar a que el popup se haga visible
-            popup = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.dockmodal-body")))
-
-            # Extraer el contenido de texto dentro del popup
-            popup_content = popup.text.strip()
-
-            # Guardar el contenido del popup en el archivo durante cada ciclo
-            f.write(f"Contenido del listado {index}: {link_name}:\n")
-            f.write(f"{popup_content}\n")
-            f.write("-" * 80 + "\n")  # Separador entre los contenidos
-            f.flush()
-            # Imprimir el contenido del popup para verificar
-            #print(f"Contenido del popup para {link_text}:")
-            #print(popup_content)
-
-            # Cerrar el popup
-            close_button = driver.find_element(By.CSS_SELECTOR, "a.header-action.action-close")
-            driver.execute_script("arguments[0].click();", close_button)  # Usar JavaScript para asegurar el clic
-            print(f"Popup cerrado para {index}: {link_name}")
-            time.sleep(1)
-        except Exception as e:
-            print(f"Error al procesar el enlace en la fila {index}: {e}")
-            continue
-
-
-
-# Cerrar el navegador al finalizar
 driver.quit()
-print(f"Contenido guardado en: {file_path}")
+print(f"Contenido guardado en: {output_dir}")
