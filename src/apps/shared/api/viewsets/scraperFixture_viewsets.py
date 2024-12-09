@@ -30,6 +30,9 @@ from ..utils.diaspididae import scrape_diaspididae
 from ..utils.genome_jp import scrape_genome_jp
 from ..utils.plants_usda_gov import scrape_plants_usda_gov
 from ..utils.fws_gov import scrape_fws_gov
+from ..utils.fao_org import scrape_fao_org
+from ..utils.catalogue_of_life import scrape_catalogue_of_life
+
 
 class ScraperAPIView(APIView):
     def post(self, request):
@@ -183,6 +186,10 @@ class ScraperAPIView(APIView):
             return scrape_plants_usda_gov(url, sobrenombre)
         elif mode_scrapeo == 28:
             return scrape_fws_gov(url, sobrenombre)
+        elif mode_scrapeo == 29:
+            return scrape_fao_org(url, sobrenombre)
+        elif mode_scrapeo == 30:
+            return scrape_catalogue_of_life(url, sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,
