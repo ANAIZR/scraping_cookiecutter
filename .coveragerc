@@ -1,0 +1,10 @@
+[run]
+branch = True
+source =
+    src/apps/users
+    src/apps/shared
+omit =
+    */migrations/*
+    */settings.py
+    */wsgi.py
+    */asgi.py
