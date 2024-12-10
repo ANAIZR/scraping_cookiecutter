@@ -14,7 +14,6 @@ import time
 
 
 def load_search_terms(file_path):
-    """Carga los términos de búsqueda desde el archivo de texto."""
     try:
         with open(file_path, "r") as file:
             return [line.strip() for line in file.readlines() if line.strip()]

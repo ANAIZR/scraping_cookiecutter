@@ -18,7 +18,7 @@ def scrape_bonap(
     sobrenombre,
 ):
     options = webdriver.ChromeOptions()
-    #options.add_argument("--headless")
+    options.add_argument("--headless")
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
@@ -37,7 +37,6 @@ def scrape_bonap(
         family_list = driver.find_elements(By.CSS_SELECTOR, "#family-list li")
         for family in family_list:
             family_name = family.text.strip()
-            print(f"Familia: {family_name}")
 
             family.click()
             time.sleep(2)
@@ -45,7 +44,6 @@ def scrape_bonap(
             genus_list = driver.find_elements(By.CSS_SELECTOR, "#genus-list li")
             for genus in genus_list:
                 genus_name = genus.text.strip()
-                print(f"  Género: {genus_name}")
 
                 genus.click()
                 time.sleep(2)
@@ -53,7 +51,6 @@ def scrape_bonap(
                 species_list = driver.find_elements(By.CSS_SELECTOR, "#species-list li")
                 for species in species_list:
                     species_name = species.text.strip()
-                    print(f"    Especie: {species_name}")
 
                     species.click()
                     time.sleep(2)

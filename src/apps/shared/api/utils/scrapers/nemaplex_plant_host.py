@@ -16,7 +16,7 @@ from rest_framework import status
 
 def scrape_nemaplex_plant_host(url, sobrenombre):
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # Ejecutar sin interfaz gráfica
+    options.add_argument("--headless") 
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
