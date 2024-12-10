@@ -10,8 +10,7 @@ router.register(r"urls", scraperURL_viewsets.ScraperURLViewSet, basename="urls")
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
-    path("scraper-pdf/", pdf_viewsets.scrape_url, name="scraper_pdf"),
-    path("scraper-get-pdf/", pdf_viewsets.get_scraped_url, name="get_scraper_pdf"),
+    path("scraper-get-url/", pdf_viewsets.get_scraped_url, name="get_scraper_url"),
     path("scraper-url/",  ScraperAPIView.as_view(), name="scraper_url"),
 ]
 urlpatterns += router.urls
