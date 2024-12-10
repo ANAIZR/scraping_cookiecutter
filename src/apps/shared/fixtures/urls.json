@@ -569,6 +569,19 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 75,
+    "fields": {
+      "url": "https://www.aphis.usda.gov/plant-pests-diseases",
+      "sobrenombre": "APHIS_USDA",
+      "time_choices": 1,
+      "mode_scrapeo": 32,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 78,
     "fields": {
       "url": "https://prod.senasica.gob.mx/SIRVEF/ContenidoPublico/Manuales%20operativos/Plan%20de%20accion%20vigilancia%20y%20control-%20Helicoverpa%20armigera%20en%20M%C3%A9xico.pdf",
@@ -598,6 +611,19 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 82,
+    "fields": {
+      "url": "https://www.eppo.int/ACTIVITIES/plant_quarantine/A1_list",
+      "sobrenombre": "EPPO_QUARENTINE",
+      "time_choices": 1,
+      "mode_scrapeo": 33,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 84,
     "fields": {
       "url": "https://www.se-eppc.org/weeds.cfm",
@@ -617,6 +643,19 @@
       "sobrenombre": "FAO_ORG",
       "time_choices": 1,
       "mode_scrapeo": 29,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 86,
+    "fields": {
+      "url": "http://www.extento.hawaii.edu/kbase/crop/Type/Croppest.htm",
+      "sobrenombre": "EXTENTO",
+      "time_choices": 1,
+      "mode_scrapeo": 34,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
