@@ -298,6 +298,32 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 32,
+    "fields": {
+      "url": "http://www.indexfungorum.org/names/names.asp",
+      "sobrenombre": "FUNGORUM",
+      "time_choices": 1,
+      "mode_scrapeo": 30,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 33,
+    "fields": {
+      "url": "http://nemaplex.ucdavis.edu/Nemabase2010/PlantHostStatusDDQuery.aspx",
+      "sobrenombre": "NEMPLAEX",
+      "time_choices": 1,
+      "mode_scrapeo": 31,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 36,
     "fields": {
       "url": "https://nematode.ars.usda.gov/",
@@ -361,19 +387,7 @@
       "parameters": {}
     }
   },
-  {
-    "model": "shared.ScraperURL",
-    "pk": 54,
-    "fields": {
-      "url": "https://www.catalogueoflife.org/annual-checklist/2007/search.php",
-      "sobrenombre": "CATALOGUE_OF_LIFE",
-      "time_choices": 1,
-      "mode_scrapeo": 30,
-      "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
-    }
-  },
+
   {
     "model": "shared.ScraperURL",
     "pk": 56,

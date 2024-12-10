@@ -2,38 +2,37 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ...models.scraperURL import ScraperURL
-from ..utils.iucngisd import scrape_iucngisd
-from ..utils.coleoptera_neotropical import scrape_coleoptera_neotropical
-from ..utils.e_floras import scrape_e_floras
-from ..utils.ansci_cornell import scrape_ansci_cornell
-from ..utils.first_mode import scrape_first_mode
-from ..utils.aphidnet import scrape_aphidnet
-from ..utils.method_pdf import scrape_pdf
-from ..utils.aguiar_hvr import scrape_aguiar_hvr
-from ..utils.gene_affrc import scrape_gene_affrc
-from ..utils.plant_ifas import scrape_plant_ifas
-from ..utils.plant_atlas import scrape_plant_atlas
-from ..utils.flmnh_ufl import scrape_flmnh_ufl
-from ..utils.iucnredlist import scrape_iucnredlist
-from ..utils.ala_org import scrape_ala_org
-from ..utils.pnw_hand_books import scrape_pnw_hand_books
-from ..utils.ipm_illinois import scrape_ipm_illinoes
-from ..utils.pest_alerts import scrape_pest_alerts
-from ..utils.cabi_digital import scrape_cabi_digital
-from ..utils.ndrs_org import scrape_ndrs_org
-from ..utils.ippc import scrape_ippc
-from ..utils.eppo import scrape_eppo
-from ..utils.se_eppc import scrape_se_eppc
-from ..utils.mycobank_org import scrape_mycobank_org
-from ..utils.nematode import scrape_nematode
-from ..utils.diaspididae import scrape_diaspididae
-from ..utils.genome_jp import scrape_genome_jp
-from ..utils.plants_usda_gov import scrape_plants_usda_gov
-from ..utils.fws_gov import scrape_fws_gov
-from ..utils.fao_org import scrape_fao_org
-from ..utils.catalogue_of_life import scrape_catalogue_of_life
-
-
+from ..utils.scrapers.iucngisd import scrape_iucngisd
+from ..utils.scrapers.e_floras import scrape_e_floras
+from ..utils.scrapers.coleoptera_neotropical import scrape_coleoptera_neotropical
+from ..utils.scrapers.ansci_cornell import scrape_ansci_cornell
+from ..utils.scrapers.first_mode import scrape_first_mode
+from ..utils.scrapers.aphidnet import scrape_aphidnet
+from ..utils.scrapers.method_pdf import scrape_pdf
+from ..utils.scrapers.aguiar_hvr import scrape_aguiar_hvr
+from ..utils.scrapers.gene_affrc import scrape_gene_affrc
+from ..utils.scrapers.plant_ifas import scrape_plant_ifas
+from ..utils.scrapers.plant_atlas import scrape_plant_atlas
+from ..utils.scrapers.flmnh_ufl import scrape_flmnh_ufl
+from ..utils.scrapers.iucnredlist import scrape_iucnredlist
+from ..utils.scrapers.ala_org import scrape_ala_org
+from ..utils.scrapers.pnw_hand_books import scrape_pnw_hand_books
+from ..utils.scrapers.ipm_illinois import scrape_ipm_illinoes
+from ..utils.scrapers.pest_alerts import scrape_pest_alerts
+from ..utils.scrapers.cabi_digital import scrape_cabi_digital
+from ..utils.scrapers.ndrs_org import scrape_ndrs_org
+from ..utils.scrapers.ippc import scrape_ippc
+from ..utils.scrapers.eppo import scrape_eppo
+from ..utils.scrapers.se_eppc import scrape_se_eppc
+from ..utils.scrapers.mycobank_org import scrape_mycobank_org
+from ..utils.scrapers.nematode import scrape_nematode
+from ..utils.scrapers.diaspididae import scrape_diaspididae
+from ..utils.scrapers.genome_jp import scrape_genome_jp
+from ..utils.scrapers.plants_usda_gov import scrape_plants_usda_gov
+from ..utils.scrapers.fws_gov import scrape_fws_gov
+from ..utils.scrapers.fao_org import scrape_fao_org
+from ..utils.scrapers.index_fungorum import scrape_index_fungorum
+from ..utils.scrapers.nemaplex_plant_host import scrape_nemaplex_plant_host
 class ScraperAPIView(APIView):
     def post(self, request):
         url = request.data.get("url")
@@ -189,7 +188,9 @@ class ScraperAPIView(APIView):
         elif mode_scrapeo == 29:
             return scrape_fao_org(url, sobrenombre)
         elif mode_scrapeo == 30:
-            return scrape_catalogue_of_life(url, sobrenombre)
+            return scrape_index_fungorum(url, sobrenombre)
+        elif mode_scrapeo == 31:
+            return scrape_nemaplex_plant_host(url, sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,
