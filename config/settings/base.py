@@ -1,14 +1,12 @@
 from pathlib import Path
 import environ
+import os
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 APPS_DIR = BASE_DIR / "src.apps"
 env = environ.Env()
-
-READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
-if READ_DOT_ENV_FILE:
-    env.read_env(str(BASE_DIR / ".env"))
-
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+ 
 # GENERAL
 DEBUG = env.bool("DJANGO_DEBUG", False)
 TIME_ZONE = "UTC"
@@ -17,13 +15,17 @@ LANGUAGE_CODE = "en-us"
 USE_I18N = True
 USE_TZ = True
 
-# DATABASES
 DATABASES = {
-    "default": env.db(
-        "DATABASE_URL",
-        default="postgres://postgres:admin@localhost:5432/portal_scraping",
-    ),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "USER": env("DB_USER"),
+        "NAME": env("DB_NAME"),
+        "PASSWORD": env("DB_PASS"),
+        "HOST": env("DB_HOST"),
+        "PORT": env("DB_PORT"),
+    }
 }
+
 
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -46,8 +48,6 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
-    "crispy_forms",
-    "crispy_bootstrap5",
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
@@ -109,8 +109,6 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
-CSRF_COOKIE_SECURE = False  # Solo para desarrollo
-CSRF_COOKIE_HTTPONLY = False  # Solo para desarrollo
 
 # MEDIA
 MEDIA_ROOT = str(APPS_DIR / "media")
@@ -139,11 +137,9 @@ TEMPLATES = [
 
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
-CRISPY_TEMPLATE_PACK = "bootstrap5"
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 
 # FIXTURES
-FIXTURE_DIRS = (str(APPS_DIR / "fixtures"),)
+FIXTURE_DIRS = (str(APPS_DIR / "shared" / "fixtures"),)
 
 # SECURITY
 #SESSION_COOKIE_HTTPONLY = True

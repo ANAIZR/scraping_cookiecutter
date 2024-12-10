@@ -49,6 +49,8 @@ $ python manage.py runserver
 $ python manage.py createsuperuser
 ```
 
+
+
 ### Test Coverage
 
 ```sh
@@ -58,6 +60,7 @@ $ open htmlcov/index.html
 ```
 
 ### Running Tests with pytest
+
 ```sh
 $ pytest
 ```
