@@ -36,8 +36,8 @@ from ..utils.scrapers.nemaplex_plant_host import scrape_nemaplex_plant_host
 from ..utils.scrapers.aphis_usda import scrape_aphis_usda
 from ..utils.scrapers.eppo_quarentine import scrape_eppo_quarentine
 from ..utils.scrapers.extento import scrape_extento
-
-
+from ..utils.scrapers.ncbi import scrape_ncbi
+from ..utils.scrapers.bonap import scrape_bonap
 class ScraperAPIView(APIView):
     def post(self, request):
         url = request.data.get("url")
@@ -202,6 +202,10 @@ class ScraperAPIView(APIView):
             return scrape_eppo_quarentine(url, sobrenombre)
         elif mode_scrapeo == 34:
             return scrape_extento(url, sobrenombre)
+        elif mode_scrapeo == 35:
+            return scrape_ncbi(url, sobrenombre)
+        elif mode_scrapeo == 36:
+            return scrape_bonap(url, sobrenombre)
 
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
