@@ -6,14 +6,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
-from datetime import datetime
 import gridfs
 import os
-from .functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-)
+from ..functions import save_scraped_data
 from rest_framework.response import Response
 from rest_framework import status
 import time
@@ -21,16 +16,10 @@ import time
 
 def scrape_pnw_hand_books(
     url,
-    selector,
-    content_selector,
-    attribute,
-    tag_name_first,
-    tag_name_second,
-    search_button_selector,
-    sobrenombre,
+    sobrenombre
 ):
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
@@ -40,9 +29,6 @@ def scrape_pnw_hand_books(
     collection = db["collection"]
     fs = gridfs.GridFS(db)
 
-    output_dir = r"C:\web_scraping_files"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
     all_scrapped = ""
 
@@ -52,19 +38,25 @@ def scrape_pnw_hand_books(
         def scrape_current_page():
             try:
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector))
+                    EC.presence_of_all_elements_located(
+                        (By.CSS_SELECTOR, "div.view-content div.views-row")
+                    )
                 )
-                containers = driver.find_elements(By.CSS_SELECTOR, selector)
+                containers = driver.find_elements(
+                    By.CSS_SELECTOR, "div.view-content div.views-row"
+                )
 
                 for container in containers:
-                    link = container.find_element(By.CSS_SELECTOR, content_selector)
-                    href = link.get_attribute(attribute)
+                    link = container.find_element(
+                        By.CSS_SELECTOR, "div.views-field-title a"
+                    )
+                    href = link.get_attribute("href")
 
                     driver.get(href)
                     time.sleep(2)
                     soup = BeautifulSoup(driver.page_source, "html.parser")
 
-                    title = soup.find(tag_name_first)
+                    title = soup.find("h1")
 
                     driver.back()
                     time.sleep(2)
@@ -74,7 +66,7 @@ def scrape_pnw_hand_books(
 
         def go_to_next_page():
             try:
-                next_button = driver.find_element(By.CSS_SELECTOR, tag_name_second)
+                next_button = driver.find_element(By.CSS_SELECTOR, "li.next a")
                 next_button.click()
                 time.sleep(3)
                 return True
@@ -84,7 +76,9 @@ def scrape_pnw_hand_books(
 
         try:
             time.sleep(5)
-            boton = driver.find_element(By.CSS_SELECTOR, search_button_selector)
+            boton = driver.find_element(
+                By.CSS_SELECTOR, "#edit-submit-plant-subarticles-autocomplete"
+            )
             boton.click()
             time.sleep(3)
 
@@ -97,34 +91,18 @@ def scrape_pnw_hand_books(
         except Exception as e:
             print(f"Error durante el proceso de scraping: {e}")
         if all_scrapped.strip():
-            folder_path = generate_directory(output_dir, url)
-            file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(all_scrapped)
-
-            with open(file_path, "rb") as file_data:
-                object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-
-            collection.insert_one(data)
-
-            delete_old_documents(url, collection, fs)
-
-            return Response(
-                {"message": "Scraping completado y datos guardados en MongoDB."},
-                status=status.HTTP_200_OK,
+            response_data = save_scraped_data(
+                all_scrapped, url, sobrenombre, collection, fs
             )
+
+            return Response(response_data, status=status.HTTP_200_OK)
         else:
             return Response(
-                {"message": "No se encontró contenido para guardar."},
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
                 status=status.HTTP_204_NO_CONTENT,
             )
 

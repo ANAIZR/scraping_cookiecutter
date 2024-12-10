@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text
-from .functions import (
+from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,

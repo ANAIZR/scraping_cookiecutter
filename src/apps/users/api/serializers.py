@@ -84,7 +84,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
         return user
 
     def send_welcome_email(self, user):
-        subject = "Bienvenido al portal de CRIFCAN"
+        subject = "Bienvenido al portal de WEB SCRAPPER"
         message = (
             f"Hola {user.email}, gracias por registrarte en la plataforma de CRIFCAN."
         )
