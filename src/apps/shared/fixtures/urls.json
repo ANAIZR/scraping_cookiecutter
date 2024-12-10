@@ -39,7 +39,7 @@
     "pk": 3,
     "fields": {
       "url": "http://coleoptera-neotropical.org/8b-colecc-JEBC/JEBC/5-Buprestidae.htm",
-      "time_choices": 4,
+      "time_choices": 1,
       "sobrenombre": "COLEOPTERA",
       "mode_scrapeo": 2,
       "created_at": "2024-09-16T11:00:00Z",
