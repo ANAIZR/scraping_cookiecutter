@@ -23,7 +23,6 @@ def load_search_terms(file_path):
 
 
 def scrape_index_fungorum(url, sobrenombre):
-    # Cargar los términos desde el archivo
     search_terms = load_search_terms(
         os.path.join(os.path.dirname(__file__), "../txt/fungi.txt")
     )

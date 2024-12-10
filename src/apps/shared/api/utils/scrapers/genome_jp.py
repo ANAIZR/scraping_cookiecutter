@@ -66,9 +66,7 @@ def extract_data(driver, wait_time):
         return all_scrapped
 
 def scrape_genome_jp(url, wait_time, sobrenombre):
-    """
-    Realiza scraping en la URL especificada y guarda los datos en MongoDB.
-    """
+
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--ignore-certificate-errors") 
