@@ -76,7 +76,7 @@ def scrape_all_pdfs_from_page(url, output_dir, collection, fs):
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-
+    options.add_argument('--headless')
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )

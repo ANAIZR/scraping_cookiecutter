@@ -14,7 +14,6 @@ import time
 
 
 def load_search_terms(file_path):
-    """Carga los términos de búsqueda desde el archivo de texto."""
     try:
         with open(file_path, "r") as file:
             return [line.strip() for line in file.readlines() if line.strip()]
@@ -24,7 +23,6 @@ def load_search_terms(file_path):
 
 
 def scrape_index_fungorum(url, sobrenombre):
-    # Cargar los términos desde el archivo
     search_terms = load_search_terms(
         os.path.join(os.path.dirname(__file__), "../txt/fungi.txt")
     )
