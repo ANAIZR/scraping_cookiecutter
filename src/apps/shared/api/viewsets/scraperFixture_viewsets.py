@@ -38,6 +38,7 @@ from ..utils.scrapers.eppo_quarentine import scrape_eppo_quarentine
 from ..utils.scrapers.extento import scrape_extento
 from ..utils.scrapers.ncbi import scrape_ncbi
 from ..utils.scrapers.bonap import scrape_bonap
+from ..utils.scrapers.delta import scrape_delta
 class ScraperAPIView(APIView):
     def post(self, request):
         url = request.data.get("url")
@@ -206,7 +207,8 @@ class ScraperAPIView(APIView):
             return scrape_ncbi(url, sobrenombre)
         elif mode_scrapeo == 36:
             return scrape_bonap(url, sobrenombre)
-
+        elif mode_scrapeo == 37:
+            return scrape_delta(url, sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,
