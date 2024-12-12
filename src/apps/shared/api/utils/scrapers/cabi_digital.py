@@ -34,7 +34,7 @@ def scrape_cabi_digital(url, sobrenombre):
     collection = db["collection"]
     fs = gridfs.GridFS(db)
 
-    output_dir = r"C:\web_scraping_files"
+    output_dir =r"~/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 

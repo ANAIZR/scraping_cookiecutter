@@ -35,7 +35,7 @@ def scrape_aphidnet(
     fs = gridfs.GridFS(db)
     all_scraped_fact_sheets = ""
     all_scraped_morphology = ""
-    output_dir = r"C:\web_scraping_files"
+    output_dir = r"~/"
 
     try:
         driver.get(url)
