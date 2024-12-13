@@ -20,7 +20,7 @@ import time
 from selenium.webdriver.support.ui import Select
 
 
-def scrape_ndrs_org(url,sobrenombre):
+def scrape_ndrs_org(url, sobrenombre):
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     driver = webdriver.Chrome(
@@ -30,7 +30,8 @@ def scrape_ndrs_org(url,sobrenombre):
     db = client["scrapping-can"]
     collection = db["collection"]
     fs = gridfs.GridFS(db)
-    output_dir = r"~/"
+    output_dir = os.path.expanduser("~/")
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     base_url = "https://www.ndrs.org.uk/"
@@ -138,7 +139,6 @@ def scrape_ndrs_org(url,sobrenombre):
 
                 soup = BeautifulSoup(driver.page_source, "html.parser")
                 containers = soup.select("#MainContent .volumes .column")
-                
 
                 if len(containers) <= index + 1:
                     break

@@ -23,7 +23,10 @@ def extract_text_with_pdfminer(pdf_file):
 
 
 def scrape_pdf(url, sobrenombre, start_page=1, end_page=None):
-    output_dir = r"C:\web_scraping_files"
+    output_dir = os.path.expanduser("~/")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     try:
         client = MongoClient("mongodb://localhost:27017/")

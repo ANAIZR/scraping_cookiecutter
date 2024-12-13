@@ -35,7 +35,11 @@ def scrape_aphidnet(
     fs = gridfs.GridFS(db)
     all_scraped_fact_sheets = ""
     all_scraped_morphology = ""
-    output_dir = r"~/"
+        # Expande el directorio home
+    output_dir = os.path.expanduser("~/")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     try:
         driver.get(url)

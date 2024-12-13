@@ -22,7 +22,7 @@ from selenium.webdriver.chrome.options import Options
 
 def scrape_cabi_digital(url, sobrenombre):
     options = Options()
-    options.add_argument('--headless')
+    options.add_argument("--headless")
     driver = uc.Chrome(options=options)
     driver.set_page_load_timeout(60)
     driver.get(url)
@@ -34,7 +34,8 @@ def scrape_cabi_digital(url, sobrenombre):
     collection = db["collection"]
     fs = gridfs.GridFS(db)
 
-    output_dir =r"~/"
+    output_dir = os.path.expanduser("~/")
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
