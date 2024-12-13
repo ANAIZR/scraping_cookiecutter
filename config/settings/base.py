@@ -199,11 +199,11 @@ SIMPLE_JWT = {
 
 CORS_URLS_REGEX = r"^/api/.*$"
 CORS_ALLOWED_ORIGINS = [
-    "0.0.0.0",
-    "127.0.0.1",
-    "localhost",
-    "apiwebscraper.sgcan.dev",
-    "webscraper.sgcan.dev",
+    "http://0.0.0.0",
+    "http://127.0.0.1",
+    "http://localhost",
+    "https://apiwebscraper.sgcan.dev",
+    "https://webscraper.sgcan.dev",
 ]
 SPECTACULAR_SETTINGS = {
     "TITLE": "WEB SCRAPER API",
