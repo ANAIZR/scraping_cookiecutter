@@ -8,7 +8,13 @@ DEBUG = True
 SECRET_KEY = env(
     "SECRET_KEY",
 )
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
+ALLOWED_HOSTS = [
+    "https://apiwebscraper.sgcan.dev/",
+    "https://webscraper.sgcan.dev/",
+    "0.0.0.0",
+    "localhost",
+    "127.0.0.1",
+]
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True

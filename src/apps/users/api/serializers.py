@@ -1,11 +1,9 @@
 from rest_framework import serializers
 from src.apps.users.models import User
-from django.core.mail import send_mail
-from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from ..utils.update_system_role import update_system_role
-
+from ..utils.send_email import send_welcome_email
 
 class UsuarioGETSerializer(serializers.ModelSerializer):
     system_role_description = serializers.SerializerMethodField()
@@ -27,7 +25,6 @@ class UsuarioGETSerializer(serializers.ModelSerializer):
         ]
 
     def get_system_role_description(self, obj):
-        print("system_role:", obj.system_role)  # Esto te mostrará el valor real en consola
         role_dict = dict(User.ROLE_CHOICES)
         return role_dict.get(obj.system_role, "No definido")
 
@@ -61,7 +58,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
         update_system_role(user)
         user.save()
 
-        self.send_welcome_email(user)
+        send_welcome_email(user)
 
         return user
 
@@ -83,16 +80,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
 
         return user
 
-    def send_welcome_email(self, user):
-        subject = "Bienvenido al portal de WEB SCRAPPER"
-        message = (
-            f"Hola {user.email}, gracias por registrarte en la plataforma de CRIFCAN."
-        )
-        from_email = settings.EMAIL_HOST_USER
-        recipient_list = [user.email]
-
-        send_mail(subject, message, from_email, recipient_list)
-
+    
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()

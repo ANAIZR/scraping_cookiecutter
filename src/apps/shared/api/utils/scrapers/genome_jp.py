@@ -12,9 +12,7 @@ from rest_framework import status
 import time
 
 def navigate_to_next_page(driver, wait_time):
-    """
-    Navega a la siguiente página si el botón "Next" está disponible y clickeable.
-    """
+
     try:
         next_button = WebDriverWait(driver, wait_time).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
@@ -27,9 +25,7 @@ def navigate_to_next_page(driver, wait_time):
         return False
 
 def extract_data(driver, wait_time):
-    """
-    Extrae datos del segundo tbody y devuelve el texto formateado.
-    """
+
     all_scrapped = ""
     record_count = 1
     skipped_rows = 0
@@ -70,9 +66,7 @@ def extract_data(driver, wait_time):
         return all_scrapped
 
 def scrape_genome_jp(url, wait_time, sobrenombre):
-    """
-    Realiza scraping en la URL especificada y guarda los datos en MongoDB.
-    """
+
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--ignore-certificate-errors") 

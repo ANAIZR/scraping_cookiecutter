@@ -15,7 +15,9 @@ import time
 
 def scrape_eppo_quarentine(url, sobrenombre):
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")  # Si quieres ejecutarlo sin interfaz gráfica, descomenta esta línea
+
+    options.add_argument("--headless")  
+
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )

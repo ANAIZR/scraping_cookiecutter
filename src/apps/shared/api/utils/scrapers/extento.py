@@ -15,6 +15,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 
 def scrape_extento(url, sobrenombre):
     options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )

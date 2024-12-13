@@ -26,14 +26,16 @@ def scrape_aphidnet(
 ):
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()), options=options
+    )
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]
     collection = db["collection"]
     fs = gridfs.GridFS(db)
     all_scraped_fact_sheets = ""
     all_scraped_morphology = ""
-    output_dir = r"C:\web_scraping_files"
+    output_dir = r"~/"
 
     try:
         driver.get(url)

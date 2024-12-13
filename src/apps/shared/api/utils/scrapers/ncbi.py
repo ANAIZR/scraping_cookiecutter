@@ -1,22 +1,24 @@
-import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select
 from webdriver_manager.chrome import ChromeDriverManager
-from bs4 import BeautifulSoup
 from pymongo import MongoClient
 import gridfs
+import os
 from ..functions import save_scraped_data
 from rest_framework.response import Response
 from rest_framework import status
+import time
 
+import os
 
-def scrape_nemaplex_plant_host(url, sobrenombre):
+import os
+
+def scrape_ncbi(url, sobrenombre):
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless") 
+    options.add_argument("--headless")
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
@@ -28,52 +30,48 @@ def scrape_nemaplex_plant_host(url, sobrenombre):
 
     all_scrapped = ""
 
+    base_dir = os.path.dirname(os.path.abspath(__file__))  
+    txt_file_path = os.path.join(base_dir, "..", "txt", "fungi.txt") 
+    txt_file_path = os.path.normpath(txt_file_path)
+
+    if not os.path.exists(txt_file_path):
+        return Response({"error": f"El archivo {txt_file_path} no existe."}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         driver.get(url)
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.ID, "DropDownList1"))
-        )
 
-        dropdown = Select(driver.find_element(By.ID, "DropDownList1"))
+        with open(txt_file_path, 'r') as file:
+            search_terms = file.readlines()
 
-        for index in range(len(dropdown.options)):
+        for term in search_terms:
+            term = term.strip() 
+            if not term:
+                continue  
 
-            dropdown.select_by_index(index)
+            search_box = driver.find_element(By.ID, "searchtxt")
+            search_box.clear()
+            search_box.send_keys(term)
 
             submit_button = driver.find_element(By.XPATH, "//input[@type='submit']")
             submit_button.click()
-            try:
-                WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located((By.ID, "GridView1"))
-                )
 
-                page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                table = page_soup.find("table", {"id": "GridView1"})
-                if table:
-                    
-                    rows = table.find_all("tr")
-                    for row in rows:
-                        columns = row.find_all("td")
-                        row_data = [col.get_text(strip=True) for col in columns]
-                        all_scrapped += (
-                            " ".join(row_data) + "\n"
-                        ) 
-                
-            except:
-                print(f"Error inesperado para la opción {index + 1}. Excepción: {str(e)}")
-
-            driver.back()
-
-            WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.ID, "DropDownList1"))
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
+
+            try:
+                table = driver.find_element(By.XPATH, "//table[@width='100%']")
+                table_data = table.text
+                if table_data.strip():  
+                    all_scrapped += table_data + "\n"
+            except:
+                continue
 
         if all_scrapped.strip():
             response_data = save_scraped_data(
                 all_scrapped, url, sobrenombre, collection, fs
             )
             return Response(response_data, status=status.HTTP_200_OK)
-
         else:
             return Response(
                 {

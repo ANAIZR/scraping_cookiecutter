@@ -1,12 +1,13 @@
 from pathlib import Path
 import environ
 import os
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 APPS_DIR = BASE_DIR / "src.apps"
 env = environ.Env()
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
- 
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+
 # GENERAL
 DEBUG = env.bool("DJANGO_DEBUG", False)
 TIME_ZONE = "UTC"
@@ -142,7 +143,7 @@ FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 FIXTURE_DIRS = (str(APPS_DIR / "shared" / "fixtures"),)
 
 # SECURITY
-#SESSION_COOKIE_HTTPONLY = True
+# SESSION_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
 
 # EMAIL
@@ -183,12 +184,18 @@ LOGGING = {
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        # "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    # "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+}
 
 CORS_URLS_REGEX = r"^/api/.*$"
 CORS_ALLOWED_ORIGINS = [

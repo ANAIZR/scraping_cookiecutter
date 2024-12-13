@@ -1,7 +1,7 @@
 import os
 import hashlib
 from datetime import datetime
-OUTPUT_DIR = r"C:\web_scraping_files"
+OUTPUT_DIR = r"~/"
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
