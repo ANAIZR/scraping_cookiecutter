@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pymongo import MongoClient
 import gridfs
-from ..functions import save_scraped_data
+from ..functions import save_scraper_data
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -70,7 +70,7 @@ def scraper_ansci_cornell(
                     )
                 )
         if all_scraper.strip():
-            response_data = save_scraped_data(
+            response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
 

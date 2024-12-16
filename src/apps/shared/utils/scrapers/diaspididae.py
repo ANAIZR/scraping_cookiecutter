@@ -6,7 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from pymongo import MongoClient
 import gridfs
-from ..functions import save_scraped_data
+from ..functions import save_scraper_data
 from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
@@ -82,7 +82,7 @@ def scraper_diaspididae(url, sobrenombre):
                 all_scraper += f"{scraped_data['text']}\n\n"
                 all_scraper += "\n\n"
         if all_scraper.strip():
-            response_data = save_scraped_data(
+            response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
 

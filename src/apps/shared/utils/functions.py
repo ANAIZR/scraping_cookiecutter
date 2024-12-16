@@ -2,8 +2,15 @@ import os
 import hashlib
 from datetime import datetime
 
+"""
+
 OUTPUT_DIR = os.path.expanduser("~/")
 
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
+"""
+OUTPUT_DIR = "c:/web_scraper_files"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -54,12 +61,12 @@ def delete_old_documents(url, collection, fs, limit=2):
     return docs_count > limit
 
 
-def save_scraped_data(all_scrapped, url, sobrenombre, collection, fs):
+def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     folder_path = generate_directory(OUTPUT_DIR, url)
     file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
     with open(file_path, "w", encoding="utf-8") as file:
-        file.write(all_scrapped)
+        file.write(all_scraper)
 
     with open(file_path, "rb") as file_data:
         object_id = fs.put(file_data, filename=os.path.basename(file_path))
@@ -68,7 +75,7 @@ def save_scraped_data(all_scrapped, url, sobrenombre, collection, fs):
             "Objeto": object_id,
             "Tipo": "Web",
             "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Etiquetas": ["planta", "plaga"],
         }
 
@@ -79,7 +86,7 @@ def save_scraped_data(all_scrapped, url, sobrenombre, collection, fs):
         response_data = {
             "Tipo": "Web",
             "Url": url,
-            "Fecha_scrapper": data["Fecha_scrapper"],
+            "Fecha_scraper": data["Fecha_scraper"],
             "Etiquetas": data["Etiquetas"],
             "Mensaje": "Los datos han sido scrapeados correctamente.",
         }

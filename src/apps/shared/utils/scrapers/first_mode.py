@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 import gridfs
-from ..functions import save_scraped_data
+from ..functions import save_scraper_data
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -85,7 +85,7 @@ def scraper_first_mode(
 
         output_dir = r"C:\web_scraping_files"
         if all_scraper.strip():
-            response_data = save_scraped_data(
+            response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, output_dir, collection, fs
             )
             return Response(response_data, status=status.HTTP_200_OK)

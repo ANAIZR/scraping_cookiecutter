@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 import gridfs
-from ..functions import save_scraped_data
+from ..functions import saver_scraped_data
 from rest_framework.response import Response
 from rest_framework import status
 import time
@@ -109,7 +109,7 @@ def scraper_gene_affrc(url, sobrenombre, wait_time):
                 print(f"Error procesando : {e}")
 
         if all_scraper.strip():
-            response_data = save_scraped_data(
+            response_data = saver_scraped_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
 

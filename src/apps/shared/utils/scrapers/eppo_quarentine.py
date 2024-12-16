@@ -6,8 +6,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from pymongo import MongoClient
 import gridfs
-from bs4 import BeautifulSoup  # Importar BeautifulSoup
-from ..functions import save_scraped_data
+from bs4 import BeautifulSoup  
+from ..functions import save_scraper_data
 from rest_framework.response import Response
 from rest_framework import status
 import time
@@ -73,7 +73,7 @@ def scraper_eppo_quarentine(url, sobrenombre):
                                 print(f"Contenido extraído: {item.get_text(strip=True)}")
 
         if all_scraper.strip():
-            response_data = save_scraped_data(
+            response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
             return Response(response_data, status=status.HTTP_200_OK)
