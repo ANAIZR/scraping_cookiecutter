@@ -2,7 +2,7 @@ from ..serializers.login_serializers import  LoginSerializer
 from ....users.api.serializers import UsuarioGETSerializer
 from  rest_framework.views import APIView
 from rest_framework.response import Response
-from ...utils.utils_login import get_tokens_for_user
+from ....users.utils.utils_login import get_tokens_for_user
 from rest_framework import status
 
 from rest_framework.permissions import AllowAny  # Para permitir acceso sin autenticación

@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from ..utils.update_system_role import update_system_role
 from ..utils.send_email import send_welcome_email
 
+
 class UsuarioGETSerializer(serializers.ModelSerializer):
     system_role_description = serializers.SerializerMethodField()
 
@@ -80,7 +81,6 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
 
         return user
 
-    
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()

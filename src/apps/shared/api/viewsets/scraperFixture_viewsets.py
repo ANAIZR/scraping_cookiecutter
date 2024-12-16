@@ -2,42 +2,46 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from ...models.scraperURL import ScraperURL
-from ..utils.scrapers.iucngisd import scrape_iucngisd
-from ..utils.scrapers.e_floras import scrape_e_floras
-from ..utils.scrapers.coleoptera_neotropical import scrape_coleoptera_neotropical
-from ..utils.scrapers.ansci_cornell import scrape_ansci_cornell
-from ..utils.scrapers.first_mode import scrape_first_mode
-from ..utils.scrapers.aphidnet import scrape_aphidnet
-from ..utils.scrapers.method_pdf import scrape_pdf
-from ..utils.scrapers.aguiar_hvr import scrape_aguiar_hvr
-from ..utils.scrapers.gene_affrc import scrape_gene_affrc
-from ..utils.scrapers.plant_ifas import scrape_plant_ifas
-from ..utils.scrapers.plant_atlas import scrape_plant_atlas
-from ..utils.scrapers.flmnh_ufl import scrape_flmnh_ufl
-from ..utils.scrapers.iucnredlist import scrape_iucnredlist
-from ..utils.scrapers.ala_org import scrape_ala_org
-from ..utils.scrapers.pnw_hand_books import scrape_pnw_hand_books
-from ..utils.scrapers.ipm_illinois import scrape_ipm_illinoes
-from ..utils.scrapers.pest_alerts import scrape_pest_alerts
-from ..utils.scrapers.cabi_digital import scrape_cabi_digital
-from ..utils.scrapers.ndrs_org import scrape_ndrs_org
-from ..utils.scrapers.ippc import scrape_ippc
-from ..utils.scrapers.eppo import scrape_eppo
-from ..utils.scrapers.se_eppc import scrape_se_eppc
-from ..utils.scrapers.mycobank_org import scrape_mycobank_org
-from ..utils.scrapers.nematode import scrape_nematode
-from ..utils.scrapers.diaspididae import scrape_diaspididae
-from ..utils.scrapers.genome_jp import scrape_genome_jp
-from ..utils.scrapers.plants_usda_gov import scrape_plants_usda_gov
-from ..utils.scrapers.fws_gov import scrape_fws_gov
-from ..utils.scrapers.fao_org import scrape_fao_org
-from ..utils.scrapers.index_fungorum import scrape_index_fungorum
-from ..utils.scrapers.nemaplex_plant_host import scrape_nemaplex_plant_host
-from ..utils.scrapers.aphis_usda import scrape_aphis_usda
-from ..utils.scrapers.eppo_quarentine import scrape_eppo_quarentine
-from ..utils.scrapers.extento import scrape_extento
-from ..utils.scrapers.ncbi import scrape_ncbi
-from ..utils.scrapers.bonap import scrape_bonap
+from ...utils.scrapers import (
+    scraper_iucngisd,
+    scraper_e_floras,
+    scraper_coleoptera_neotropical,
+    scraper_ansci_cornell,
+    scraper_first_mode,
+    scraper_aphidnet,
+    scraper_pdf,
+    scraper_aguiar_hvr,
+    scraper_gene_affrc,
+    scraper_plant_ifas,
+    scraper_plant_atlas,
+    scraper_flmnh_ufl,
+    scraper_iucnredlist,
+    scraper_ala_org,
+    scraper_pnw_hand_books,
+    scraper_ipm_illinoes,
+    scraper_pest_alerts,
+    scraper_cabi_digital,
+    scraper_ndrs_org,
+    scraper_ippc,
+    scraper_eppo,
+    scraper_se_eppc,
+    scraper_mycobank_org,
+    scraper_nematode,
+    scraper_diaspididae,
+    scraper_genome_jp,
+    scraper_plants_usda_gov,
+    scraper_fws_gov,
+    scraper_fao_org,
+    scraper_index_fungorum,
+    scraper_nemaplex_plant_host,
+    scraper_aphis_usda,
+    scraper_eppo_quarentine,
+    scraper_extento,
+    scraper_ncbi,
+    scraper_bonap,
+)
+
+
 class ScraperAPIView(APIView):
     def post(self, request):
         url = request.data.get("url")
@@ -72,18 +76,18 @@ class ScraperAPIView(APIView):
         start_page = parameters.get("start_page", 1)
         end_page = parameters.get("end_page", None)
         if mode_scrapeo == 1:
-            return scrape_iucngisd(
+            return scraper_iucngisd(
                 url,
                 wait_time,
                 sobrenombre,
             )
         elif mode_scrapeo == 2:
-            return scrape_coleoptera_neotropical(
+            return scraper_coleoptera_neotropical(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 3:
-            return scrape_e_floras(
+            return scraper_e_floras(
                 url,
                 page_principal,
                 wait_time,
@@ -91,13 +95,13 @@ class ScraperAPIView(APIView):
                 next_page_selector,
             )
         elif mode_scrapeo == 4:
-            return scrape_ansci_cornell(
+            return scraper_ansci_cornell(
                 url,
                 wait_time,
                 sobrenombre,
             )
         elif mode_scrapeo == 5:
-            return scrape_first_mode(
+            return scraper_first_mode(
                 url,
                 search_button_selector,
                 tag_name_first,
@@ -110,102 +114,102 @@ class ScraperAPIView(APIView):
                 sobrenombre,
             )
         elif mode_scrapeo == 6:
-            return scrape_aphidnet(
+            return scraper_aphidnet(
                 url,
                 wait_time,
                 sobrenombre,
             )
         elif mode_scrapeo == 7:
-            return scrape_pdf(
+            return scraper_pdf(
                 url, sobrenombre, start_page=start_page, end_page=end_page
             )
         elif mode_scrapeo == 8:
-            return scrape_aguiar_hvr(
+            return scraper_aguiar_hvr(
                 url,
                 wait_time,
                 sobrenombre,
             )
         elif mode_scrapeo == 9:
-            return scrape_gene_affrc(
+            return scraper_gene_affrc(
                 url,
                 sobrenombre,
                 wait_time,
             )
         elif mode_scrapeo == 10:
-            return scrape_plant_ifas(
+            return scraper_plant_ifas(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 11:
-            return scrape_plant_atlas(
+            return scraper_plant_atlas(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 12:
-            return scrape_flmnh_ufl(
+            return scraper_flmnh_ufl(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 13:
-            return scrape_iucnredlist(
+            return scraper_iucnredlist(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 14:
-            return scrape_ala_org(
+            return scraper_ala_org(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 15:
-            return scrape_pnw_hand_books(
+            return scraper_pnw_hand_books(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 16:
-            return scrape_ipm_illinoes(url)
+            return scraper_ipm_illinoes(url)
         elif mode_scrapeo == 17:
-            return scrape_pest_alerts(
+            return scraper_pest_alerts(
                 url,
                 sobrenombre,
             )
         elif mode_scrapeo == 18:
-            return scrape_cabi_digital(url, sobrenombre)
+            return scraper_cabi_digital(url, sobrenombre)
         elif mode_scrapeo == 19:
-            return scrape_ndrs_org(url, sobrenombre)
+            return scraper_ndrs_org(url, sobrenombre)
         elif mode_scrapeo == 20:
-            return scrape_ippc(url, sobrenombre)
+            return scraper_ippc(url, sobrenombre)
         elif mode_scrapeo == 21:
-            return scrape_eppo(url, sobrenombre)
+            return scraper_eppo(url, sobrenombre)
         elif mode_scrapeo == 22:
-            return scrape_se_eppc(url, sobrenombre)
+            return scraper_se_eppc(url, sobrenombre)
         elif mode_scrapeo == 23:
-            return scrape_mycobank_org(url, sobrenombre)
+            return scraper_mycobank_org(url, sobrenombre)
         elif mode_scrapeo == 24:
-            return scrape_nematode(url, sobrenombre)
+            return scraper_nematode(url, sobrenombre)
         elif mode_scrapeo == 25:
-            return scrape_diaspididae(url, sobrenombre)
+            return scraper_diaspididae(url, sobrenombre)
         elif mode_scrapeo == 26:
-            return scrape_genome_jp(url, wait_time, sobrenombre)
+            return scraper_genome_jp(url, wait_time, sobrenombre)
         elif mode_scrapeo == 27:
-            return scrape_plants_usda_gov(url, sobrenombre)
+            return scraper_plants_usda_gov(url, sobrenombre)
         elif mode_scrapeo == 28:
-            return scrape_fws_gov(url, sobrenombre)
+            return scraper_fws_gov(url, sobrenombre)
         elif mode_scrapeo == 29:
-            return scrape_fao_org(url, sobrenombre)
+            return scraper_fao_org(url, sobrenombre)
         elif mode_scrapeo == 30:
-            return scrape_index_fungorum(url, sobrenombre)
+            return scraper_index_fungorum(url, sobrenombre)
         elif mode_scrapeo == 31:
-            return scrape_nemaplex_plant_host(url, sobrenombre)
+            return scraper_nemaplex_plant_host(url, sobrenombre)
         elif mode_scrapeo == 32:
-            return scrape_aphis_usda(url, sobrenombre)
+            return scraper_aphis_usda(url, sobrenombre)
         elif mode_scrapeo == 33:
-            return scrape_eppo_quarentine(url, sobrenombre)
+            return scraper_eppo_quarentine(url, sobrenombre)
         elif mode_scrapeo == 34:
-            return scrape_extento(url, sobrenombre)
+            return scraper_extento(url, sobrenombre)
         elif mode_scrapeo == 35:
-            return scrape_ncbi(url, sobrenombre)
+            return scraper_ncbi(url, sobrenombre)
         elif mode_scrapeo == 36:
-            return scrape_bonap(url, sobrenombre)
+            return scraper_bonap(url, sobrenombre)
 
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
