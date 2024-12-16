@@ -13,7 +13,7 @@ import time
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
 
-def scrape_extento(url, sobrenombre):
+def scraper_extento(url, sobrenombre):
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
     driver = webdriver.Chrome(

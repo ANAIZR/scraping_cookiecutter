@@ -65,7 +65,7 @@ def extract_data(driver, wait_time):
         print(f"Error al extraer datos: {e}")
         return all_scraper
 
-def scrape_genome_jp(url, wait_time, sobrenombre):
+def scraper_genome_jp(url, wait_time, sobrenombre):
 
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")

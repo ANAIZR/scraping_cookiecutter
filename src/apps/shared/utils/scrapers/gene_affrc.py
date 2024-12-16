@@ -14,7 +14,7 @@ import time
 from selenium.webdriver.support.ui import Select
 
 
-def scrape_gene_affrc(url, sobrenombre, wait_time):
+def scraper_gene_affrc(url, sobrenombre, wait_time):
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     driver = webdriver.Chrome(

@@ -15,7 +15,7 @@ from rest_framework import status
 import time
 
 
-def scrape_flmnh_ufl(
+def scraper_flmnh_ufl(
     url,
     sobrenombre,
 ):

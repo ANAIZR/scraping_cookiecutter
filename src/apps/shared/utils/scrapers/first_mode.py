@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-def scrape_first_mode(
+def scraper_first_mode(
     url,
     search_button_selector,
     tag_name_first,

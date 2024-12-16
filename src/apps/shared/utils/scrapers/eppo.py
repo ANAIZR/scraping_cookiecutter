@@ -14,7 +14,7 @@ from rest_framework import status
 import time
 
 
-def scrape_eppo(
+def scraper_eppo(
     url,
     sobrenombre,
 ):

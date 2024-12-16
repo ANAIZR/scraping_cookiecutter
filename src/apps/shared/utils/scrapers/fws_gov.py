@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 import time
 
 
-def scrape_fws_gov(
+def scraper_fws_gov(
     url,
     sobrenombre,
 ):

@@ -25,7 +25,7 @@ def close_modal(driver):
         print(f"No se pudo cerrar el modal: {e}")
 
 
-def scrape_mycobank_org(url, sobrenombre):
+def scraper_mycobank_org(url, sobrenombre):
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--start-maximized")
