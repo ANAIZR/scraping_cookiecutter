@@ -1,6 +1,8 @@
 import os
 import hashlib
 from datetime import datetime
+from rest_framework.response import Response
+from rest_framework import status
 
 """
 
@@ -92,3 +94,18 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
         }
 
     return response_data
+
+
+def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
+    if all_scraper.strip():
+        response_data = save_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        return Response(response_data, status=status.HTTP_200_OK)
+    else:
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "No se encontraron datos para scrapear.",
+            },
+            status=status.HTTP_204_NO_CONTENT,
+        )
