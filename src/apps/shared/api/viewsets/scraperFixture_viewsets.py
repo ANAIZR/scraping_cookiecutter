@@ -78,7 +78,6 @@ class ScraperAPIView(APIView):
         if mode_scrapeo == 1:
             return scraper_iucngisd(
                 url,
-                wait_time,
                 sobrenombre,
             )
         elif mode_scrapeo == 2:
