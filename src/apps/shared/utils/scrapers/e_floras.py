@@ -1,16 +1,18 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-from pymongo import MongoClient
-import gridfs
-import os
-from ..functions import save_scraper_data
+from ..functions import (
+    process_scraper_data,
+    connect_to_mongo,
+    get_logger,
+    initialize_driver,
+)
 from rest_framework.response import Response
 from rest_framework import status
+
+logger = get_logger("Iniciando")
+
 
 def scraper_e_floras(
     url=None,
@@ -19,21 +21,19 @@ def scraper_e_floras(
     sobrenombre=None,
     next_page_selector=None,
 ):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    logger.info(f"Iniciando scraping para URL: {url}")
+    driver = initialize_driver()
 
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
+
     all_scraper = ""
     is_first_page = True
+    total_td_found = 0
+    total_td_scraped = 0
+
     try:
         driver.get(url)
-        
+
         submit = WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located(
                 (
@@ -54,9 +54,11 @@ def scraper_e_floras(
         )
 
         def scraper_page():
-            nonlocal all_scraper
+            nonlocal all_scraper, total_td_found, total_td_scraped
             content = BeautifulSoup(driver.page_source, "html.parser")
-            content_container = content.select_one("#ucFloraTaxonList_panelTaxonList span table")
+            content_container = content.select_one(
+                "#ucFloraTaxonList_panelTaxonList span table"
+            )
 
             tr_tags = content_container.find_all("tr")
 
@@ -66,27 +68,35 @@ def scraper_e_floras(
                         continue
                 try:
                     td_tags = tr_tag.select("td:nth-child(2)")
+                    total_td_found += len(td_tags)  
                     if td_tags:
-                        a_tags = td_tags[0].find("a")
-                        if a_tags:
-                            href = a_tags.get("href")
-                            page = page_principal + href
-                            if href:
-                                driver.get(page)
-                                WebDriverWait(driver, wait_time).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "#TableMain #panelTaxonTreatment #lblTaxonDesc")
+                        for td in td_tags:
+                            a_tags = td.find("a")
+                            if a_tags:
+                                href = a_tags.get("href")
+                                page = page_principal + href
+                                if href:
+                                    driver.get(page)
+                                    WebDriverWait(driver, wait_time).until(
+                                        EC.presence_of_element_located(
+                                            (
+                                                By.CSS_SELECTOR,
+                                                "#TableMain #panelTaxonTreatment #lblTaxonDesc",
+                                            )
+                                        )
                                     )
-                                )
-                                content = BeautifulSoup(driver.page_source, "html.parser")
-                                content_container = content.select_one("#TableMain #panelTaxonTreatment #lblTaxonDesc")
+                                    content = BeautifulSoup(driver.page_source, "html.parser")
+                                    content_container = content.select_one(
+                                        "#TableMain #panelTaxonTreatment #lblTaxonDesc"
+                                    )
 
-                                if content_container:
-                                    all_scraper += f"Contenido de la página {href}:\n"
-                                    cleaned_text = " ".join(content_container.text.split()) 
-                                    all_scraper += cleaned_text + "\n\n"
-                                
-                                driver.back()
+                                    if content_container:
+                                        all_scraper += f"Contenido de la página {href}:\n"
+                                        cleaned_text = " ".join(content_container.text.split())
+                                        all_scraper += cleaned_text + "\n\n"
+                                        total_td_scraped += 1  
+
+                                    driver.back()
                 except Exception as e:
                     print(f"Error procesando la fila {i}: {e}")
 
@@ -97,32 +107,28 @@ def scraper_e_floras(
             try:
                 next_page_button = WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "#TableMain #ucFloraTaxonList_panelTaxonList  span a[title='Page 2']")
+                        (
+                            By.CSS_SELECTOR,
+                            "#TableMain #ucFloraTaxonList_panelTaxonList  span a[title='Page 2']",
+                        )
                     )
                 )
                 next_page_button.click()
                 WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList span table"))
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList span table")
+                    )
                 )
                 scraper_page()
             except Exception as e:
                 print(f"Error al navegar a la siguiente página: {e}")
 
-        if all_scraper.strip():
-            response_data = save_scraper_data(
-                all_scraper, url, sobrenombre, collection, fs
-            )
+        logger.info(f"Total enlaces encontrados: {total_td_found}")
+        logger.info(f"Total enlaces scrapeados: {total_td_scraped}")
 
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        logger.info("Scraping completado exitosamente.")
+        return response
     except Exception as e:
         print(f"Error: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

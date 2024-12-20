@@ -132,7 +132,6 @@ class ScraperAPIView(APIView):
             return scraper_gene_affrc(
                 url,
                 sobrenombre,
-                wait_time,
             )
         elif mode_scrapeo == 10:
             return scraper_plant_ifas(

@@ -1,14 +1,16 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from pymongo import MongoClient
-import gridfs
-from ..functions import save_scraper_data
+from ..functions import (
+    initialize_driver,
+    connect_to_mongo,
+    get_logger,
+    process_scraper_data,
+)
 from rest_framework.response import Response
 from rest_framework import status
+
+logger = get_logger("Iniciando")
 
 
 def scraper_ansci_cornell(
@@ -16,17 +18,11 @@ def scraper_ansci_cornell(
     wait_time,
     sobrenombre,
 ):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
+    logger.info(f"Iniciando scraping para URL: {url}")
+    driver = initialize_driver()
+
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
-    
 
     try:
         driver.get(url)
@@ -61,29 +57,18 @@ def scraper_ansci_cornell(
                 for i, p in enumerate(p_tags, start=1):
 
                     all_scraper += p.text + "\n"
+                    
 
                 driver.back()
-
+                all_scraper += "**********\n"
                 WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located(
                         (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
                     )
                 )
-        if all_scraper.strip():
-            response_data = save_scraper_data(
-                all_scraper, url, sobrenombre, collection, fs
-            )
-
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        logger.info("Scraping completado exitosamente.")
+        return response
     except Exception as e:
         return Response(
             {"message": f"Error: {e}"},

@@ -6,34 +6,47 @@ from rest_framework import status
 import logging
 from pymongo import MongoClient
 import gridfs
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+import logging
 
 # Configuración de directorio de salida
 OUTPUT_DIR = "c:/web_scraper_files"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
-# Configuración del logger
-def get_logger(name):
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(levelname)s %(name)s %(message)s',
-        handlers=[
-            logging.FileHandler("scraper_log.log"),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(name)
+def get_logger(name, level=logging.INFO):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    ch = logging.StreamHandler()
+    ch.setLevel(level)
+    logger.addHandler(ch)
+    return logger
 
-logger = get_logger("scraper")
-
+def initialize_driver():
+    logger = get_logger("scraper")
+    try:
+        logger.info("Inicializando el navegador.")
+        options = webdriver.ChromeOptions()
+        #options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        logger.info("Navegador iniciado correctamente.")
+        return driver
+    except Exception as e:
+        logger.error(f"Error al inicializar el navegador: {str(e)}")
+        raise
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
+    logger = get_logger("mongo_connection")
     try:
         logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
         client = MongoClient("mongodb://localhost:27017/")
         db = client[db_name]
         fs = gridfs.GridFS(db)
-        logger.info(f"Conexión a MongoDB establecida: {db_name}")
+        logger.info(f"Conexión a MongoDB establecida con éxito: {db_name}")
         return db[collection_name], fs
     except Exception as e:
         logger.error(f"Error al conectar a MongoDB: {str(e)}")
@@ -41,6 +54,8 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
 
 def generate_directory(output_dir, url):
+    logger = get_logger("generar directorio")
+
     try:
         url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
@@ -59,6 +74,8 @@ def generate_directory(output_dir, url):
 
 
 def get_next_versioned_filename(folder_path, base_name="archivo"):
+    logger = get_logger("generar siguiente versión de archivo")
+
     try:
         version = 0
         while True:
@@ -73,6 +90,7 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
 
 
 def delete_old_documents(url, collection, fs, limit=2):
+    logger = get_logger("eliminar documentos antiguos")
     try:
         docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
         docs_count = collection.count_documents({"Url": url})
@@ -98,6 +116,7 @@ def delete_old_documents(url, collection, fs, limit=2):
 
 
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("guardar datos del scraper")
     try:
         folder_path = generate_directory(OUTPUT_DIR, url)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
@@ -136,6 +155,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("procesar datos del scraper")
     try:
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre, collection, fs)

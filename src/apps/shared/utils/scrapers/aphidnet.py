@@ -1,22 +1,19 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-from pymongo import MongoClient
-from datetime import datetime
-import gridfs
 import os
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
+    process_scraper_data,
+    connect_to_mongo,
+    get_logger,
+    initialize_driver,
 )
 from rest_framework.response import Response
 from rest_framework import status
 from selenium.webdriver.common.action_chains import ActionChains
+
+logger = get_logger("scraper")
 
 
 def scraper_aphidnet(
@@ -24,19 +21,19 @@ def scraper_aphidnet(
     wait_time=None,
     sobrenombre=None,
 ):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
+    logger.info(f"Iniciando scraping para URL: {url}")
+    driver = initialize_driver()
+
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
+
     all_scraper_fact_sheets = ""
     all_scraper_morphology = ""
-        # Expande el directorio home
-    output_dir = os.path.expanduser("~/")
+
+    total_li_captured = 0
+    total_li_scraped = 0
+
+    # output_dir = os.path.expanduser("~/")
+    output_dir = r"C:\web_scraper_files"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -45,7 +42,7 @@ def scraper_aphidnet(
         driver.get(url)
 
         def scraper_first():
-            nonlocal all_scraper_fact_sheets
+            nonlocal all_scraper_fact_sheets, total_li_captured, total_li_scraped
             try:
                 nav_fact_sheets = WebDriverWait(driver, wait_time).until(
                     EC.presence_of_element_located(
@@ -70,12 +67,14 @@ def scraper_aphidnet(
 
                     if ul_tag:
                         li_tags = ul_tag.find_all("li")
+                        total_li_captured += len(li_tags)
 
                         for li in li_tags:
                             a_tag = li.find("a", href=True)
                             if a_tag:
                                 href = a_tag["href"]
                                 text = a_tag.get_text(strip=True)
+                                total_li_scraped += 1
 
                                 all_scraper_fact_sheets += (
                                     f"Enlace: {href}\n + {text}\n\n"
@@ -104,14 +103,15 @@ def scraper_aphidnet(
 
                                     all_scraper_fact_sheets += "\n\n"
                                 else:
-                                    print(
+                                    logger.warning(
                                         f"No se encontró contenido para el enlace: {href}"
                                     )
             except Exception as e:
+                logger.error(f"Error al scrapear 'FACT SHEETS': {e}")
                 raise Exception(f"Error al scrapear 'FACT SHEETS': {e}")
 
         def scraper_second():
-            nonlocal all_scraper_morphology
+            nonlocal all_scraper_morphology, total_li_captured, total_li_scraped
             try:
                 nav_morphology = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located(
@@ -125,6 +125,8 @@ def scraper_aphidnet(
                     By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul"
                 )
                 li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
+                total_li_captured += len(li_tags)
+
                 for index, li in enumerate(li_tags):
                     if index == 0:
                         continue
@@ -135,6 +137,8 @@ def scraper_aphidnet(
                     li = li_tags[index]
                     a_tag = li.find_element(By.CSS_SELECTOR, "a")
                     href = a_tag.get_attribute("href")
+
+                    total_li_scraped += 1
 
                     driver.get(href)
                     WebDriverWait(driver, 10).until(
@@ -159,56 +163,22 @@ def scraper_aphidnet(
                                 f"{portfolio.get_text(strip=True)}\n\n"
                             )
             except Exception as e:
+                logger.error(f"Error al scrapear 'MORPHOLOGY': {e}")
                 raise Exception(f"Error al scrapear 'MORPHOLOGY': {e}")
 
         scraper_first()
         scraper_second()
+        all_scraper = (
+            (all_scraper_fact_sheets.strip() + " " + all_scraper_morphology.strip())
+            if all_scraper_fact_sheets.strip() and all_scraper_morphology.strip()
+            else ""
+        )
 
-        if all_scraper_fact_sheets.strip() and all_scraper_fact_sheets.strip():
-            folder_path = generate_directory(output_dir, url)
-            file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(all_scraper_fact_sheets + all_scraper_morphology)
-
-            with open(file_path, "rb") as file_data:
-                object_id = fs.put(
-                    file_data,
-                    filename=os.path.basename(file_path),
-                )
-
-                data = {
-                    "Objeto": object_id,
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Etiquetas": ["planta", "plaga"],
-                }
-                response_data = {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scrapper": data["Fecha_scrapper"],
-                    "Etiquetas": data["Etiquetas"],
-                    "Mensaje": "Los datos han sido scrapeados correctamente.",
-                }
-                collection.insert_one(data)
-                delete_old_documents(url, collection, fs)
-
-            return Response(
-                response_data,
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
-
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        logger.info("Scraping completado exitosamente.")
+        return response
     except Exception as e:
+        logger.error(f"Error general: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
