@@ -59,19 +59,8 @@ def scraper_plant_ifas(
                         soup = BeautifulSoup(driver.page_source, "html.parser")
                         conteiner = soup.select_one("div.content")
                         if conteiner:
-                            primary_content = conteiner.select(
-                                "div.primary div[style*='margin:2rem']"
-                            )
-                            second_content = conteiner.select(
-                                "div.primary div[style*='margin-bottom:2rem']"
-                            )
-                            all_content = "\n".join(
-                                [
-                                    element.get_text(strip=True)
-                                    for element in primary_content + second_content
-                                ]
-                            )
-                            all_scraper += all_content
+
+                            all_scraper += conteiner.text + "\n"
             time.sleep(1)
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
