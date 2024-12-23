@@ -903,5 +903,44 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 62,
+    "fields": {
+      "url": "https://scholar.google.es/schhp?hl=es",
+      "mode_scrapeo": 37,
+      "sobrenombre": "Google_Scholar",
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 63,
+    "fields": {
+      "url": "https://biotanz.landcareresearch.co.nz/",
+      "mode_scrapeo": 38,
+      "sobrenombre": "Biota_NZ",
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 64,
+    "fields": {
+      "url": "http://www.catalogueoflife.org/annual-checklist/2007/search.php",
+      "mode_scrapeo": 39,
+      "sobrenombre": "Catalogue_of_life",
+      "time_choices": 1,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
   }
 ]

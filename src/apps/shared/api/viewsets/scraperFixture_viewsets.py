@@ -39,7 +39,10 @@ from ...utils.scrapers import (
     scraper_extento,
     scraper_ncbi,
     scraper_bonap,
-)
+    scraper_google_academic,
+    scraper_biota_nz,
+    scraper_catalogue_of_life,
+)   
 
 
 class ScraperAPIView(APIView):
@@ -208,6 +211,12 @@ class ScraperAPIView(APIView):
             return scraper_ncbi(url, sobrenombre)
         elif mode_scrapeo == 36:
             return scraper_bonap(url, sobrenombre)
+        elif mode_scrapeo == 37:
+            return scraper_google_academic(url, sobrenombre)
+        elif mode_scrapeo == 38:
+            return scraper_biota_nz(url, sobrenombre)
+        elif mode_scrapeo == 39:
+            return scraper_catalogue_of_life(url, sobrenombre)
 
         return Response(
             {"error": "Modo de scrapeo no reconocido."},

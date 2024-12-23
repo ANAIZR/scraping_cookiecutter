@@ -34,3 +34,6 @@ from .eppo_quarentine import scraper_eppo_quarentine
 from .extento import scraper_extento
 from .ncbi import scraper_ncbi
 from .bonap import scraper_bonap
+from .google_academic import scraper_google_academic
+from .biota_nz import scraper_biota_nz
+from .catalogue_of_life import scraper_catalogue_of_life

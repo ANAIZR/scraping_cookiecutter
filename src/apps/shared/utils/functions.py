@@ -10,11 +10,22 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import logging
+import random
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 14_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
+]
 
 # Configuración de directorio de salida
 OUTPUT_DIR = "c:/web_scraper_files"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
+
 
 def get_logger(name, level=logging.INFO):
     logger = logging.getLogger(name)
@@ -24,20 +35,29 @@ def get_logger(name, level=logging.INFO):
     logger.addHandler(ch)
     return logger
 
+
 def initialize_driver():
     logger = get_logger("scraper")
     try:
         logger.info("Inicializando el navegador.")
         options = webdriver.ChromeOptions()
-        #options.add_argument("--headless")
+        # options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        options.add_argument("--disable-dev-shm-usage")
+        random_user_agent = random.choice(USER_AGENTS)
+        options.add_argument(f"user-agent={random_user_agent}")
+        logger.info(f"Usando User-Agent: {random_user_agent}")
+
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()), options=options
+        )
         logger.info("Navegador iniciado correctamente.")
         return driver
     except Exception as e:
         logger.error(f"Error al inicializar el navegador: {str(e)}")
         raise
+
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
     logger = get_logger("mongo_connection")
@@ -158,7 +178,9 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("procesar datos del scraper")
     try:
         if all_scraper.strip():
-            response_data = save_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+            response_data = save_scraper_data(
+                all_scraper, url, sobrenombre, collection, fs
+            )
             return Response(response_data, status=status.HTTP_200_OK)
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
