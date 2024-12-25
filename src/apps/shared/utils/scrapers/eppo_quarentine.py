@@ -11,22 +11,19 @@ from ..functions import save_scraper_data
 from rest_framework.response import Response
 from rest_framework import status
 import time
-
+from ..functions import (
+    process_scraper_data,
+    connect_to_mongo,
+    get_logger,
+    initialize_driver,
+)
 
 def scraper_eppo_quarentine(url, sobrenombre):
-    options = webdriver.ChromeOptions()
+    logger = get_logger("scraper")
 
-    options.add_argument("--headless")  
-
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
-
+    logger.info(f"Iniciando scraping para URL: {url}")
+    driver = initialize_driver()
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
 
     try:
@@ -72,20 +69,10 @@ def scraper_eppo_quarentine(url, sobrenombre):
                                 all_scraper += item.get_text(strip=True) + "\n"
                                 print(f"Contenido extraído: {item.get_text(strip=True)}")
 
-        if all_scraper.strip():
-            response_data = save_scraper_data(
-                all_scraper, url, sobrenombre, collection, fs
-            )
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        logger.info("Scraping completado exitosamente.")
+        return response
+
 
     except Exception as e:
         print(f"Error en el proceso de scraping: {str(e)}")

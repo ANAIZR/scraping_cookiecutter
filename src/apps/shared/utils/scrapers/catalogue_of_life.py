@@ -13,6 +13,7 @@ from rest_framework import status
 import os
 import random
 import time
+from bs4 import BeautifulSoup
 
 logger = get_logger("scraper")
 
@@ -24,7 +25,7 @@ def load_keywords(file_path="../txt/all.txt"):
         absolute_path = os.path.join(base_path, file_path)
         with open(absolute_path, "r", encoding="utf-8") as f:
             keywords = [line.strip() for line in f if line.strip()]
-        #logger.info(f"Palabras clave cargadas: {keywords}")
+        # logger.info(f"Palabras clave cargadas: {keywords}")
         return keywords
     except Exception as e:
         logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
@@ -36,8 +37,8 @@ def scraper_catalogue_of_life(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
 
-    keywords = load_keywords()  
-    results = {}
+    keywords = load_keywords()
+    all_scraper = ""
 
     try:
         driver.get(url)
@@ -48,13 +49,11 @@ def scraper_catalogue_of_life(url, sobrenombre):
         )
         logger.info("Barra de búsqueda localizada.")
 
-        # Iterar por cada fila
-        for keyword in keywords:
+        for index, keyword in enumerate(keywords):
             logger.info(f"Buscando la palabra clave: {keyword}")
-            # Introducir un tiempo de espera aleatorio antes de interactuar con el buscador
+            all_scraper += f"Palabra clave {index + 1}: {keyword}\n"
             random_wait()
 
-            # Ingresar la palabra clave y presionar Enter
             search_box.clear()
             search_box.send_keys(keyword)
             search_box.send_keys(Keys.RETURN)
@@ -64,60 +63,65 @@ def scraper_catalogue_of_life(url, sobrenombre):
             )
             logger.info(f"Resultados cargados para: {keyword}")
 
-            # Obtener todas las filas de la tabla de resultados
             rows = driver.find_elements(By.XPATH, "//tr[starts-with(@id, 'record_')]")
-            print(f"Rows encontrados {len(rows)}")
-            
-            # Iterar sobre las filas de resultados
-            for index, row in enumerate(rows):
+            for index in range(len(rows)):
+                rows = driver.find_elements(
+                    By.XPATH, "//tr[starts-with(@id, 'record_')]"
+                )
+                row = rows[index]
                 record_id = row.get_attribute("id")
-                print(f"Procesando fila con id: {record_id}")
+                logger.info(f"Procesando fila con id: {record_id}")
 
                 try:
-                    # Obtener el siguiente tr hermano del tr con id="record_..."
                     next_row = row.find_element(By.XPATH, "following-sibling::tr")
-
                     first_td = next_row.find_element(By.TAG_NAME, "td")
-                    # Verificar si el td tiene un enlace (href)
                     link = first_td.find_element(By.TAG_NAME, "a")
                     if link and link.get_attribute("href"):
                         href = link.get_attribute("href")
-                        print(f"Accediendo al enlace: {href}")
-                        
-                        # Hacer clic en el enlace para ir a la página de detalles
+                        logger.info(f"Accediendo al enlace: {href}")
                         driver.get(href)
-
-                        # Esperar a que se cargue el contenido de la página de detalles
+                        all_scraper += f"Link: {href}\n"
                         WebDriverWait(driver, 30).until(
                             EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
                         )
 
-                        # Realizar el scraping del contenido de la página
-                        page_content = driver.page_source
-                        print("Despues de page_content")
-
-                        # Guardar los resultados del enlace
-                        results[href] = page_content
-
-                        # Regresar a la página de resultados
+                        page_content = BeautifulSoup(driver.page_source, "html.parser")
+                        td_element = page_content.select(
+                            'div table:nth-child(1) tr:nth-child(1) td:nth-child(3)[valign="top"]'
+                        )
+                        if td_element:
+                            cleaned_text = " ".join(td_element[0].get_text().split())
+                            all_scraper += cleaned_text + "\n"
+                        else:
+                            logger.warning(
+                                f"No se encontró el tercer <td> para el enlace {href}"
+                            )
+                        all_scraper += "\n\n******************\n\n"
                         driver.back()
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
+                        )
 
-                        # Esperar un poco antes de continuar con el siguiente enlace
                         random_wait()
-                    
+
                 except Exception as e:
-                    logger.error(f"Error procesando el enlace en la fila con id {record_id}: {str(e)}")
+                    logger.error(
+                        f"Error procesando el enlace en la fila con id {record_id}: {str(e)}"
+                    )
 
-                # Re-actualizar la lista de filas para el siguiente ciclo después de regresar
-                if index < len(rows) - 1:
-                    rows = driver.find_elements(By.XPATH, "//tr[starts-with(@id, 'record_')]")
+            # Regresar a la página principal después de procesar todas las filas
+            driver.get(url)
+            search_box = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.NAME, "search_string"))
+            )
+            logger.info("Barra de búsqueda localizada.")
 
-        # Limpiar los resultados después de procesar la palabra clave
-            logger.info(f"Palabra clave {keyword} procesada. Acumulando resultados.")
+            logger.info(
+                f"Palabra clave {keyword} procesada. Regresando a la página principal."
+            )
 
-
-        # Una vez que se han procesado todas las palabras clave, procesar los datos
-        response = process_scraper_data(results, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:

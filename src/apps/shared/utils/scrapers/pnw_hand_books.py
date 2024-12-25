@@ -12,26 +12,22 @@ from ..functions import save_scraper_data
 from rest_framework.response import Response
 from rest_framework import status
 import time
-
+from ..functions import (
+    process_scraper_data,
+    connect_to_mongo,
+    get_logger,
+    initialize_driver,
+)
 
 def scraper_pnw_hand_books(
     url,
     sobrenombre
 ):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
-
-
+    logger = get_logger("scraper")
+    logger.info(f"Iniciando scraping para URL: {url}")
+    driver = initialize_driver()
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
-
     try:
         driver.get(url)
 
@@ -90,21 +86,9 @@ def scraper_pnw_hand_books(
 
         except Exception as e:
             print(f"Error durante el proceso de scraping: {e}")
-        if all_scraper.strip():
-            response_data = save_scraper_data(
-                all_scraper, url, sobrenombre, collection, fs
-            )
-
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        logger.info("Scraping completado exitosamente.")
+        return response
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
