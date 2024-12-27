@@ -3,7 +3,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from rest_framework.response import Response
 from rest_framework import status
-import time
 from selenium.common.exceptions import StaleElementReferenceException
 from ..functions import (
     process_scraper_data,
@@ -94,7 +93,9 @@ def scraper_delta(url, sobrenombre):
                                                     if body:
                                                         total_enlaces_scrapeados += 1
                                                         all_scraper += f"{href_url}\n"
-                                                        all_scraper += f"{body.text}\n\n"
+                                                        all_scraper += (
+                                                            f"{body.text}\n\n"
+                                                        )
                                                         all_scraper += f"{'='*50}\n\n"
                                                     driver.back()
                                         except Exception as e:
@@ -102,15 +103,14 @@ def scraper_delta(url, sobrenombre):
                                             continue
 
                                 total_enlaces_scrapeados += 1
-                                driver.back()  # Regresar a la página principal
+                                driver.back()
 
-                                # Actualizar `body` después de regresar
                                 body = WebDriverWait(driver, 30).until(
                                     EC.presence_of_element_located(
                                         (By.CSS_SELECTOR, "body")
                                     )
                                 )
-                                break  
+                                break
                     except StaleElementReferenceException:
                         print("Referencia obsoleta al elemento <p>, saltando...")
                         continue
@@ -119,7 +119,7 @@ def scraper_delta(url, sobrenombre):
                         continue
 
                 if not enlaces_disponibles:
-                    break  
+                    break
 
             else:
                 print("Elemento body no encontrado")
