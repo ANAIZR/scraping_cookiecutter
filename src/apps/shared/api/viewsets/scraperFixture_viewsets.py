@@ -42,7 +42,8 @@ from ...utils.scrapers import (
     scraper_google_academic,
     scraper_biota_nz,
     scraper_catalogue_of_life,
-    scraper_delta
+    scraper_delta,
+    scraper_nemaplex
 )   
 
 
@@ -218,8 +219,10 @@ class ScraperAPIView(APIView):
             return scraper_biota_nz(url, sobrenombre)
         elif mode_scrapeo == 39:
             return scraper_catalogue_of_life(url, sobrenombre)
-        elif mode_scrapeo == 40:
+        elif mode_scrapeo ==40 :
             return scraper_delta(url, sobrenombre)
+        elif mode_scrapeo == 41:
+            return scraper_nemaplex(url, sobrenombre)
 
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
