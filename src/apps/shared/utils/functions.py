@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import logging
 import random
+from selenium.common.exceptions import TimeoutException
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
@@ -45,6 +46,7 @@ def initialize_driver():
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-extensions")
         random_user_agent = random.choice(USER_AGENTS)
         options.add_argument(f"user-agent={random_user_agent}")
         logger.info(f"Usando User-Agent: {random_user_agent}")
@@ -192,6 +194,16 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
                 },
                 status=status.HTTP_204_NO_CONTENT,
             )
+    except TimeoutException:
+        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+            },
+            status=status.HTTP_408_REQUEST_TIMEOUT,
+        )
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
         return Response(
@@ -202,3 +214,10 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+    except ConnectionError:
+        logger.error("Error de conexión a la URL.")
+        return Response({
+            "Tipo": "Web",
+            "Url": url,
+            "Mensaje": "No se pudo conectar a la página web."
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
