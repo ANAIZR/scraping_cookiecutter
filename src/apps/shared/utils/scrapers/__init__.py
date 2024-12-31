@@ -39,3 +39,4 @@ from .biota_nz import scraper_biota_nz
 from .catalogue_of_life import scraper_catalogue_of_life
 from .delta import scraper_delta
 from .nemaplex import scraper_nemaplex
+from .bugwood import scraper_bugwood
