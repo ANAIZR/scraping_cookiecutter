@@ -10,6 +10,7 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
+import time
 
 
 def scraper_bugwood(url, sobrenombre):
@@ -22,59 +23,45 @@ def scraper_bugwood(url, sobrenombre):
 
     try:
         driver.get(url)
-
+        print("Pagina cargada")
         # Espera a que el contenedor del menú esté presente
-        WebDriverWait(driver, 10).until(
+        container = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "#mw-navigation-collapse"))
         )
-        container = driver.find_element(By.CSS_SELECTOR, "#mw-navigation-collapse")
-        ul_element = container.find_element(By.CSS_SELECTOR, "ul")
-
-        # Procesar todos los <li> en el menú inicial
-        list_items = ul_element.find_elements(By.CSS_SELECTOR, "> li")
-
-        for index, li in enumerate(list_items):
-            try:
-                li_text = li.text.strip()
+        if container:
+            print("Contenedor encontrado")
+            ul_element = container.find_element(By.CSS_SELECTOR, "ul")
+            list_items = ul_element.find_elements(By.CSS_SELECTOR, "li.dropdown")
+            print(f"Elementos encontrados: {len(list_items)}")
+            for item in list_items:
+                li_text = item.text.strip()
                 if not li_text:
-                    logger.info(f"Elemento {index + 1}: (Sin texto visible)")
                     continue
-
-                # Intentar expandir si es un dropdown
-                logger.info(f"Procesando menú: {li_text}")
-                li.click()  # Clic para expandir
-
-                # Esperar a que el submenú se cargue, si existe
-                WebDriverWait(driver, 5).until(
-                    EC.visibility_of_element_located((By.CSS_SELECTOR, "ul"))
+                all_scraper += f"Elemento {li_text} \n\n"
+                item.click()
+                container_ul = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "ul[id^='p-']"))
                 )
-                sub_ul_elements = li.find_elements(By.CSS_SELECTOR, "ul")
+                if container_ul:
+                    print("Contenedor de subelementos encontrado")
+                    subitems = WebDriverWait(driver, 30).until(
+                        EC.presence_of_all_elements_located(
+                            (By.CSS_SELECTOR, "ul[id^='p-'] li[id^='n-']")
+                        )
+                    )
+                    if subitems:
+                        print(f"ITEMS ENCONTRADOS {li_text}: {len(subitems)}")
+                        print(f"Subelementos encontrados: {len(subitems)}")
 
-                for sub_ul in sub_ul_elements:
-                    sub_list_items = sub_ul.find_elements(By.CSS_SELECTOR, "li")
-                    for sub_li in sub_list_items:
-                        try:
-                            # Verificar si el sub-li tiene un enlace
-                            link_element = sub_li.find_element(By.CSS_SELECTOR, "a")
-                            href = link_element.get_attribute("href")
-                            if href and href.startswith(base_url):
-                                logger.info(f"Encontrado enlace: {href}")
-                                all_scraper+= f"{href}\n"
-                        except Exception as e:
-                            logger.error(f"Error procesando sub-li: {str(e)}")
-                            continue
-            except TimeoutException:
-                logger.warning(f"Timeout al cargar elementos del menú: {li_text}")
-            except Exception as e:
-                logger.error(f"Error procesando <li>: {li_text} - {str(e)}")
-                continue
+                        for subitem in subitems:
+                            subitem_text = subitem.text.strip()
 
-        
+                            all_scraper += f"Subelemento {subitem_text} \n\n"
 
-        # Procesar los datos extraídos
-        response = process_scraper_data(
-            all_scraper, url, sobrenombre, collection, fs
-        )
+                else:
+                    print("No se encontró el contenedor de subelementos")
+
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
     except Exception as e:

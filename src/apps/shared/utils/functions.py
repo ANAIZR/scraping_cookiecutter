@@ -216,8 +216,11 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
         )
     except ConnectionError:
         logger.error("Error de conexión a la URL.")
-        return Response({
-            "Tipo": "Web",
-            "Url": url,
-            "Mensaje": "No se pudo conectar a la página web."
-        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "No se pudo conectar a la página web.",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
