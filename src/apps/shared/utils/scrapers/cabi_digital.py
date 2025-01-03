@@ -41,7 +41,7 @@ def scraper_cabi_digital(url, sobrenombre):
 
     base_folder_path = generate_directory(output_dir, url)
 
-    data_collected = []  
+    data_collected = []  # Lista para almacenar los datos recolectados
 
     try:
         with open("cookies.pkl", "rb") as file:
