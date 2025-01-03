@@ -74,81 +74,25 @@ def scraper_padil(url, sobrenombre):
                         (By.CSS_SELECTOR, "div.search-results")
                     )
                 )
-
+                time.sleep(2)
                 logger.info(f"Resultados cargados para: {keyword}")
 
                 # Variable para controlar si aún hay resultados
-                all_results_processed = False
 
-                while not all_results_processed:
-                    try:
-                        # Extraer resultados y navegar a cada enlace
-                        content_result = driver.find_elements(
-                            By.CSS_SELECTOR, "div.search-results div.search-result"
-                        )
+                try:
+                    # Extraer resultados y navegar a cada enlace
+                    content_result = driver.find_elements(
+                        By.CSS_SELECTOR, "div.search-results div.search-result div.name"
+                    )
 
-                        if len(content_result) == 0:
-                            logger.info(f"No hay más resultados para {keyword}.")
-                            all_results_processed = True  # No hay más resultados, pasamos al siguiente keyword
-                            break  # Salir del bucle y procesar el siguiente keyword
+                    print(f"Elementos encontrados {len(content_result)}")
 
-                        for result in content_result:
-                            try:
-                                title = result.find_element(
-                                    By.CSS_SELECTOR, "div.name"
-                                ).text
-                                href = result.find_element(
-                                    By.CSS_SELECTOR, "div.name a"
-                                ).get_attribute("href")
-                                
-                                if href in processed_links:
-                                    logger.info(f"Enlace ya procesado: {href}, omitiendo.")
-                                    continue  # Si el enlace ya fue procesado, pasamos al siguiente
+                    for result in content_result:
+                        print(f"Elemento ---> {result.text.strip()}")
 
-                                logger.info(f"Result: {title}, Link: {href}")
-
-                                # Acceder al enlace
-                                driver.get(href)
-                                logger.info(f"Accediendo al enlace: {href}")
-
-                                # Extraer contenido del div `pest-details`
-                                pest_details = WebDriverWait(driver, 30).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "div.pest-details")
-                                    )
-                                )
-                                pest_details_text = pest_details.text
-                                logger.info(f"Detalles extraídos: {pest_details_text}")
-
-                                # Guardar el contenido extraído
-                                all_scraper += f"Keyword: {keyword}\nTitle: {title}\nDetails: {pest_details_text}\n\n"
-
-                                # Agregar el enlace al conjunto de procesados
-                                processed_links.add(href)
-
-                                # Regresar a la página de resultados
-                                driver.back()
-                                logger.info("Regresando a la página de resultados.")
-
-                                # Esperar que la página de resultados esté cargada
-                                WebDriverWait(driver, 30).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "div.search-results")
-                                    )
-                                )
-
-                            except Exception as e:
-                                logger.error(f"Error al procesar el resultado: {str(e)}")
-                                continue
-
-                        # Verificar si se ha procesado todos los enlaces de la página
-                        if len(content_result) == 0:
-                            logger.info(f"Se han procesado todos los resultados para {keyword}.")
-                            all_results_processed = True  # Ya hemos procesado todos los resultados para este keyword
-
-                    except Exception as e:
-                        logger.error(f"Error al extraer los resultados: {str(e)}")
-                        all_results_processed = True  # Si ocurre un error, salimos del bucle
+                except Exception as e:
+                    logger.error(f"Error al extraer los resultados: {str(e)}")
+                    
 
             except Exception as e:
                 logger.error(f"Error durante la búsqueda de {keyword}: {str(e)}")
@@ -164,7 +108,6 @@ def scraper_padil(url, sobrenombre):
 
     finally:
         driver.quit()
-
 
 
 def random_wait(min_wait=2, max_wait=6):
