@@ -40,3 +40,4 @@ from .catalogue_of_life import scraper_catalogue_of_life
 from .delta import scraper_delta
 from .nemaplex import scraper_nemaplex
 from .bugwood import scraper_bugwood
+from .padil import scraper_padil

@@ -981,5 +981,18 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 68,
+    "fields": {
+      "url": "https://www.padil.gov.au/search",
+      "sobrenombre": "PADIL",
+      "time_choices": 1,
+      "mode_scrapeo": 43,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
   }
 ]

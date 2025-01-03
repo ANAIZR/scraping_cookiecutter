@@ -45,6 +45,7 @@ from ...utils.scrapers import (
     scraper_delta,
     scraper_nemaplex,
     scraper_bugwood,
+    scraper_padil
 )
 
 
@@ -226,6 +227,8 @@ class ScraperAPIView(APIView):
             return scraper_nemaplex(url, sobrenombre)
         elif mode_scrapeo == 42:
             return scraper_bugwood(url, sobrenombre)
+        elif mode_scrapeo == 43:
+            return scraper_padil(url, sobrenombre)
         return Response(
             {"error": "Modo de scrapeo no reconocido."},
             status=status.HTTP_400_BAD_REQUEST,
