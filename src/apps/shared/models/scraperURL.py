@@ -4,6 +4,7 @@ from django.db import models
 from datetime import timedelta
 
 from ...core.models import CoreModel
+from apps.shared.tasks import post_to_api_task
 
 
 class ScraperURL(CoreModel):
@@ -56,27 +57,8 @@ class ScraperURL(CoreModel):
     def is_time_expired(self):
         return timezone.now() > self.get_time_limit()
 
-    def post_to_api(self):
-        if self.is_time_expired():
-            try:
-                data = {
-                    "url": self.url,
-                }
-
-                response = requests.post(
-                    "http://127.0.0.1:8000/api/v1/scraper-url/", json=data
-                )
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.RequestException as e:
-
-                print(f"Error al hacer el POST a la API: {e}")
-                return None
-        else:
-            print("El tiempo límite no ha expirado aún.")
-            return None
-
     def save(self, *args, **kwargs):
+        new_instance = not self.pk
         super().save(*args, **kwargs)
-
-        self.post_to_api()
+        if new_instance:
+            post_to_api_task.delay(self.id)
