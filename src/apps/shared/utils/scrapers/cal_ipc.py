@@ -33,6 +33,21 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=3):
         if not current_url.startswith(base_domain):
             print(f"URL fuera del dominio permitido: {current_url}")
             return []
+        if any(
+            exclude in current_url
+            for exclude in [
+                "solutions",
+                "support",
+                "join",
+                "about",
+                "discrimination",
+                "resources",
+                "mailto",
+                "pdf"
+            ]
+        ):
+            print(f"URL filtrada por parámetros no válidos: {current_url}")
+            return []
 
         print(f"Procesando URL: {current_url} (Nivel: {current_depth})")
         visited_urls.add(current_url)
@@ -56,10 +71,24 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=3):
 
                 if not href.startswith(base_domain):
                     continue
-
+                if any(
+                    exclude in href
+                    for exclude in [
+                        "solutions",
+                        "support",
+                        "join",
+                        "about",
+                        "discrimination",
+                        "resources",
+                        "mailto",
+                        "pdf"
+                    ]
+                ):
+                    continue
                 if (
                     href.endswith(".pdf")
                     or href.endswith(".jpg")
+                    or href.endswith(".jpeg")
                     or href.endswith(".png")
                     or href.endswith(".gif")
                     or "images.bugwood.org" in href
@@ -87,7 +116,7 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=3):
             return []
 
     def scrape_pages_in_parallel(url_list):
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
             future_to_url = {
                 executor.submit(scrape_page, url, depth): (url, depth)
                 for url, depth in url_list
@@ -123,7 +152,6 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=3):
             all_scraper += "\n".join(urls_not_scraped) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
     except requests.RequestException as e:
         return JsonResponse(

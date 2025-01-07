@@ -204,6 +204,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost",
     "https://apiwebscraper.sgcan.dev",
     "https://webscraper.sgcan.dev",
+    "http://localhost:3000",
 ]
 SPECTACULAR_SETTINGS = {
     "TITLE": "WEB SCRAPER API",
