@@ -26,7 +26,9 @@ USER_AGENTS = [
 OUTPUT_DIR = "c:/web_scraper_files"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
-
+    
+def get_random_user_agent():
+    return random.choice(USER_AGENTS)
 
 def get_logger(name, level=logging.INFO):
     logger = logging.getLogger(name)
