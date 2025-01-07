@@ -1,185 +1,131 @@
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
 from bs4 import BeautifulSoup
-import os
+from urllib.parse import urljoin
+from django.http import JsonResponse
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver,
+    get_random_user_agent,
 )
-from rest_framework.response import Response
-from rest_framework import status
-from selenium.webdriver.common.action_chains import ActionChains
-
-logger = get_logger("scraper")
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def scraper_aphidnet(
-    url=None,
-    wait_time=None,
-    sobrenombre=None,
-):
-    logger.info(f"Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
-
+def scraper_aphidnet(url=None, wait_time=None, sobrenombre=None):
+    headers = {"User-Agent": get_random_user_agent()}
+    logger = get_logger("scraper")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
+    all_scraper = ""
+    total_urls_found = 0
+    total_urls_scraped = 0
+    urls_not_scraped = []
+    visited_urls = set()
+    urls_to_scrape = []
+    max_depth = 3
 
-    all_scraper_fact_sheets = ""
-    all_scraper_morphology = ""
+    def scrape_page(current_url, current_depth):
+        nonlocal total_urls_found, total_urls_scraped, all_scraper
+        content_text = ""
+        portfolio_text = ""
 
-    total_li_captured = 0
-    total_li_scraped = 0
+        if current_url in visited_urls or current_depth > max_depth:
+            return []
 
-    # output_dir = os.path.expanduser("~/")
-    output_dir = r"C:\web_scraper_files"
+        if not current_url.startswith(url):
+            print(f"URL fuera del dominio permitido: {current_url}")
+            return []
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+        print(f"Procesando URL: {current_url} (Nivel: {current_depth})")
+        visited_urls.add(current_url)
+        try:
+            response = requests.get(current_url, headers=headers)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            content_section = soup.find("section", id="content")
+            portfolio_section = soup.find("section", class_="portfolio")
+
+            if content_section:
+                content_text = content_section.get_text(strip=True)
+            if portfolio_section:
+                portfolio_text = portfolio_section.get_text(strip=True)
+
+            if content_text or portfolio_text:
+                all_scraper += f"URL: {current_url}\n\n"
+                all_scraper += f"\nContenido principal':\n{content_text}\n"
+                all_scraper += f"\nContenido secundario':\n{portfolio_text}\n"
+                all_scraper += "-" * 80 + "\n\n"
+                total_urls_scraped += 1
+
+            links = soup.find_all("a", href=True)
+            extracted_links = []
+            for link in links:
+                href = link["href"]
+
+                full_url = urljoin(current_url, href)
+
+                if href == "#" or not href or href.startswith("#"):
+                    continue
+                if not full_url.startswith(url):
+                    continue
+                if (
+                    full_url.endswith(".pdf")
+                    or full_url.endswith(".jpg")
+                    or full_url.endswith(".png")
+                    or full_url.endswith(".gif")
+                    or "images.bugwood.org" in full_url
+                ):
+                    continue
+                extracted_links.append((full_url, current_depth + 1))
+                total_urls_found += len(extracted_links)
+
+            return extracted_links
+
+        except requests.RequestException as e:
+            print(f"Error al procesar la URL: {current_url}, error: {str(e)}")
+            urls_not_scraped.append(current_url)
+            return []
+
+    def scrape_pages_in_parallel(url_list):
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_url = {
+                executor.submit(scrape_page, url, depth): (url, depth)
+                for url, depth in url_list
+            }
+            for future in as_completed(future_to_url):
+                try:
+                    new_links = future.result()
+                    if new_links:
+                        urls_to_scrape.extend(new_links)
+                except Exception as e:
+                    print(f"Error en tarea de scraping: {str(e)}")
 
     try:
-        driver.get(url)
+        urls_to_scrape.append((url, 0))
+        while urls_to_scrape:
+            current_batch = [
+                (url, depth)
+                for url, depth in set(urls_to_scrape)
+                if url not in visited_urls
+            ]
+            urls_to_scrape.clear()
+            scrape_pages_in_parallel(current_batch)
 
-        def scraper_first():
-            nonlocal all_scraper_fact_sheets, total_li_captured, total_li_scraped
-            try:
-                nav_fact_sheets = WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located(
-                        (
-                            By.CSS_SELECTOR,
-                            "nav.main #nav li:nth-child(4) a[href='species_list.php']",
-                        )
-                    )
-                )
-                nav_fact_sheets.click()
-
-                content = WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "#content"))
-                )
-
-                page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                faq_div = page_soup.select_one(".grid_8 #faq")
-                h3_tags = faq_div.find_all("h3")
-
-                for h3 in h3_tags:
-                    ul_tag = h3.find_next("ul")
-
-                    if ul_tag:
-                        li_tags = ul_tag.find_all("li")
-                        total_li_captured += len(li_tags)
-
-                        for li in li_tags:
-                            a_tag = li.find("a", href=True)
-                            if a_tag:
-                                href = a_tag["href"]
-                                text = a_tag.get_text(strip=True)
-                                total_li_scraped += 1
-
-                                all_scraper_fact_sheets += (
-                                    f"Enlace: {href}\n + {text}\n\n"
-                                )
-
-                                driver.get(url + href)
-                                WebDriverWait(driver, wait_time).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "#content")
-                                    )
-                                )
-
-                                page_soup = BeautifulSoup(
-                                    driver.page_source, "html.parser"
-                                )
-                                content = page_soup.select_one("#content div.grid_12")
-                                if content:
-                                    hgroup = content.select_one("hgroup h1")
-                                    paragraphs = content.find_all("p", limit=4)
-                                    if hgroup:
-                                        all_scraper_fact_sheets += (
-                                            f"{hgroup.get_text()}\n"
-                                        )
-                                    for i, p in enumerate(paragraphs, start=1):
-                                        all_scraper_fact_sheets += f"{p.get_text()}\n"
-
-                                    all_scraper_fact_sheets += "\n\n"
-                                else:
-                                    logger.warning(
-                                        f"No se encontró contenido para el enlace: {href}"
-                                    )
-            except Exception as e:
-                logger.error(f"Error al scrapear 'FACT SHEETS': {e}")
-                raise Exception(f"Error al scrapear 'FACT SHEETS': {e}")
-
-        def scraper_second():
-            nonlocal all_scraper_morphology, total_li_captured, total_li_scraped
-            try:
-                nav_morphology = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "nav.main #nav li:nth-child(5)")
-                    )
-                )
-
-                ActionChains(driver).move_to_element(nav_morphology).perform()
-
-                ul_tag = driver.find_element(
-                    By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul"
-                )
-                li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
-                total_li_captured += len(li_tags)
-
-                for index, li in enumerate(li_tags):
-                    if index == 0:
-                        continue
-                    ul_tag = driver.find_element(
-                        By.CSS_SELECTOR, "nav.main #nav li:nth-child(5) ul"
-                    )
-                    li_tags = ul_tag.find_elements(By.CSS_SELECTOR, "li")
-                    li = li_tags[index]
-                    a_tag = li.find_element(By.CSS_SELECTOR, "a")
-                    href = a_tag.get_attribute("href")
-
-                    total_li_scraped += 1
-
-                    driver.get(href)
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#content"))
-                    )
-
-                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    content = page_soup.select_one("section#content div.grid_8")
-                    if content:
-                        hgroup = content.select_one("hgroup h1")
-                        paragraphs = content.find("p")
-                        portfolio = page_soup.select_one(
-                            "section.portfolio ul#portfolio"
-                        )
-                        if portfolio:
-                            all_scraper_morphology += f"Enlace: {href}\n"
-                            all_scraper_morphology += f"{hgroup.get_text(strip=True)}\n"
-                            all_scraper_morphology += (
-                                f"{paragraphs.get_text(strip=True)}\n"
-                            )
-                            all_scraper_morphology += (
-                                f"{portfolio.get_text(strip=True)}\n\n"
-                            )
-            except Exception as e:
-                logger.error(f"Error al scrapear 'MORPHOLOGY': {e}")
-                raise Exception(f"Error al scrapear 'MORPHOLOGY': {e}")
-
-        scraper_first()
-        scraper_second()
         all_scraper = (
-            (all_scraper_fact_sheets.strip() + " " + all_scraper_morphology.strip())
-            if all_scraper_fact_sheets.strip() and all_scraper_morphology.strip()
-            else ""
-        )
+            f"Resumen del scraping:\n"
+            f"Total de URLs encontradas: {total_urls_found}\n"
+            f"Total de URLs scrapeadas: {total_urls_scraped}\n"
+            f"Total de URLs no scrapeadas: {len(urls_not_scraped)}\n\n"
+            f"{'-'*80}\n\n"
+        ) + all_scraper
+
+        if urls_not_scraped:
+            all_scraper += "URLs no scrapeadas:\n\n"
+            all_scraper += "\n".join(urls_not_scraped) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
-    except Exception as e:
-        logger.error(f"Error general: {e}")
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    finally:
-        driver.quit()
+    except requests.RequestException as e:
+        return JsonResponse(
+            {"error": f"Error al realizar la solicitud: {str(e)}"}, status=400
+        )
