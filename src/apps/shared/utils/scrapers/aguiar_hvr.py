@@ -154,7 +154,6 @@ def scraper_aguiar_hvr(url, wait_time, sobrenombre):
                 break
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
