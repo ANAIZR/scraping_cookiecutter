@@ -1,117 +1,94 @@
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
 from bs4 import BeautifulSoup
-from ..functions import (
-    get_logger,
-    connect_to_mongo,
-    initialize_driver,
-    process_scraper_data,
-)
-
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urljoin
 import random
-from selenium.webdriver.support.ui import Select
-
-logger = get_logger("scraper")
+from ..functions import get_logger, connect_to_mongo, process_scraper_data
 
 
 def scraper_gene_affrc(url, sobrenombre):
+    logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
+    all_links = []
+
+    def fetch_url(record_id):
+        """
+        Función auxiliar para realizar la solicitud HTTP y validar el contenido.
+        """
+        base_detail_url = (
+            "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_detail_en.php"
+        )
+        detail_url = f"{base_detail_url}?id={record_id}"
+        try:
+            response = requests.get(detail_url, timeout=random.uniform(3, 7))
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, "html.parser")
+                if soup.find("div", class_="container"):  # Verifica contenido relevante
+                    logger.info(f"URL válida encontrada: {detail_url}")
+                    return detail_url
+                else:
+                    logger.info(f"Página {detail_url} no contiene datos relevantes.")
+            else:
+                logger.info(
+                    f"URL inválida: {detail_url} (Código: {response.status_code})"
+                )
+        except requests.RequestException as e:
+            logger.error(f"Error al acceder a {detail_url}: {e}")
+        return None
+
     try:
-        driver.get(url)
-        wait_time = random.uniform(5, 15)
-
-        checkboxes = WebDriverWait(driver, wait_time).until(
-            EC.presence_of_all_elements_located(
-                (
-                    By.CSS_SELECTOR,
-                    "form#search div:nth-child(7) span:nth-child(2) input[type='checkbox']",
-                )
-            )
+        start_id = 1
+        max_attempts = 15000
+        logger.info(
+            f"Construyendo URLs desde {start_id} hasta {start_id + max_attempts - 1}."
         )
-        for checkbox in checkboxes:
-            if not checkbox.is_selected():
-                driver.execute_script("arguments[0].click();", checkbox)
 
-        btn = WebDriverWait(driver, wait_time).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "form#search input[type='submit']")
-            )
-        )
-        driver.execute_script("arguments[0].click();", btn)
+        # Paralelizar solicitudes con ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_record = {
+                executor.submit(fetch_url, record_id): record_id
+                for record_id in range(start_id, start_id + max_attempts)
+            }
 
-        pagination_select = Select(driver.find_element(By.ID, "pagination"))
-        for page_index in range(1, len(pagination_select.options) + 1):
+            for future in as_completed(future_to_record):
+                record_id = future_to_record[future]
+                try:
+                    result = future.result()
+                    if result:
+                        all_links.append(result)
+                except Exception as e:
+                    logger.error(f"Error procesando ID {record_id}: {e}")
+
+        logger.info(f"Total de enlaces válidos encontrados: {len(all_links)}")
+
+        # Procesar cada enlace válido
+        for link in all_links:
             try:
-                pagination_select.select_by_index(page_index)
-                WebDriverWait(driver, wait_time).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "div.table-responsive")
-                    )
-                )
+                response = requests.get(link)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "html.parser")
 
-                html_content = driver.page_source
-                soup = BeautifulSoup(html_content, "html.parser")
+                # Extraer tabla de datos
+                table = soup.select_one("div.container table.table")
+                if table:
+                    for row in table.select("tr"):
+                        cells = row.find_all("td")
+                        headers = row.find_all("th")
 
-                rows = soup.select("div.table-responsive tbody tr")
-
-                for index, current_row in enumerate(rows):
-                    try:
-                        second_td = current_row.select_one("td:nth-child(2) a")
-                        link = second_td.get("href")
-                        driver.execute_script("window.open(arguments[0]);", link)
-                        original_window = driver.current_window_handle
-                        WebDriverWait(driver, 10).until(
-                            lambda d: len(d.window_handles) > 1
-                        )
-                        new_window = [
-                            window
-                            for window in driver.window_handles
-                            if window != original_window
-                        ][0]
-                        driver.switch_to.window(new_window)
-                        WebDriverWait(driver, 20).until(
-                            EC.presence_of_element_located(
-                                (By.CSS_SELECTOR, "div.container table.table")
-                            )
-                        )
-                        content = WebDriverWait(driver, wait_time).until(
-                            EC.presence_of_element_located(
-                                (By.CSS_SELECTOR, "div.container div>table tbody")
-                            )
-                        )
-                        time.sleep(2)
-                        all_scraper += content.text
-                        rows = content.find_elements(By.CSS_SELECTOR, "tr")
-
-                        for row in rows:
-                            cells = row.find_elements(By.CSS_SELECTOR, "td")
-                            headers = row.find_elements(By.CSS_SELECTOR, "th")
-
-                            if headers:
-                                for header in headers:
-                                    all_scraper += header.text.strip() + ": "
-
-                            for cell in cells:
-                                all_scraper += cell.text.strip() + "\n"
-                        driver.close()
-                        driver.switch_to.window(original_window)
-
-                    except Exception as e:
-                        print(f"Error procesando : {e}")
-            except Exception as e:
-                print(f"Error procesando : {e}")
+                        if headers:
+                            for header in headers:
+                                all_scraper += header.text.strip() + ": "
+                        for cell in cells:
+                            all_scraper += cell.text.strip() + "\n"
+                else:
+                    logger.info(f"No se encontró tabla en {link}")
+            except requests.RequestException as e:
+                logger.error(f"Error al procesar enlace {link}: {e}")
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
-        print(f"Ocurrió un error: {e}")
-
-    finally:
-        driver.quit()
+        logger.error(f"Ocurrió un error durante el scraping: {e}")
