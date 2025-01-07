@@ -41,3 +41,4 @@ from .delta import scraper_delta
 from .nemaplex import scraper_nemaplex
 from .bugwood import scraper_bugwood
 from .padil import scraper_padil
+from .cal_ipc import scraper_cal_ipc
