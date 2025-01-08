@@ -43,29 +43,23 @@ def scraper_iucngisd(url, sobrenombre):
     processed_links = set()
 
     try:
-        # Inicializar Selenium WebDriver
-        driver = webdriver.Chrome()  # Asegúrate de tener el WebDriver configurado correctamente
+        driver = webdriver.Chrome() 
         driver.get(url)
         logger.info(f"Abriendo URL con Selenium: {url}")
 
-        # Esperar y hacer clic en el botón
         search_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "go"))
         )
         search_button.click()
         logger.info("Botón de búsqueda clicado con Selenium.")
 
-        # Esperar a que la página se actualice
-        time.sleep(5)  # Ajusta el tiempo según sea necesario
+        time.sleep(5)  
 
-        # Obtener el contenido de la página después del clic
         page_source = driver.page_source
         driver.quit()
 
-        # Continuar con BeautifulSoup para analizar el HTML
         soup = BeautifulSoup(page_source, "html.parser")
 
-        # Extraer los enlaces dentro del elemento ul.content.spec
         ul_tag = soup.select_one("ul.content.spec")
         if not ul_tag:
             raise Exception("No se encontró el elemento ul con la clase 'content spec'.")
@@ -79,7 +73,6 @@ def scraper_iucngisd(url, sobrenombre):
 
         logger.info(f"Enlaces extraídos: {len(hrefs)}")
 
-        # Procesar cada enlace para obtener su contenido usando ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=4) as executor:
             results = list(executor.map(lambda href: fetch_content(href, logger), hrefs))
 
@@ -87,7 +80,6 @@ def scraper_iucngisd(url, sobrenombre):
             if content:
                 all_scraper += content + "\n\n"
 
-        # Procesar los datos extraídos
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
