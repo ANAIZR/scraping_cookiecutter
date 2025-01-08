@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import logging
 import random
+import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException
 
 USER_AGENTS = [
@@ -26,9 +27,11 @@ USER_AGENTS = [
 OUTPUT_DIR = "c:/web_scraper_files"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
-    
+
+
 def get_random_user_agent():
     return random.choice(USER_AGENTS)
+
 
 def get_logger(name, level=logging.INFO):
     logger = logging.getLogger(name)
@@ -42,9 +45,9 @@ def get_logger(name, level=logging.INFO):
 def initialize_driver():
     logger = get_logger("scraper")
     try:
-        logger.info("Inicializando el navegador.")
-        options = webdriver.ChromeOptions()
-        # options.add_argument("--headless")
+        logger.info("Inicializando el navegador (undetected_chromedriver).")
+        options = uc.ChromeOptions()
+        # options.add_argument("--headless")  # Puedes descomentar para usar modo sin cabeza
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -53,10 +56,9 @@ def initialize_driver():
         options.add_argument(f"user-agent={random_user_agent}")
         logger.info(f"Usando User-Agent: {random_user_agent}")
 
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()), options=options
-        )
-        logger.info("Navegador iniciado correctamente.")
+        driver = uc.Chrome(options=options)
+        driver.set_page_load_timeout(60)
+        logger.info("Navegador iniciado correctamente (undetected_chromedriver).")
         return driver
     except Exception as e:
         logger.error(f"Error al inicializar el navegador: {str(e)}")
@@ -90,10 +92,10 @@ def generate_directory(output_dir, url):
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-        logger.info(f"Directorio generado: {folder_path}")
+        print(f"Directorio generado: {folder_path}")
         return folder_path
     except Exception as e:
-        logger.error(f"Error al generar el directorio: {str(e)}")
+        print(f"Error al generar el directorio: {str(e)}")
         raise
 
 
@@ -125,11 +127,11 @@ def delete_old_documents(url, collection, fs, limit=2):
                 collection.delete_one({"_id": doc["_id"]})
                 fs.delete(doc["Objeto"])
 
-            logger.info(
+            print(
                 f"Se han eliminado {docs_count - limit} documentos antiguos para la URL {url}."
             )
         else:
-            logger.info(
+            print(
                 f"No se encontraron documentos para eliminar. Se mantienen {docs_count} documentos para la URL {url}."
             )
 
@@ -181,7 +183,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("procesar datos del scraper")
     try:
-        if all_scraper.strip():
+        if all_scraper:
             response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )

@@ -7,24 +7,21 @@ import gridfs
 import os
 import time
 import pickle
-import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
+    initialize_driver,
 )
 from rest_framework.response import Response
 from rest_framework import status
-from selenium.webdriver.chrome.options import Options
 
 
 def scraper_cabi_digital(url, sobrenombre):
-    options = Options()
-    options.add_argument("--headless")
-    driver = uc.Chrome(options=options)
-    driver.set_page_load_timeout(60)
+    driver = initialize_driver()
+
     driver.get(url)
 
     time.sleep(5)
@@ -34,14 +31,14 @@ def scraper_cabi_digital(url, sobrenombre):
     collection = db["collection"]
     fs = gridfs.GridFS(db)
 
-    output_dir = os.path.expanduser("~/")
+    output_dir = "c:/web_scraper_files"
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     base_folder_path = generate_directory(output_dir, url)
 
-    data_collected = []  # Lista para almacenar los datos recolectados
+    data_collected = []  
 
     try:
         with open("cookies.pkl", "rb") as file:
@@ -70,22 +67,23 @@ def scraper_cabi_digital(url, sobrenombre):
     except Exception:
         print("El botón de 'Guardar preferencias' no apareció o no fue clicable.")
 
-    while True:
-        try:
-            search_button = WebDriverWait(driver, 30).until(
-                EC.element_to_be_clickable(
-                    (
-                        By.CSS_SELECTOR,
-                        "div.page-top-banner div.container div.quick-search button.quick-search__button",
-                    )
+    try:
+        search_button = WebDriverWait(driver, 30).until(
+            EC.element_to_be_clickable(
+                (
+                    By.CSS_SELECTOR,
+                    "div.page-top-banner div.container div.quick-search button.quick-search__button",
                 )
             )
-            search_button.click()
-        except Exception as e:
-            print(f"Error al realizar la búsqueda: {e}")
+        )
+        search_button.click()
+    except Exception as e:
+        print(f"Error al realizar la búsqueda: {e}")
+
+    while True:
 
         try:
-            content = WebDriverWait(driver, 30).until(
+            WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located(
                     (
                         By.CSS_SELECTOR,
@@ -96,6 +94,9 @@ def scraper_cabi_digital(url, sobrenombre):
 
             soup = BeautifulSoup(driver.page_source, "html.parser")
             items = soup.select("ul.rlist li")
+            print(
+                f"Se  recolectaran  los datos de la página actual. {driver.current_url}"
+            )
 
             for item in items:
                 content_div = item.find("div", class_="issue-item__content")
@@ -185,28 +186,12 @@ def scraper_cabi_digital(url, sobrenombre):
                                             "Etiquetas": data["Etiquetas"],
                                         }
                                     )
+                                    driver.back()
 
                             except Exception as e:
                                 print(
                                     f"Error al esperar el contenido de la nueva página: {e}"
                                 )
-            try:
-                driver.get(url)
-                time.sleep(3)
-
-                search_button = WebDriverWait(driver, 30).until(
-                    EC.element_to_be_clickable(
-                        (
-                            By.CSS_SELECTOR,
-                            "div.page-top-banner div.container div.quick-search button.quick-search__button",
-                        )
-                    )
-                )
-                search_button.click()
-            except Exception as e:
-                print(
-                    f"Error al hacer clic en el botón de búsqueda para la siguiente página: {e}"
-                )
             try:
                 next_page_button = driver.find_element(
                     By.CSS_SELECTOR, "nav.pagination span a"
