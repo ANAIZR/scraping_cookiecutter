@@ -43,6 +43,7 @@ def initialize_driver():
         options = webdriver.ChromeOptions()
         # options.add_argument("--headless")
         options.add_argument("--disable-gpu")
+        options.add_argument("--start-maximized")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         random_user_agent = random.choice(USER_AGENTS)
