@@ -1,78 +1,96 @@
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver,
 )
 from rest_framework.response import Response
 from rest_framework import status
+import time
+import requests
 
-from bs4 import BeautifulSoup
-import time 
+def fetch_content(href, logger):
+    try:
+        response = requests.get(href)
+        logger.info(f"Accediendo al enlace: {href}")
+        if response.status_code != 200:
+            logger.error(f"Error al acceder al enlace: {href}, Código de estado: {response.status_code}")
+            return None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        inner_content = soup.find(id="inner-content")
+        if inner_content:
+            content_text = inner_content.get_text(strip=True)
+            logger.info(f"Contenido obtenido del enlace: {href}, Longitud: {len(content_text)} caracteres")
+            return f"URL: {href}\n{content_text}"
+        else:
+            logger.error(f"No se encontró contenido interno en la página: {href}")
+            return None
+    except Exception as e:
+        logger.error(f"Error al procesar el enlace {href}: {str(e)}")
+        return None
 
 def scraper_iucngisd(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     processed_links = set()
 
     try:
+        # Inicializar Selenium WebDriver
+        driver = webdriver.Chrome()  # Asegúrate de tener el WebDriver configurado correctamente
         driver.get(url)
-        print(f"Abriendo URL: {url}")
-        search_button = WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "#go"))
+        logger.info(f"Abriendo URL con Selenium: {url}")
+
+        # Esperar y hacer clic en el botón
+        search_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "go"))
         )
-        print("Botón de búsqueda encontrado.")
-        driver.execute_script("arguments[0].click();", search_button)
-        print("Haciendo clic en el botón de búsqueda con JavaScript.")
-        time.sleep(5)
-        print("Esperando 5 segundos para cargar la página.")
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "ul.content.spec"))
-        )
-        print("Esperando a que aparezca el elemento ul.")        
-        ul_tag = driver.find_element(By.CSS_SELECTOR, "ul.content.spec")
-        if ul_tag:
-            print("Elemento ul encontrado.")
-        li_tags = ul_tag.find_elements(By.TAG_NAME, "li")
-        if li_tags:
-            print(f"Elementos li encontrados: {len(li_tags)}")
+        search_button.click()
+        logger.info("Botón de búsqueda clicado con Selenium.")
 
-            for li_tag in li_tags:
-                WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located((By.TAG_NAME, "li"))
-                )
-                href = li_tag.find_element(By.TAG_NAME, "a").get_attribute("href")
-                print(f"Enlace encontrado: {href}")
-                if href:
-                    driver.get(href)
-                    print(f"Procesando enlace: {href}")
-                    try:
-                        WebDriverWait(driver, 30).until(
-                            EC.presence_of_element_located((By.ID, "inner-content"))
-                        )
-                        soup = BeautifulSoup(driver.page_source, "html.parser")
-                        inner_content = soup.find(id="inner-content").get_text(strip=True)
-                        all_scraper += inner_content + "\n\n"
-                    except Exception as e:
-                        logger.error(f"Error al obtener el contenido interno: {str(e)}")
+        # Esperar a que la página se actualice
+        time.sleep(5)  # Ajusta el tiempo según sea necesario
 
+        # Obtener el contenido de la página después del clic
+        page_source = driver.page_source
+        driver.quit()
 
+        # Continuar con BeautifulSoup para analizar el HTML
+        soup = BeautifulSoup(page_source, "html.parser")
 
-                    
-                else:
-                    logger.error("No se encontró un enlace en el tag <a>.")
-                    continue
+        # Extraer los enlaces dentro del elemento ul.content.spec
+        ul_tag = soup.select_one("ul.content.spec")
+        if not ul_tag:
+            raise Exception("No se encontró el elemento ul con la clase 'content spec'.")
 
+        hrefs = []
+        li_tags = ul_tag.find_all("li")
+        for li_tag in li_tags:
+            a_tag = li_tag.find("a")
+            if a_tag and a_tag.get("href"):
+                hrefs.append(a_tag["href"])
+
+        logger.info(f"Enlaces extraídos: {len(hrefs)}")
+
+        # Procesar cada enlace para obtener su contenido usando ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(lambda href: fetch_content(href, logger), hrefs))
+
+        for content in results:
+            if content:
+                all_scraper += content + "\n\n"
+
+        # Procesar los datos extraídos
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    finally:
-        driver.quit()
+    except Exception as e:
+        logger.error(f"Error inesperado: {str(e)}")
+        return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
