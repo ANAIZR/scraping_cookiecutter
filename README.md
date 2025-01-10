@@ -18,6 +18,12 @@ Configuration settings have been moved to the [settings documentation](http://co
 ### Activate Virtual Environment
 
 ```sh
+
+$ python -m venv env
+
+```
+
+```sh
 $ env\Scripts\activate
 ```
 
@@ -40,9 +46,7 @@ $ python manage.py loaddata urls.json
 ```
 
 
-```sh
-$ python manage.py runserver
-```
+
 ### SuperUser Account
 
 ```sh
@@ -50,7 +54,9 @@ $ python manage.py createsuperuser
 ```
 
 
-
+```sh
+$ python manage.py runserver
+```
 ### Test Coverage
 
 ```sh

@@ -42,3 +42,4 @@ from .nemaplex import scraper_nemaplex
 from .bugwood import scraper_bugwood
 from .padil import scraper_padil
 from .cal_ipc import scraper_cal_ipc
+from .method_books import scraper_method_books
