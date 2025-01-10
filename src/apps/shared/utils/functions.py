@@ -80,7 +80,7 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
         raise
 
 
-def generate_directory(output_dir, url, downloaded_file=None):
+def generate_directory(output_dir, url):
     logger = get_logger("generar directorio")
 
     try:
@@ -94,10 +94,7 @@ def generate_directory(output_dir, url, downloaded_file=None):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
             print(f"Directorio generado: {folder_path}")
-        if downloaded_file and os.path.isfile(downloaded_file):
-            destination = os.path.join(folder_path, os.path.basename(downloaded_file))
-            shutil.move(downloaded_file, destination)
-            print(f"Archivo descargado movido a: {destination}")
+        
         return folder_path
     except Exception as e:
         print(f"Error al generar el directorio: {str(e)}")
