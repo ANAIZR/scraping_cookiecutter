@@ -19,197 +19,196 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
+def load_keywords(file_path="../txt/plants.txt"):
+    try:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        absolute_path = os.path.join(base_path, file_path)
+        with open(absolute_path, "r", encoding="utf-8") as f:
+            keywords = [
+                line.strip() for line in f if isinstance(line, str) and line.strip()
+            ]
+        print(f"Palabras clave cargadas: {keywords}")
+        return keywords
+    except Exception as e:
+        print(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
+        raise
+
+
+data_collected = []
+
+
 def scraper_cabi_digital(url, sobrenombre):
     driver = initialize_driver()
-
-    driver.get(url)
-
-    time.sleep(5)
-
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
-
-    output_dir = "c:/web_scraper_files"
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    base_folder_path = generate_directory(output_dir, url)
-
-    data_collected = []  
-
     try:
-        with open("cookies.pkl", "rb") as file:
-            cookies = pickle.load(file)
-            for cookie in cookies:
-                driver.add_cookie(cookie)
-        driver.refresh()
-    except FileNotFoundError:
-        print("No se encontraron cookies guardadas.")
+        driver.get(url)
+        time.sleep(5)
 
-    try:
-        cookie_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "#onetrust-pc-btn-handler"))
-        )
-        cookie_button.click()
-    except Exception:
-        print("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
+        # Configuración de MongoDB
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client["scrapping-can"]
+        collection = db["collection"]
+        fs = gridfs.GridFS(db)
 
-    try:
-        preferences_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
-            )
-        )
-        preferences_button.click()
-    except Exception:
-        print("El botón de 'Guardar preferencias' no apareció o no fue clicable.")
+        # Directorio base
+        output_dir = "c:/web_scraper_files"
+        os.makedirs(output_dir, exist_ok=True)
+        base_folder_path = generate_directory(output_dir, url)
 
-    try:
-        search_button = WebDriverWait(driver, 30).until(
-            EC.element_to_be_clickable(
-                (
-                    By.CSS_SELECTOR,
-                    "div.page-top-banner div.container div.quick-search button.quick-search__button",
+        # Cargar palabras clave
+        keywords = load_keywords()
+
+        # Cargar cookies si existen
+        try:
+            with open("cookies.pkl", "rb") as file:
+                cookies = pickle.load(file)
+                for cookie in cookies:
+                    driver.add_cookie(cookie)
+            driver.refresh()
+        except FileNotFoundError:
+            print("No se encontraron cookies guardadas.")
+
+        # Aceptar cookies
+        try:
+            cookie_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, "#onetrust-pc-btn-handler")
                 )
             )
-        )
-        search_button.click()
-    except Exception as e:
-        print(f"Error al realizar la búsqueda: {e}")
-
-    while True:
-
+            cookie_button.click()
+        except Exception:
+            print("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
         try:
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located(
-                    (
-                        By.CSS_SELECTOR,
-                        "div.row > div.col-sm-8 form#frmIssueItems > ul.rlist",
+            preferences_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
+                )
+            )
+            preferences_button.click()
+        except Exception:
+            print("El botón de 'Guardar preferencias' no apareció o no fue clicable.")
+
+        # Procesar palabras clave
+        for keyword in keywords:
+            print(f"Buscando con la palabra clave: {keyword}")
+            try:
+                search_input = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located(
+                        (
+                            By.CSS_SELECTOR,
+                            "#AllFieldb117445f-c250-4d14-a8d9-7c66d5b6a4800",
+                        )
                     )
                 )
-            )
+                search_input.clear()
+                search_input.send_keys(keyword)
+                search_input.submit()
+                print(f"Realizando búsqueda con la palabra clave: {keyword}")
+            except Exception as e:
+                print(f"Error al realizar la búsqueda: {e}")
+                continue
 
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-            items = soup.select("ul.rlist li")
-            print(
-                f"Se  recolectaran  los datos de la página actual. {driver.current_url}"
-            )
+            # Iterar sobre páginas de resultados
+            while True:
+                try:
+                    WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "ul.rlist li"))
+                    )
+                    print("Resultados encontrados en la página.")
 
-            for item in items:
-                content_div = item.find("div", class_="issue-item__content")
-                if content_div:
-                    first_link = content_div.find("a")
-                    if first_link:
-                        href = first_link.get("href")
-                        if href:
-
-                            full_url = (
-                                href
-                                if href.startswith("http")
-                                else f"https://www.cabidigitallibrary.org{href}"
+                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                    items = soup.select("ul.rlist li")
+                    print(f"Encontrados {len(items)} resultados.")
+                    for item in items:
+                        href = item.find("a")["href"]
+                        if href.startswith("/doi/10.1079/cabicompendium"):
+                            absolut_href = f"https://www.cabidigitallibrary.org{href}"
+                            process_page(
+                                driver,
+                                absolut_href,
+                                base_folder_path,
+                                sobrenombre,
+                                fs,
+                                collection,
                             )
-                            folder_path = generate_directory(base_folder_path, href)
 
-                            driver.get(full_url)
-                            time.sleep(5)
-
-                            try:
-                                WebDriverWait(driver, 60).until(
-                                    EC.presence_of_element_located(
-                                        (
-                                            By.CSS_SELECTOR,
-                                            "article div#abstracts section#abstract",
-                                        )
-                                    )
-                                )
-                                WebDriverWait(driver, 60).until(
-                                    EC.presence_of_element_located(
-                                        (
-                                            By.CSS_SELECTOR,
-                                            "article section#bodymatter div.core-container",
-                                        )
-                                    )
-                                )
-                                page_soup = BeautifulSoup(
-                                    driver.page_source, "html.parser"
-                                )
-                                abstracts = page_soup.select_one(
-                                    "article div#abstracts section#abstract"
-                                )
-                                body = page_soup.select_one(
-                                    "article section#bodymatter div.core-container"
-                                )
-
-                                abstract_text = (
-                                    abstracts.get_text(strip=True)
-                                    if abstracts
-                                    else "No abstract found"
-                                )
-                                body_text = (
-                                    body.get_text(strip=True)
-                                    if body
-                                    else "No body found"
-                                )
-                                if abstract_text and body_text:
-                                    contenido = f"{abstract_text}\n\n\n{body_text}"
-                                    file_path = get_next_versioned_filename(
-                                        folder_path, base_name=sobrenombre
-                                    )
-                                    with open(file_path, "w", encoding="utf-8") as file:
-                                        file.write(contenido)
-
-                                    with open(file_path, "rb") as file_data:
-                                        object_id = fs.put(
-                                            file_data,
-                                            filename=os.path.basename(file_path),
-                                        )
-                                    data = {
-                                        "Objeto": object_id,
-                                        "Tipo": "Web",
-                                        "Url": full_url,
-                                        "Fecha_scrapper": datetime.now().strftime(
-                                            "%Y-%m-%d %H:%M:%S"
-                                        ),
-                                        "Etiquetas": ["planta", "plaga"],
-                                    }
-                                    collection = db["collection"]
-                                    collection.insert_one(data)
-                                    delete_old_documents(full_url, collection, fs)
-
-                                    data_collected.append(
-                                        {
-                                            "Url": full_url,
-                                            "Fecha_scrapper": data["Fecha_scrapper"],
-                                            "Etiquetas": data["Etiquetas"],
-                                        }
-                                    )
-                                    driver.back()
-
-                            except Exception as e:
-                                print(
-                                    f"Error al esperar el contenido de la nueva página: {e}"
-                                )
-            try:
-                next_page_button = driver.find_element(
-                    By.CSS_SELECTOR, ".pagination .icon-arrow_r"
-                )
-                next_page_link = next_page_button.get_attribute("href")
-                if next_page_link:
-                    print(f"Se navegará a la siguiente página: {next_page_link}")
-                    driver.get(next_page_link)
-                    time.sleep(3)
-                else:
+                    try:
+                        next_page_button = driver.find_element(
+                            By.CSS_SELECTOR,
+                            ".pagination__btn.pagination__btn--next.icon-arrow_r",
+                        )
+                        next_page_link = next_page_button.get_attribute("href")
+                        
+                        if next_page_link:
+                            print(f"Yendo a la siguiente página: {next_page_link}")
+                            driver.get(next_page_link)
+                        else:
+                            break
+                    except Exception:
+                        print("No se encontró el botón para la siguiente página.")
+                        break
+                except Exception as e:
+                    print(f"Error al procesar resultados: {e}")
                     break
-            except Exception:
-                break
+    finally:
+        driver.quit()  # Aquí se asegura cerrar el navegador
 
-        except Exception as e:
-            break
 
-    driver.quit()
+def process_page(driver, url, base_folder_path, sobrenombre, fs, collection):
+    try:
+        driver.get(url)
+        folder_path = generate_directory(base_folder_path, url)
+        time.sleep(5)
+
+        # Esperar que carguen los contenidos
+        WebDriverWait(driver, 60).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#abstracts"))
+        )
+        WebDriverWait(driver, 60).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "#bodymatter>.core-container")
+            )
+        )
+
+        # Extraer contenido
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        abstracts = soup.select_one("#abstracts")
+        body = soup.select_one("#bodymatter>.core-container")
+
+        abstract_text = (
+            abstracts.get_text(strip=True) if abstracts else "No abstract found"
+        )
+        body_text = body.get_text(strip=True) if body else "No body found"
+
+        if abstract_text and body_text:
+            contenido = f"{abstract_text}\n\n\n{body_text}"
+            file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+            with open(file_path, "w", encoding="utf-8") as file:
+                file.write(contenido)
+
+            with open(file_path, "rb") as file_data:
+                object_id = fs.put(file_data, filename=os.path.basename(file_path))
+
+            # Guardar en MongoDB
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            collection.insert_one(data)
+            delete_old_documents(url, collection, fs)
+            print(f"Página procesada y guardada: {url}")
+            data_collected.append(
+                {
+                    "Url": url,
+                    "Fecha_scrapper": data["Fecha_scrapper"],
+                    "Etiquetas": data["Etiquetas"],
+                }
+            )
+        driver.back()
+    except Exception as e:
+        print(f"Error al procesar la página {url}: {e}")
 
     if data_collected:
         return Response(
