@@ -13,6 +13,7 @@ import logging
 import random
 import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException
+import shutil
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
@@ -79,7 +80,7 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
         raise
 
 
-def generate_directory(output_dir, url):
+def generate_directory(output_dir, url, downloaded_file=None):
     logger = get_logger("generar directorio")
 
     try:
@@ -92,7 +93,11 @@ def generate_directory(output_dir, url):
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-        print(f"Directorio generado: {folder_path}")
+            print(f"Directorio generado: {folder_path}")
+        if downloaded_file and os.path.isfile(downloaded_file):
+            destination = os.path.join(folder_path, os.path.basename(downloaded_file))
+            shutil.move(downloaded_file, destination)
+            print(f"Archivo descargado movido a: {destination}")
         return folder_path
     except Exception as e:
         print(f"Error al generar el directorio: {str(e)}")
