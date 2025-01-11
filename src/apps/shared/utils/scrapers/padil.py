@@ -13,6 +13,8 @@ import random
 import time
 import requests
 from bs4 import BeautifulSoup
+from rest_framework.response import Response
+from rest_framework import status
 
 logger = get_logger("scraper")
 
@@ -30,97 +32,159 @@ def load_keywords(file_path="../txt/all.txt"):
         raise
 
 
-def scraper_padil(url,sobrenombre):
+def scraper_padil(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     output_dir = "c:/web_scraper_files"
     main_folder = generate_directory(output_dir, "padil_scraper")
     keywords = load_keywords()
-    all_links = []  # Lista para almacenar todos los enlaces encontrados
+    base_domain = "https://www.padil.gov.au"
+
+    visited_urls = set()  # Almacena las URLs visitadas
 
     try:
         driver.get(url)
         logger.info("Página de PADIL cargada exitosamente.")
 
         for keyword in keywords:
-            try:
-                # Buscar la barra de búsqueda
-                search_box = WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located(
-                        (
-                            By.CSS_SELECTOR,
-                            "div.main input.k-input-inner[placeholder='Search for anything']",
+            logger.info(f"Procesando palabra clave: {keyword}")
+            keyword_folder = generate_directory(main_folder, keyword)
+
+            while True:
+                try:
+                    # Buscar la barra de búsqueda
+                    search_box = WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located(
+                            (
+                                By.CSS_SELECTOR,
+                                "div.main input.k-input-inner[placeholder='Search for anything']",
+                            )
                         )
                     )
-                )
-                search_box.clear()
-                search_box.send_keys(keyword)
-                search_box.send_keys(Keys.RETURN)
-                logger.info(f"Palabra clave '{keyword}' buscada.")
-                time.sleep(2)  # Breve pausa para asegurar la carga
+                    search_box.clear()
+                    time.sleep(random.uniform(6, 10))  # Esperar entre 2-5 segundos
+                    search_box.send_keys(keyword)
+                    search_box.send_keys(Keys.RETURN)
+                    logger.info(f"Palabra clave '{keyword}' buscada.")
+                    time.sleep(random.uniform(6, 10))  # Esperar entre 2-5 segundos
 
-                WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "div.search-results")
+                    # Esperar resultados
+                    WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, "div.search-results")
+                        )
                     )
-                )
-                time.sleep(2)  # Breve pausa para asegurar la carga
 
-                # Extraer los hrefs
-                results = driver.find_elements(
-                    By.CSS_SELECTOR, "div.search-results div.search-result a"
-                )
-                keyword_folder = generate_directory(main_folder, keyword)
-                keyword_links = []
+                    # Extraer los hrefs
+                    results = driver.find_elements(
+                        By.CSS_SELECTOR, "div.search-results div.search-result a"
+                    )
+                    result_count = len(results)
+                    logger.info(
+                        f"Se encontraron {result_count} resultados para '{keyword}'."
+                    )
 
-                for result in results:
-                    href = result.get_attribute("href")
-                    if href and href.startswith("/"):
-                        absolute_href = f"https://www.padil.gov.au{href}"
-                        keyword_links.append(absolute_href)
+                    for result_index in range(result_count):
+                        try:
+                            driver.get(url)  # Volver a la página inicial
+                            logger.info(
+                                "Volviendo a la página inicial para nueva búsqueda."
+                            )
 
-                logger.info(
-                    f"Se encontraron {len(keyword_links)} enlaces para '{keyword}'."
-                )
-                all_links.extend(keyword_links)
+                            # Realizar la búsqueda nuevamente
+                            search_box = WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located(
+                                    (
+                                        By.CSS_SELECTOR,
+                                        "div.main input.k-input-inner[placeholder='Search for anything']",
+                                    )
+                                )
+                            )
+                            search_box.clear()
+                            time.sleep(random.uniform(6,10))
+                            search_box.send_keys(keyword)
+                            search_box.send_keys(Keys.RETURN)
+                            time.sleep(random.uniform(6,10))
 
-                # Regresar a la página principal
-                driver.get(url)
-                time.sleep(2)
+                            # Esperar resultados
+                            WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR, "div.search-results")
+                                )
+                            )
+                            results = driver.find_elements(
+                                By.CSS_SELECTOR,
+                                "div.search-results div.search-result a",
+                            )
 
-            except Exception as e:
-                logger.error(f"Error durante la búsqueda de '{keyword}': {str(e)}")
-                continue
+                            if result_index >= len(results):
+                                logger.warning(
+                                    "El índice supera el número de resultados disponibles."
+                                )
+                                break
 
-        logger.info("Búsquedas con Selenium completadas. Cerrando navegador.")
+                            href = results[result_index].get_attribute("href")
+                            if (
+                                href
+                                and href.startswith(base_domain)
+                                and href not in visited_urls
+                            ):
+                                logger.info(f"Procesando enlace: {href}")
+                                visited_urls.add(href)  # Marcar como visitado
+
+                                driver.get(href)
+                                WebDriverWait(driver, 60).until(
+                                    EC.presence_of_element_located(
+                                        (By.CSS_SELECTOR, "body")
+                                    )
+                                )
+                                time.sleep(5)
+                                soup = BeautifulSoup(driver.page_source, "html.parser")
+                                pest_details = soup.find("div", class_="pest-details")
+
+                                if pest_details:
+                                    link_folder = generate_directory(
+                                        keyword_folder, f"result_{result_index+1}"
+                                    )
+                                    file_path = get_next_versioned_filename(
+                                        link_folder, "pest_details"
+                                    )
+                                    with open(file_path, "w", encoding="utf-8") as f:
+                                        f.write(pest_details.text.strip())
+                                    logger.info(f"Datos guardados en: {file_path}")
+                                else:
+                                    logger.error(
+                                        f"El elemento 'div.pest-details' no se encontró en {href}."
+                                    )
+                                    html_path = os.path.join(
+                                        keyword_folder, "error_page.html"
+                                    )
+                                    with open(html_path, "w", encoding="utf-8") as f:
+                                        f.write(driver.page_source)
+                                    logger.error(
+                                        f"HTML de la página guardado para depuración en: {html_path}"
+                                    )
+                        except Exception as e:
+                            logger.error(f"Error al procesar el enlace: {str(e)}")
+                            continue
+
+                    logger.info(f"Procesamiento de '{keyword}' completado.")
+                    driver.get(url)  # Volver a la página inicial
+                    break
+
+                except Exception as e:
+                    logger.error(f"Error durante la búsqueda de '{keyword}': {str(e)}")
+                    break
+
+        logger.info("Scraping completado con éxito.")
+        return Response(
+            {
+                "message": "Escrapeo realizado con éxito",
+            },
+            status=status.HTTP_200_OK,
+        )
     except Exception as e:
-        logger.error(f"Error durante el scraping con Selenium: {str(e)}")
+        logger.error(f"Error durante el scraping: {str(e)}")
+        return {"status": "error", "message": f"Error durante el scraping: {str(e)}"}
     finally:
         driver.quit()
-
-    # Usar requests para procesar los enlaces
-    logger.info("Iniciando extracción de contenido con requests.")
-    for href in all_links:
-        try:
-            response = requests.get(href, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
-            pest_details = soup.find("div", class_="pest-details")
-
-            if pest_details:
-                link_folder = generate_directory(keyword_folder, "details")
-                file_path = get_next_versioned_filename(link_folder, "pest_details")
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(pest_details.text.strip())
-                logger.info(f"Datos guardados en: {file_path}")
-
-        except Exception as e:
-            logger.error(f"Error al procesar {href}: {str(e)}")
-
-    logger.info("Scraping completado exitosamente.")
-
-
-def random_wait(min_wait=2, max_wait=6):
-    wait_time = random.uniform(min_wait, max_wait)
-    logger.info(f"Esperando {wait_time:.2f} segundos...")
-    time.sleep(wait_time)
