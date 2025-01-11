@@ -144,7 +144,7 @@ def scraper_cabi_digital(url, sobrenombre):
                                         href, keyword_folder
                                     )
                                 file_path = get_next_versioned_filename(
-                                    link_folder, base_name=sobrenombre
+                                    link_folder, keyword
                                 )
                                 with open(file_path, "w", encoding="utf-8") as file:
                                     file.write(contenido)

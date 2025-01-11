@@ -53,7 +53,7 @@ def scraper_biota_nz(url, sobrenombre):
 
         for keyword in keywords:
             print(f"Buscando la palabra clave: {keyword}")
-            keyword_folder = generate_directory(main_folder, keyword)
+            keyword_folder = generate_directory(keyword, main_folder)
             try:
 
                 search_box = WebDriverWait(driver, 10).until(
