@@ -41,6 +41,7 @@ def scraper_padil(url, sobrenombre):
     base_domain = "https://www.padil.gov.au"
 
     visited_urls = set()
+    scraping_failed = False  # Marcador para indicar si hubo algún fallo
 
     try:
         driver.get(url)
@@ -67,14 +68,12 @@ def scraper_padil(url, sobrenombre):
                     logger.info(f"Palabra clave '{keyword}' buscada.")
                     time.sleep(random.uniform(6, 10))
 
-                    # Esperar resultados
                     WebDriverWait(driver, 30).until(
                         EC.presence_of_element_located(
                             (By.CSS_SELECTOR, "div.search-results")
                         )
                     )
 
-                    # Extraer los hrefs
                     results = driver.find_elements(
                         By.CSS_SELECTOR, "div.search-results div.search-result a"
                     )
@@ -163,24 +162,38 @@ def scraper_padil(url, sobrenombre):
                                     )
                         except Exception as e:
                             logger.error(f"Error al procesar el enlace: {str(e)}")
+                            scraping_failed = True 
                             continue
 
                     logger.info(f"Procesamiento de '{keyword}' completado.")
-                    driver.get(url)
+                    driver.get(
+                        url
+                    )  
                     break
 
                 except Exception as e:
                     logger.error(f"Error durante la búsqueda de '{keyword}': {str(e)}")
+                    scraping_failed = True  
                     break
 
-        return Response(
-            {
-                "message": "Escrapeo realizado con éxito",
-            },
-            status=status.HTTP_200_OK,
-        )
+        if scraping_failed:
+            return Response(
+                {
+                    "message": "Error durante el scraping. Algunas URLs fallaron.",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        else:
+            return Response(
+                {
+                    "message": "Escrapeo realizado con éxito",
+                },
+                status=status.HTTP_200_OK,
+            )
+
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
         return {"status": "error", "message": f"Error durante el scraping: {str(e)}"}
+
     finally:
         driver.quit()
