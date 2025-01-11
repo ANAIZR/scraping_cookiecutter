@@ -8,11 +8,13 @@ from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     connect_to_mongo,
+    delete_old_documents,
 )
 import os
 import random
 import time
 import requests
+import datetime
 from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
@@ -38,6 +40,8 @@ def scraper_padil(url, sobrenombre):
 
         logger.info(f"Iniciando scraping para URL: {url}")
         driver = initialize_driver()
+        collection, fs = connect_to_mongo("scrapping-can", "collection")
+
         main_folder = generate_directory(url)
         keywords = load_keywords()
         base_domain = "https://www.padil.gov.au"
@@ -143,27 +147,26 @@ def scraper_padil(url, sobrenombre):
                                 pest_details = soup.find("div", class_="pest-details")
 
                                 if pest_details:
+                                    contenido = f"{pest_details.text.strip()}\n\n\n"
                                     link_folder = generate_directory(
                                         href, keyword_folder
                                     )
                                     file_path = get_next_versioned_filename(
                                         link_folder, keyword
                                     )
-                                    with open(file_path, "w", encoding="utf-8") as f:
-                                        f.write(pest_details.text.strip())
-                                    logger.info(f"Datos guardados en: {file_path}")
+                                    with open(file_path, "w", encoding="utf-8") as file:
+                                        file.write(contenido)
+
+                                    with open(file_path, "rb") as file_data:
+                                        object_id = fs.put(
+                                            file_data,
+                                            filename=os.path.basename(file_path),
+                                        )
                                 else:
                                     logger.error(
                                         f"El elemento 'div.pest-details' no se encontró en {href}."
                                     )
-                                    html_path = os.path.join(
-                                        keyword_folder, "error_page.html"
-                                    )
-                                    with open(html_path, "w", encoding="utf-8") as f:
-                                        f.write(driver.page_source)
-                                    logger.error(
-                                        f"HTML de la página guardado para depuración en: {html_path}"
-                                    )
+
                         except Exception as e:
                             logger.error(f"Error al procesar el enlace: {str(e)}")
                             scraping_failed = True
@@ -186,13 +189,17 @@ def scraper_padil(url, sobrenombre):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         else:
-            return Response(
-                {
-                    "message": "Escrapeo realizado con éxito",
-                },
-                status=status.HTTP_200_OK,
-            )
-
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            collection.insert_one(data)
+            delete_old_documents(url, collection, fs)
+            response = Response(data, status=status.HTTP_200_OK)
+            return response
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
         return {"status": "error", "message": f"Error durante el scraping: {str(e)}"}

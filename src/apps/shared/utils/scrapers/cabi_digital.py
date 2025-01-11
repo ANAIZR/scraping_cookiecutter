@@ -84,6 +84,7 @@ def scraper_cabi_digital(url, sobrenombre):
 
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
+            keyword_folder = generate_directory(keyword, main_folder)
             try:
                 search_input = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(
@@ -136,8 +137,11 @@ def scraper_cabi_digital(url, sobrenombre):
                             )
                             if abstract_text and body_text:
                                 contenido = f"{abstract_text}\n\n\n{body_text}"
+                                link_folder = generate_directory(
+                                        href, keyword_folder
+                                    )
                                 file_path = get_next_versioned_filename(
-                                    main_folder, base_name=sobrenombre
+                                    link_folder, base_name=sobrenombre
                                 )
                                 with open(file_path, "w", encoding="utf-8") as file:
                                     file.write(contenido)
@@ -147,16 +151,7 @@ def scraper_cabi_digital(url, sobrenombre):
                                         file_data, filename=os.path.basename(file_path)
                                     )
 
-                                data = {
-                                    "Objeto": object_id,
-                                    "Tipo": "Web",
-                                    "Url": absolut_href,
-                                    "Fecha_scrapper": datetime.now().strftime(
-                                        "%Y-%m-%d %H:%M:%S"
-                                    ),
-                                    "Etiquetas": ["planta", "plaga"],
-                                }
-
+                                
                                 print(f"Página procesada y guardada: {absolut_href}")
                             else:
                                 print("No se encontró contenido en la página.")
