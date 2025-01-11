@@ -1,23 +1,26 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import os
+import time
+import pickle
+import random
+from bs4 import BeautifulSoup
+from datetime import datetime
 from ..functions import (
-    process_scraper_data,
-    connect_to_mongo,
-    get_logger,
+    generate_directory,
+    get_next_versioned_filename,
+    delete_old_documents,
     initialize_driver,
+    get_logger,
+    connect_to_mongo,
 )
 from rest_framework.response import Response
 from rest_framework import status
-import os
-import random
-import time
 
 logger = get_logger("scraper")
 
 
-# Cargar palabras clave desde utils/txt/plants.txt
 def load_keywords(file_path="../txt/all.txt"):
     try:
         base_path = os.path.dirname(os.path.abspath(__file__))
@@ -32,84 +35,135 @@ def load_keywords(file_path="../txt/all.txt"):
 
 
 def scraper_biota_nz(url, sobrenombre):
-    logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
-
-    keywords = load_keywords()  
-    results = {}
 
     try:
         driver.get(url)
+        time.sleep(random.uniform(6, 10))
+        logger.info(f"Iniciando scraping para URL: {url}")
+        collection, fs = connect_to_mongo("scrapping-can", "collection")
+        main_folder = generate_directory(url)
+
+        keywords = load_keywords()
+        visited_urls = set()
+        scraping_failed = False
         logger.info("Página de BIOTA NZ cargada exitosamente.")
 
         # Localizar la barra de búsqueda en Google Académico
-        search_box = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "#query"))
-        )
-        logger.info("Barra de búsqueda localizada.")
 
-        # Iterar por cada palabra clave y realizar la búsqueda
         for keyword in keywords:
-            logger.info(f"Buscando la palabra clave: {keyword}")
+            print(f"Buscando la palabra clave: {keyword}")
+            keyword_folder = generate_directory(main_folder, keyword)
+            try:
 
-            # Introducir un tiempo de espera aleatorio antes de interactuar con el buscador
-            random_wait()
+                search_box = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "#query"))
+                )
+                logger.info("Barra de búsqueda localizada.")
+                logger.info(f"Buscando la palabra clave: {keyword}")
 
-            # Ingresar la palabra clave y presionar Enter
-            search_box.clear()
-            search_box.send_keys(keyword)
+                # Introducir un tiempo de espera aleatorio antes de interactuar con el buscador
+                time.sleep(random.uniform(6, 10))
 
-            # Esperar a que se carguen los resultados
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "list-result"))
-            )
-            logger.info(f"Resultados cargados para: {keyword}")
-
-            # Obtener todos los enlaces de los resultados
-            links = driver.find_elements(By.CSS_SELECTOR, "div.row-separation div.col-12.a")
-
-            # Iterar por cada enlace
-            for link in links:
-                href = link.get_attribute("href")
-                text = link.text.strip()
-                if href:
-                    logger.info(f"Accediendo al enlace: {href}")
-
-                    # Hacer clic en el enlace para ir a la página de detalles
-                    driver.get(href)
-
-                    # Esperar a que se cargue el contenido de la página de detalles
+                # Ingresar la palabra clave y presionar Enter
+                search_box.clear()
+                search_box.send_keys(keyword)
+                time.sleep(random.uniform(3, 6))
+                search_box.submit()
+            except Exception as e:
+                logger.error(f"Error al buscar la palabra clave: {str(e)}")
+                scraping_failed = True
+                continue
+            while True:
+                try:
                     WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.page-content-wrapper"))  # Ajusta el selector
+                        EC.presence_of_element_located((By.ID, "list-result"))
                     )
+                    logger.info(f"Resultados cargados para: {keyword}")
+                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                    # Obtener todos los enlaces de los resultados
+                    items = soup.select("div.row-separation div.col-12.a")
 
-                    # Realizar el scraping de la página de detalles
-                    page_content = driver.page_source
+                    print(f"Encontrados {len(items)} resultados.")
 
-                    # Aquí puedes procesar el contenido de la página como desees
-                    results[text] = page_content
+                    for item in items:
+                        href = item.find("a")["href"]
+                        print(f"Enlace encontrado: {href}")
+                        if href:
+                            logger.info(f"Accediendo al enlace: {href}")
 
-                    # Regresar a la página de resultados
-                    driver.back()
+                            driver.get(href)
+                            visited_urls.add(href)
+                            # Esperar a que se cargue el contenido de la página de detalles
+                            WebDriverWait(driver, 10).until(
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR, "div.page-content-wrapper")
+                                )  # Ajusta el selector
+                            )
+                            time.sleep(random.uniform(6, 10))
+                            soup = BeautifulSoup(driver.page_source, "html.parser")
+                            body = soup.select_one("div.page-content-wrapper")
+                            body_text = (
+                                body.get_text(strip=True) if body else "No body found"
+                            )
+                            if body_text:
+                                contenido = f"{body_text}\n\n\n"
+                                link_folder = generate_directory(keyword_folder, href)
+                                file_path = get_next_versioned_filename(
+                                    link_folder, base_name=sobrenombre
+                                )
+                                with open(file_path, "w", encoding="utf-8") as file:
+                                    file.write(contenido)
 
-                    # Esperar un poco antes de continuar con el siguiente enlace
-                    random_wait()
+                                with open(file_path, "rb") as file_data:
+                                    object_id = fs.put(
+                                        file_data, filename=os.path.basename(file_path)
+                                    )
 
-        # Procesar los datos y almacenarlos en MongoDB
-        response = process_scraper_data(results, url, sobrenombre, collection, fs)
-        return response
+                                print(f"Página procesada y guardada: {href}")
+                            else:
+                                print("No se encontró contenido en la página.")
+                            driver.back()
+                            WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located((By.ID, "list-result"))
+                            )
+                            time.sleep(random.uniform(3, 6))
+                    try:
+                        next_page = driver.find_element_by_css_selector(
+                            "a.next.page-numbers"
+                        )
+                        next_page.click()
+                        time.sleep(random.uniform(6, 10))
+                    except Exception as e:
+                        logger.info("No hay más páginas disponibles.")
+                        break
+                except Exception as e:
+                    print(f"Error al procesar resultados: {e}")
+                    scraping_failed = True
+                    break
+
+        if scraping_failed:
+            return Response(
+                {
+                    "message": "Error durante el scraping. Algunas URLs fallaron.",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        else:
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            collection.insert_one(data)
+            delete_old_documents(url, collection, fs)
+            response = Response(data, status=status.HTTP_200_OK)
+            return response
 
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        return {"status": "error", "message": f"Error durante el scraping: {str(e)}"}
     finally:
         driver.quit()
-
-
-# Función auxiliar para introducir un tiempo de espera aleatorio
-def random_wait(min_wait=2, max_wait=6):
-    wait_time = random.uniform(min_wait, max_wait)
-    logger.info(f"Esperando {wait_time:.2f} segundos...")
-    time.sleep(wait_time)

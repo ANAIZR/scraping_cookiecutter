@@ -96,10 +96,13 @@ def scraper_cabi_digital(url, sobrenombre):
                 )
                 search_input.clear()
                 search_input.send_keys(keyword)
+                time.sleep(random.uniform(3, 6))
+
                 search_input.submit()
                 print(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 print(f"Error al realizar la búsqueda: {e}")
+                scraping_failed = True
                 continue
 
             while True:
@@ -155,6 +158,11 @@ def scraper_cabi_digital(url, sobrenombre):
                                 print(f"Página procesada y guardada: {absolut_href}")
                             else:
                                 print("No se encontró contenido en la página.")
+                            driver.back()
+                            WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "ul.rlist li"))
+                            )
+                            time.sleep(random.uniform(3, 6))
 
                     try:
                         next_page_button = driver.find_element(
