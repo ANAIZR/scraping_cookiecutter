@@ -176,7 +176,6 @@ def scraper_padil(url, sobrenombre):
                     logger.error(f"Error durante la búsqueda de '{keyword}': {str(e)}")
                     break
 
-        logger.info("Scraping completado con éxito.")
         return Response(
             {
                 "message": "Escrapeo realizado con éxito",
