@@ -30,13 +30,10 @@ def scraper_ndrs_org(url, sobrenombre):
     db = client["scrapping-can"]
     collection = db["collection"]
     fs = gridfs.GridFS(db)
-    output_dir = os.path.expanduser("~/")
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
     base_url = "https://www.ndrs.org.uk/"
 
-    base_folder_path = generate_directory(output_dir, base_url)
+    base_folder_path = generate_directory(base_url)
 
     data_collected = []
 

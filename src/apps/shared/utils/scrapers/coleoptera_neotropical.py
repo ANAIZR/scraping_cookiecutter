@@ -49,8 +49,7 @@ def scraper_coleoptera_neotropical(url, sobrenombre):
 
         scraped_text = scrape_info + "\n".join([", ".join(row) for row in all_scraper_data])
 
-        output_dir = r"C:\web_scraping_files"
-        folder_path = generate_directory(output_dir, url)
+        folder_path = generate_directory(url)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
         with open(file_path, "w", encoding="utf-8") as file:

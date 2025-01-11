@@ -20,14 +20,12 @@ from io import BytesIO
 import urllib3
 
 
-def scraper_pdf_content_and_save(pdf_url, parent_folder, collection, fs,sobrenombre):
+def scraper_pdf_content_and_save(pdf_url, collection, fs, sobrenombre):
     try:
         response = requests.get(pdf_url, stream=True, verify=False, timeout=10)
         response.raise_for_status()
 
-        pdf_folder = generate_directory(
-            parent_folder, hashlib.md5(pdf_url.encode()).hexdigest()
-        )
+        pdf_folder = generate_directory(hashlib.md5(pdf_url.encode()).hexdigest())
         pdf_buffer = BytesIO(response.content)
 
         with pdfplumber.open(pdf_buffer) as pdf:
@@ -71,12 +69,12 @@ def scraper_pdf_content_and_save(pdf_url, parent_folder, collection, fs,sobrenom
         return {"error": str(e)}
 
 
-def scraper_all_pdfs_from_page(url, output_dir, collection, fs):
+def scraper_all_pdfs_from_page(url, collection, fs):
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument('--headless')
+    options.add_argument("--headless")
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
@@ -89,9 +87,7 @@ def scraper_all_pdfs_from_page(url, output_dir, collection, fs):
         table_content = driver.find_element(By.CSS_SELECTOR, "table:nth-child(3)")
         pdf_links = table_content.find_elements(By.CSS_SELECTOR, "a[href$='.pdf']")
 
-        main_folder = generate_directory(
-            output_dir, hashlib.md5(url.encode()).hexdigest()
-        )
+        main_folder = generate_directory(hashlib.md5(url.encode()).hexdigest())
 
         responses = []
         for link in pdf_links:
@@ -125,10 +121,7 @@ def scraper_ipm_illinoes(url):
         collection = db["collection"]
         fs = gridfs.GridFS(db)
 
-        output_dir = r"C:\web_scraping_files"
-        os.makedirs(output_dir, exist_ok=True)
-
-        response = scraper_all_pdfs_from_page(url, output_dir, collection, fs)
+        response = scraper_all_pdfs_from_page(url, collection, fs)
         return response
 
     except Exception as e:

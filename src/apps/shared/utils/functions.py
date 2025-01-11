@@ -80,7 +80,7 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
         raise
 
 
-def generate_directory(output_dir, url):
+def generate_directory(url, output_dir=OUTPUT_DIR):
     logger = get_logger("generar directorio")
 
     try:
@@ -94,7 +94,7 @@ def generate_directory(output_dir, url):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
             print(f"Directorio generado: {folder_path}")
-        
+
         return folder_path
     except Exception as e:
         print(f"Error al generar el directorio: {str(e)}")
@@ -146,7 +146,7 @@ def delete_old_documents(url, collection, fs, limit=2):
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("guardar datos del scraper")
     try:
-        folder_path = generate_directory(OUTPUT_DIR, url)
+        folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
         with open(file_path, "w", encoding="utf-8") as file:

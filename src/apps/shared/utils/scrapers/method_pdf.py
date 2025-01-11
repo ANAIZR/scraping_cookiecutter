@@ -23,10 +23,6 @@ def extract_text_with_pdfminer(pdf_file):
 
 
 def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
-    output_dir = os.path.expanduser("~/")
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
     try:
         client = MongoClient("mongodb://localhost:27017/")
@@ -39,7 +35,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         response = requests.get(url, verify=False, headers=headers)
         response.raise_for_status()
 
-        folder_path = generate_directory(output_dir, url)
+        folder_path = generate_directory( url)
         txt_filepath = get_next_versioned_filename(folder_path, base_name=sobrenombre)
         os.makedirs(os.path.dirname(txt_filepath), exist_ok=True)
         start_page = start_page or 1

@@ -7,6 +7,7 @@ from ..functions import (
     get_logger,
     generate_directory,
     get_next_versioned_filename,
+    connect_to_mongo,
 )
 import os
 import random
@@ -33,15 +34,18 @@ def load_keywords(file_path="../txt/all.txt"):
 
 
 def scraper_padil(url, sobrenombre):
-    logger.info(f"Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
-    output_dir = "c:/web_scraper_files"
-    main_folder = generate_directory(output_dir, "padil_scraper")
-    keywords = load_keywords()
-    base_domain = "https://www.padil.gov.au"
+    try:
 
-    visited_urls = set()
-    scraping_failed = False  # Marcador para indicar si hubo algún fallo
+        logger.info(f"Iniciando scraping para URL: {url}")
+        driver = initialize_driver()
+        main_folder = generate_directory(url)
+        keywords = load_keywords()
+        base_domain = "https://www.padil.gov.au"
+
+        visited_urls = set()
+        scraping_failed = False
+    except Exception as e:
+        logger.error(f"Error al inicializar el scraper: {str(e)}")
 
     try:
         driver.get(url)
@@ -49,7 +53,7 @@ def scraper_padil(url, sobrenombre):
 
         for keyword in keywords:
             logger.info(f"Procesando palabra clave: {keyword}")
-            keyword_folder = generate_directory(main_folder, keyword)
+            keyword_folder = generate_directory(keyword, main_folder)
 
             while True:
                 try:
@@ -140,7 +144,7 @@ def scraper_padil(url, sobrenombre):
 
                                 if pest_details:
                                     link_folder = generate_directory(
-                                        keyword_folder, href
+                                        href, keyword_folder
                                     )
                                     file_path = get_next_versioned_filename(
                                         link_folder, keyword
@@ -162,18 +166,16 @@ def scraper_padil(url, sobrenombre):
                                     )
                         except Exception as e:
                             logger.error(f"Error al procesar el enlace: {str(e)}")
-                            scraping_failed = True 
+                            scraping_failed = True
                             continue
 
                     logger.info(f"Procesamiento de '{keyword}' completado.")
-                    driver.get(
-                        url
-                    )  
+                    driver.get(url)
                     break
 
                 except Exception as e:
                     logger.error(f"Error durante la búsqueda de '{keyword}': {str(e)}")
-                    scraping_failed = True  
+                    scraping_failed = True
                     break
 
         if scraping_failed:
