@@ -40,7 +40,7 @@ def scraper_padil(url, sobrenombre):
     keywords = load_keywords()
     base_domain = "https://www.padil.gov.au"
 
-    visited_urls = set()  # Almacena las URLs visitadas
+    visited_urls = set()
 
     try:
         driver.get(url)
@@ -52,7 +52,6 @@ def scraper_padil(url, sobrenombre):
 
             while True:
                 try:
-                    # Buscar la barra de búsqueda
                     search_box = WebDriverWait(driver, 30).until(
                         EC.presence_of_element_located(
                             (
@@ -62,11 +61,11 @@ def scraper_padil(url, sobrenombre):
                         )
                     )
                     search_box.clear()
-                    time.sleep(random.uniform(6, 10))  # Esperar entre 2-5 segundos
+                    time.sleep(random.uniform(6, 10))
                     search_box.send_keys(keyword)
                     search_box.send_keys(Keys.RETURN)
                     logger.info(f"Palabra clave '{keyword}' buscada.")
-                    time.sleep(random.uniform(6, 10))  # Esperar entre 2-5 segundos
+                    time.sleep(random.uniform(6, 10))
 
                     # Esperar resultados
                     WebDriverWait(driver, 30).until(
@@ -86,12 +85,11 @@ def scraper_padil(url, sobrenombre):
 
                     for result_index in range(result_count):
                         try:
-                            driver.get(url)  # Volver a la página inicial
+                            driver.get(url)
                             logger.info(
                                 "Volviendo a la página inicial para nueva búsqueda."
                             )
 
-                            # Realizar la búsqueda nuevamente
                             search_box = WebDriverWait(driver, 30).until(
                                 EC.presence_of_element_located(
                                     (
@@ -101,12 +99,11 @@ def scraper_padil(url, sobrenombre):
                                 )
                             )
                             search_box.clear()
-                            time.sleep(random.uniform(6,10))
+                            time.sleep(random.uniform(6, 10))
                             search_box.send_keys(keyword)
                             search_box.send_keys(Keys.RETURN)
-                            time.sleep(random.uniform(6,10))
+                            time.sleep(random.uniform(6, 10))
 
-                            # Esperar resultados
                             WebDriverWait(driver, 30).until(
                                 EC.presence_of_element_located(
                                     (By.CSS_SELECTOR, "div.search-results")
@@ -130,7 +127,7 @@ def scraper_padil(url, sobrenombre):
                                 and href not in visited_urls
                             ):
                                 logger.info(f"Procesando enlace: {href}")
-                                visited_urls.add(href)  # Marcar como visitado
+                                visited_urls.add(href)
 
                                 driver.get(href)
                                 WebDriverWait(driver, 60).until(
@@ -138,16 +135,16 @@ def scraper_padil(url, sobrenombre):
                                         (By.CSS_SELECTOR, "body")
                                     )
                                 )
-                                time.sleep(5)
+                                time.sleep(random.uniform(6, 10))
                                 soup = BeautifulSoup(driver.page_source, "html.parser")
                                 pest_details = soup.find("div", class_="pest-details")
 
                                 if pest_details:
                                     link_folder = generate_directory(
-                                        keyword_folder, f"result_{result_index+1}"
+                                        keyword_folder, href
                                     )
                                     file_path = get_next_versioned_filename(
-                                        link_folder, "pest_details"
+                                        link_folder, keyword
                                     )
                                     with open(file_path, "w", encoding="utf-8") as f:
                                         f.write(pest_details.text.strip())
@@ -169,7 +166,7 @@ def scraper_padil(url, sobrenombre):
                             continue
 
                     logger.info(f"Procesamiento de '{keyword}' completado.")
-                    driver.get(url)  # Volver a la página inicial
+                    driver.get(url)
                     break
 
                 except Exception as e:
