@@ -81,7 +81,6 @@ def scraper_biota_nz(url, sobrenombre):
                     )
                     logger.info(f"Resultados cargados para: {keyword}")
                     soup = BeautifulSoup(driver.page_source, "html.parser")
-                    # Obtener todos los enlaces de los resultados
                     items = soup.select("div.row-separation div.col-12.a")
 
                     print(f"Encontrados {len(items)} resultados.")
@@ -94,11 +93,10 @@ def scraper_biota_nz(url, sobrenombre):
 
                             driver.get(href)
                             visited_urls.add(href)
-                            # Esperar a que se cargue el contenido de la página de detalles
                             WebDriverWait(driver, 10).until(
                                 EC.presence_of_element_located(
                                     (By.CSS_SELECTOR, "div.page-content-wrapper")
-                                )  # Ajusta el selector
+                                )  
                             )
                             time.sleep(random.uniform(6, 10))
                             soup = BeautifulSoup(driver.page_source, "html.parser")
