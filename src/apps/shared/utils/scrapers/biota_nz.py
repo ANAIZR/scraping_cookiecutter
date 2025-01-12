@@ -115,7 +115,7 @@ def scraper_biota_nz(url, sobrenombre):
                                         href, keyword_folder
                                     )
                                     file_path = get_next_versioned_filename(
-                                        link_folder, base_name=sobrenombre
+                                        link_folder, keyword
                                     )
                                     with open(file_path, "w", encoding="utf-8") as file:
                                         file.write(contenido)
@@ -172,6 +172,7 @@ def scraper_biota_nz(url, sobrenombre):
             )
         else:
             data = {
+                "Objecto": object_id,
                 "Tipo": "Web",
                 "Url": url,
                 "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

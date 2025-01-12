@@ -183,6 +183,22 @@ def scraper_cabi_digital(url, sobrenombre):
                     print(f"Error al procesar resultados: {e}")
                     scraping_failed = True
                     break
+            print(f"Finalizada búsqueda con la palabra clave: {keyword}")
+            driver.get(url)  # Volver al inicio
+            time.sleep(random.uniform(6, 10))  # Pausa antes de interactuar de nuevo
+            try:
+                search_input = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located(
+                        (
+                            By.CSS_SELECTOR,
+                            "#AllFieldb117445f-c250-4d14-a8d9-7c66d5b6a4800",
+                        )
+                    )
+                )
+                search_input.clear()
+                print(f"Preparado para la próxima palabra clave.")
+            except Exception as e:
+                print(f"Error al regresar al inicio: {e}")
         if scraping_failed:
             return Response(
                 {
