@@ -24,7 +24,7 @@ USER_AGENTS = [
 ]
 
 # Configuración de directorio de salida
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
@@ -47,10 +47,10 @@ def initialize_driver():
     logger = get_logger("scraper")
     try:
         logger.info("Inicializando el navegador (undetected_chromedriver).")
-        #options = uc.ChromeOptions()
+        # options = uc.ChromeOptions()
         options = webdriver.ChromeOptions()
-        options.binary_location = "/opt/google/chrome/google-chrome" 
-        options.add_argument("--headless")  
+        options.binary_location = "/opt/google/chrome/google-chrome"
+        options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -61,7 +61,7 @@ def initialize_driver():
         chromedriver_path = "/usr/bin/chromedriver"
         service = Service(chromedriver_path)
         driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()), options=options, service=service
+            service=Service(ChromeDriverManager().install()), options=options
         )
         driver.set_page_load_timeout(60)
         logger.info("Navegador iniciado correctamente (undetected_chromedriver).")
