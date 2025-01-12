@@ -25,7 +25,8 @@ USER_AGENTS = [
 ]
 
 # Configuración de directorio de salida
-OUTPUT_DIR = "c:/web_scraper_files"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  
+OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
