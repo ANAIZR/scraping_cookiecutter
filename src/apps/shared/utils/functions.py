@@ -1,16 +1,19 @@
 import os
 import hashlib
 from datetime import datetime
-from rest_framework.response import Response
-from rest_framework import status
-import logging
-from pymongo import MongoClient
-import gridfs
-from selenium.webdriver.chrome.service import Service
-from selenium import webdriver
 import logging
 import random
-import undetected_chromedriver as uc
+
+from pymongo import MongoClient
+import gridfs
+
+# Django REST Framework
+from rest_framework.response import Response
+from rest_framework import status
+
+# Selenium
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -39,32 +42,45 @@ def get_logger(name, level=logging.INFO):
     logger.setLevel(level)
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    logger.addHandler(ch)
+    # Evita agregar múltiples handlers duplicados si ya existe uno
+    if not logger.handlers:
+        logger.addHandler(ch)
     return logger
 
 
 def initialize_driver():
+    """
+    Inicializa el navegador usando Selenium estándar (ChromeDriver + ChromeOptions).
+    Ajusta 'options.binary_location' a la ruta real de tu Google Chrome si es necesario.
+    """
     logger = get_logger("scraper")
     try:
-        logger.info("Inicializando el navegador (undetected_chromedriver).")
-        # options = uc.ChromeOptions()
+        logger.info("Inicializando el navegador con Selenium.")
         options = webdriver.ChromeOptions()
-        options.binary_location = "/opt/google/chrome/google-chrome"
+
+        # Ajusta la ruta si tu Chrome se encuentra en un lugar distinto:
+        options.binary_location = "/usr/bin/google-chrome"
+        # options.binary_location = "/opt/google/chrome/google-chrome"
+
+        # Opciones recomendadas en entornos de servidor (headless, sin sandbox, etc.)
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-extensions")
-        random_user_agent = random.choice(USER_AGENTS)
+
+        # Asignar user-agent aleatorio
+        random_user_agent = get_random_user_agent()
         options.add_argument(f"user-agent={random_user_agent}")
         logger.info(f"Usando User-Agent: {random_user_agent}")
-        chromedriver_path = "/usr/bin/chromedriver"
-        service = Service(chromedriver_path)
+
+        # Crear el driver usando webdriver_manager (descarga la versión correcta de ChromeDriver)
         driver = webdriver.Chrome(
             service=Service(ChromeDriverManager().install()), options=options
         )
+
         driver.set_page_load_timeout(60)
-        logger.info("Navegador iniciado correctamente (undetected_chromedriver).")
+        logger.info("Navegador iniciado correctamente con Selenium.")
         return driver
     except Exception as e:
         logger.error(f"Error al inicializar el navegador: {str(e)}")
@@ -72,6 +88,9 @@ def initialize_driver():
 
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
+    """
+    Conecta a MongoDB y retorna la colección y el objeto GridFS.
+    """
     logger = get_logger("mongo_connection")
     try:
         logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
@@ -86,8 +105,10 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):
+    """
+    Genera un directorio basado en un hash de la URL para almacenar archivos.
+    """
     logger = get_logger("generar directorio")
-
     try:
         url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
@@ -98,17 +119,19 @@ def generate_directory(url, output_dir=OUTPUT_DIR):
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-            print(f"Directorio generado: {folder_path}")
+            logger.info(f"Directorio generado: {folder_path}")
 
         return folder_path
     except Exception as e:
-        print(f"Error al generar el directorio: {str(e)}")
+        logger.error(f"Error al generar el directorio: {str(e)}")
         raise
 
 
 def get_next_versioned_filename(folder_path, base_name="archivo"):
+    """
+    Busca el siguiente nombre de archivo disponible, incrementando versiones si existe.
+    """
     logger = get_logger("generar siguiente versión de archivo")
-
     try:
         version = 0
         while True:
@@ -123,6 +146,9 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
 
 
 def delete_old_documents(url, collection, fs, limit=2):
+    """
+    Elimina documentos antiguos si se supera el 'limit' de versiones guardadas.
+    """
     logger = get_logger("eliminar documentos antiguos")
     try:
         docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
@@ -132,13 +158,14 @@ def delete_old_documents(url, collection, fs, limit=2):
             docs_to_delete = list(docs_for_url)[limit:]
             for doc in docs_to_delete:
                 collection.delete_one({"_id": doc["_id"]})
+                # Borrar el archivo de GridFS
                 fs.delete(doc["Objeto"])
 
-            print(
+            logger.info(
                 f"Se han eliminado {docs_count - limit} documentos antiguos para la URL {url}."
             )
         else:
-            print(
+            logger.info(
                 f"No se encontraron documentos para eliminar. Se mantienen {docs_count} documentos para la URL {url}."
             )
 
@@ -149,14 +176,20 @@ def delete_old_documents(url, collection, fs, limit=2):
 
 
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
+    """
+    Guarda el contenido scrapeado (all_scraper) en un archivo local y en MongoDB GridFS.
+    """
     logger = get_logger("guardar datos del scraper")
     try:
+        # Generar directorio de destino
         folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
+        # Guardar contenido en un archivo .txt
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
 
+        # Subir archivo a GridFS
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
@@ -171,6 +204,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             collection.insert_one(data)
             logger.info(f"Datos guardados en MongoDB para la URL: {url}")
 
+            # Eliminar versiones antiguas si excede el límite
             delete_old_documents(url, collection, fs)
 
             response_data = {
@@ -188,6 +222,9 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
+    """
+    Procesa y guarda la información scrapeada. Devuelve una Response de DRF.
+    """
     logger = get_logger("procesar datos del scraper")
     try:
         if all_scraper:
@@ -215,16 +252,6 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             },
             status=status.HTTP_408_REQUEST_TIMEOUT,
         )
-    except Exception as e:
-        logger.error(f"Error al procesar datos del scraper: {str(e)}")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "Ocurrió un error al procesar los datos.",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
     except ConnectionError:
         logger.error("Error de conexión a la URL.")
         return Response(
@@ -234,4 +261,14 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
                 "Mensaje": "No se pudo conectar a la página web.",
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
