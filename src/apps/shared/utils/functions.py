@@ -49,37 +49,30 @@ def get_logger(name, level=logging.INFO):
 
 
 def initialize_driver():
-    """
-    Inicializa el navegador usando Selenium estándar (ChromeDriver + ChromeOptions).
-    Ajusta 'options.binary_location' a la ruta real de tu Google Chrome si es necesario.
-    """
+
     logger = get_logger("scraper")
     try:
         logger.info("Inicializando el navegador con Selenium.")
         options = webdriver.ChromeOptions()
 
-        # Ajusta la ruta si tu Chrome se encuentra en un lugar distinto:
         options.binary_location = "/usr/bin/google-chrome"
         # options.binary_location = "/opt/google/chrome/google-chrome"
 
-        # Opciones recomendadas en entornos de servidor (headless, sin sandbox, etc.)
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-extensions")
 
-        # Asignar user-agent aleatorio
         random_user_agent = get_random_user_agent()
         options.add_argument(f"user-agent={random_user_agent}")
         logger.info(f"Usando User-Agent: {random_user_agent}")
 
-        # Crear el driver usando webdriver_manager (descarga la versión correcta de ChromeDriver)
         driver = webdriver.Chrome(
             service=Service(ChromeDriverManager().install()), options=options
         )
 
-        driver.set_page_load_timeout(60)
+        driver.set_page_load_timeout(150)
         logger.info("Navegador iniciado correctamente con Selenium.")
         return driver
     except Exception as e:
@@ -88,9 +81,7 @@ def initialize_driver():
 
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
-    """
-    Conecta a MongoDB y retorna la colección y el objeto GridFS.
-    """
+
     logger = get_logger("mongo_connection")
     try:
         logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
