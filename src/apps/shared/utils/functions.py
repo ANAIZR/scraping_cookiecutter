@@ -36,23 +36,19 @@ def get_random_user_agent():
 
 
 def get_logger(name, level=logging.INFO, log_file="app.log"):
-    # Crear logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Configurar StreamHandler (consola)
     ch = logging.StreamHandler()
     ch.setLevel(level)
 
-    # Configurar FileHandler (archivo)
-    log_dir = "logs"  # Directorio para guardar logs
+    log_dir = "/home/staging/scraping_cookiecutter/logs" 
     if not os.path.exists(log_dir):
-        os.makedirs(log_dir)  # Crear el directorio si no existe
+        os.makedirs(log_dir)  
     log_path = os.path.join(log_dir, log_file)
     fh = logging.FileHandler(log_path, encoding="utf-8")
     fh.setLevel(level)
 
-    # Formato de los logs
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
