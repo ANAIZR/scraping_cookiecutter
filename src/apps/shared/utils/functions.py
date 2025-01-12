@@ -48,36 +48,41 @@ def get_logger(name, level=logging.INFO):
     return logger
 
 
-def initialize_driver():
+import time
 
+
+def initialize_driver(retries=3):
     logger = get_logger("scraper")
-    try:
-        logger.info("Inicializando el navegador con Selenium.")
-        options = webdriver.ChromeOptions()
+    for attempt in range(retries):
+        try:
+            logger.info(
+                f"Intento {attempt + 1} de inicializar el navegador con Selenium."
+            )
+            options = webdriver.ChromeOptions()
+            options.binary_location = "/usr/bin/google-chrome"
+            options.add_argument("--headless")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-extensions")
 
-        options.binary_location = "/usr/bin/google-chrome"
-        # options.binary_location = "/opt/google/chrome/google-chrome"
+            random_user_agent = get_random_user_agent()
+            options.add_argument(f"user-agent={random_user_agent}")
+            logger.info(f"Usando User-Agent: {random_user_agent}")
 
-        #options.add_argument("--headless")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-extensions")
+            driver = webdriver.Chrome(
+                service=Service(ChromeDriverManager().install()), options=options
+            )
 
-        random_user_agent = get_random_user_agent()
-        options.add_argument(f"user-agent={random_user_agent}")
-        logger.info(f"Usando User-Agent: {random_user_agent}")
-
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()), options=options
-        )
-
-        driver.set_page_load_timeout(150)
-        logger.info("Navegador iniciado correctamente con Selenium.")
-        return driver
-    except Exception as e:
-        logger.error(f"Error al inicializar el navegador: {str(e)}")
-        raise
+            driver.set_page_load_timeout(150)
+            logger.info("Navegador iniciado correctamente con Selenium.")
+            return driver
+        except Exception as e:
+            logger.error(f"Error al iniciar el navegador: {e}")
+            if attempt < retries - 1:
+                time.sleep(5)  # Espera 5 segundos antes de reintentar
+            else:
+                raise
 
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
