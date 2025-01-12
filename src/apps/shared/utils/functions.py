@@ -49,7 +49,7 @@ def initialize_driver():
     try:
         logger.info("Inicializando el navegador (undetected_chromedriver).")
         options = uc.ChromeOptions()
-        # options.add_argument("--headless")  # Puedes descomentar para usar modo sin cabeza
+        options.add_argument("--headless")  
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
