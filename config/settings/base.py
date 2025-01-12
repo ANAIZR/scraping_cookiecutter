@@ -191,7 +191,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=300),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -204,6 +204,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost",
     "https://apiwebscraper.sgcan.dev",
     "https://webscraper.sgcan.dev",
+    "http://localhost:3000",
 ]
 SPECTACULAR_SETTINGS = {
     "TITLE": "WEB SCRAPER API",
