@@ -74,7 +74,7 @@ def initialize_driver(retries=3):
                 service=Service(ChromeDriverManager().install()), options=options
             )
 
-            driver.set_page_load_timeout(150)
+            driver.set_page_load_timeout(600)
             logger.info("Navegador iniciado correctamente con Selenium.")
             return driver
         except Exception as e:
