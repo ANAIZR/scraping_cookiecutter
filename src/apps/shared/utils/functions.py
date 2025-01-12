@@ -6,14 +6,11 @@ from rest_framework import status
 import logging
 from pymongo import MongoClient
 import gridfs
-from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 import logging
 import random
 import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException
-import shutil
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
@@ -57,8 +54,10 @@ def initialize_driver():
         random_user_agent = random.choice(USER_AGENTS)
         options.add_argument(f"user-agent={random_user_agent}")
         logger.info(f"Usando User-Agent: {random_user_agent}")
+        chromedriver_path = "/usr/bin/chromedriver"
+        service = Service(chromedriver_path)
 
-        driver = uc.Chrome(options=options)
+        driver = uc.Chrome(service=service, options=options)
         driver.set_page_load_timeout(60)
         logger.info("Navegador iniciado correctamente (undetected_chromedriver).")
         return driver
