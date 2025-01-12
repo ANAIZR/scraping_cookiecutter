@@ -13,18 +13,11 @@ from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
+    initialize_driver
 )
 from rest_framework.response import Response
 from rest_framework import status
 
-
-def init_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-    return driver
 
 
 def get_soup(driver, url):
@@ -160,7 +153,7 @@ def scraper_plant_atlas(url, sobrenombre):
     all_scraper = ""
 
     try:
-        driver = init_driver()
+        driver = initialize_driver()
         soup = get_soup(driver, url)
 
         processed_cards = set()
