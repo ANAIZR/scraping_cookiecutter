@@ -14,14 +14,12 @@ from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
-    connect_to_mongo
+    connect_to_mongo,
+    initialize_driver
 )
 
 def scraper_coleoptera_neotropical(url, sobrenombre):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-        
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = initialize_driver()
 
     collection, fs = connect_to_mongo()
 

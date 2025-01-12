@@ -8,6 +8,7 @@ from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
+    initialize_driver
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -56,7 +57,7 @@ def scraper_iucngisd(url, sobrenombre):
     failed_hrefs = []  # Lista para almacenar los enlaces fallidos
 
     try:
-        driver = webdriver.Chrome()
+        driver = initialize_driver()
         driver.get(url)
         logger.info(f"Abriendo URL con Selenium: {url}")
 
