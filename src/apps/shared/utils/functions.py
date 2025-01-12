@@ -37,14 +37,35 @@ def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
 
-def get_logger(name, level=logging.INFO):
+def get_logger(name, level=logging.INFO, log_file="app.log"):
+    # Crear logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
+
+    # Configurar StreamHandler (consola)
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    # Evita agregar múltiples handlers duplicados si ya existe uno
+
+    # Configurar FileHandler (archivo)
+    log_dir = "logs"  # Directorio para guardar logs
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)  # Crear el directorio si no existe
+    log_path = os.path.join(log_dir, log_file)
+    fh = logging.FileHandler(log_path, encoding="utf-8")
+    fh.setLevel(level)
+
+    # Formato de los logs
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+
+    # Evitar duplicar handlers
     if not logger.handlers:
         logger.addHandler(ch)
+        logger.addHandler(fh)
+
     return logger
 
 
