@@ -140,9 +140,7 @@ def scraper_cabi_digital(url, sobrenombre):
                             )
                             if abstract_text and body_text:
                                 contenido = f"{abstract_text}\n\n\n{body_text}"
-                                link_folder = generate_directory(
-                                        href, keyword_folder
-                                    )
+                                link_folder = generate_directory(href, keyword_folder)
                                 file_path = get_next_versioned_filename(
                                     link_folder, keyword
                                 )
@@ -154,13 +152,14 @@ def scraper_cabi_digital(url, sobrenombre):
                                         file_data, filename=os.path.basename(file_path)
                                     )
 
-                                
                                 print(f"Página procesada y guardada: {absolut_href}")
                             else:
                                 print("No se encontró contenido en la página.")
                             driver.back()
                             WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "ul.rlist li"))
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR, "ul.rlist li")
+                                )
                             )
                             time.sleep(random.uniform(3, 6))
 
@@ -178,27 +177,30 @@ def scraper_cabi_digital(url, sobrenombre):
                             break
                     except Exception:
                         print("No se encontró el botón para la siguiente página.")
-                        break
+                        print(f"Finalizada búsqueda con la palabra clave: {keyword}")
+                        driver.get(url)  # Volver al inicio
+                        time.sleep(
+                            random.uniform(6, 10)
+                        )  # Pausa antes de interactuar de nuevo
+                        try:
+                            search_input = WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located(
+                                    (
+                                        By.CSS_SELECTOR,
+                                        "#AllFieldb117445f-c250-4d14-a8d9-7c66d5b6a4800",
+                                    )
+                                )
+                            )
+                            search_input.clear()
+                            print(f"Preparado para la próxima palabra clave.")
+                        except Exception as e:
+                            print(f"Error al regresar al inicio: {e}")
+                        continue
                 except Exception as e:
                     print(f"Error al procesar resultados: {e}")
                     scraping_failed = True
                     break
-            print(f"Finalizada búsqueda con la palabra clave: {keyword}")
-            driver.get(url)  # Volver al inicio
-            time.sleep(random.uniform(6, 10))  # Pausa antes de interactuar de nuevo
-            try:
-                search_input = WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located(
-                        (
-                            By.CSS_SELECTOR,
-                            "#AllFieldb117445f-c250-4d14-a8d9-7c66d5b6a4800",
-                        )
-                    )
-                )
-                search_input.clear()
-                print(f"Preparado para la próxima palabra clave.")
-            except Exception as e:
-                print(f"Error al regresar al inicio: {e}")
+
         if scraping_failed:
             return Response(
                 {
