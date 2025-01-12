@@ -12,6 +12,7 @@ import logging
 import random
 import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException
+from webdriver_manager.chrome import ChromeDriverManager
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
@@ -59,8 +60,9 @@ def initialize_driver():
         logger.info(f"Usando User-Agent: {random_user_agent}")
         chromedriver_path = "/usr/bin/chromedriver"
         service = Service(chromedriver_path)
-
-        driver = uc.Chrome(service=service, options=options)
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()), options=options, service=service
+        )
         driver.set_page_load_timeout(60)
         logger.info("Navegador iniciado correctamente (undetected_chromedriver).")
         return driver
