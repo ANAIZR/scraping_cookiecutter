@@ -7,6 +7,7 @@ import logging
 from pymongo import MongoClient
 import gridfs
 from selenium.webdriver.chrome.service import Service
+from selenium import webdriver
 import logging
 import random
 import undetected_chromedriver as uc
@@ -45,7 +46,8 @@ def initialize_driver():
     logger = get_logger("scraper")
     try:
         logger.info("Inicializando el navegador (undetected_chromedriver).")
-        options = uc.ChromeOptions()
+        #options = uc.ChromeOptions()
+        options = webdriver.ChromeOptions()
         options.binary_location = "/opt/google/chrome/google-chrome" 
         options.add_argument("--headless")  
         options.add_argument("--disable-gpu")
