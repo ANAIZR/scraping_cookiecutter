@@ -27,7 +27,8 @@ USER_AGENTS = [
 ]
 
 # OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-OUTPUT_DIR = "../../../../files/scrapers"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
