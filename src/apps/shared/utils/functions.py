@@ -26,7 +26,8 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+# OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+OUTPUT_DIR = "../../../../files/scrapers"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -41,8 +42,10 @@ def get_logger(name, level=logging.INFO, log_file="app.log"):
 
     ch = logging.StreamHandler()
     ch.setLevel(level)
-
-    log_dir = "/home/staging/scraping_cookiecutter/logs" 
+    
+    
+    # log_dir = "/home/staging/scraping_cookiecutter/logs"
+    log_dir = "../../../../files/logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)  
     log_path = os.path.join(log_dir, log_file)
