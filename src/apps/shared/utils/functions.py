@@ -14,6 +14,8 @@ import random
 import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException
 import shutil
+import cv2
+import pytesseract 
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
@@ -230,3 +232,50 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+def get_text_from_image(image_path):
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+    logger = get_logger("procesar texto de imagen")
+    try:
+        image = cv2.imread(image_path)
+        text = pytesseract.image_to_string(image)
+        return text
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+
+def save_scraper_data_adrian(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("guardar datos del scraper")
+    try:
+        folder_path = generate_directory(OUTPUT_DIR, url)
+        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(all_scraper)
+
+        # with open(file_path, "rb") as file_data:
+        #     object_id = fs.put(file_data, filename=os.path.basename(file_path))
+
+        #     data = {
+        #         "Objeto": object_id,
+        #         "Tipo": "Web",
+        #         "Url": url,
+        #         "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        #         "Etiquetas": ["planta", "plaga"],
+        #     }
+
+            # collection.insert_one(data)
+            # logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+
+            # delete_old_documents(url, collection, fs)
+
+            # response_data = {
+            #     "Tipo": "Web",
+            #     "Url": url,
+            #     "Fecha_scraper": data["Fecha_scraper"],
+            #     "Etiquetas": data["Etiquetas"],
+            #     "Mensaje": "Los datos han sido scrapeados correctamente.",
+            # }
+
+        # return response_data
+    except Exception as e:
+        logger.error(f"Error al guardar datos del scraper: {str(e)}")
+        raise
