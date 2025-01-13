@@ -26,7 +26,8 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+# OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+OUTPUT_DIR = "../../../../files/scrapers"
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -42,9 +43,10 @@ def get_logger(name, level=logging.INFO, log_file="app.log"):
     ch = logging.StreamHandler()
     ch.setLevel(level)
 
-    log_dir = "/home/staging/scraping_cookiecutter/logs" 
+    # log_dir = "/home/staging/scraping_cookiecutter/logs"
+    log_dir = "../../../../files/logs"
     if not os.path.exists(log_dir):
-        os.makedirs(log_dir)  
+        os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
     fh = logging.FileHandler(log_path, encoding="utf-8")
     fh.setLevel(level)
@@ -55,7 +57,6 @@ def get_logger(name, level=logging.INFO, log_file="app.log"):
     ch.setFormatter(formatter)
     fh.setFormatter(formatter)
 
-    # Evitar duplicar handlers
     if not logger.handlers:
         logger.addHandler(ch)
         logger.addHandler(fh)
@@ -74,7 +75,7 @@ def initialize_driver(retries=3):
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
             options = webdriver.ChromeOptions()
-            options.binary_location = "/usr/bin/google-chrome"
+            # options.binary_location = "/usr/bin/google-chrome"
             options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--no-sandbox")
@@ -95,7 +96,7 @@ def initialize_driver(retries=3):
         except Exception as e:
             logger.error(f"Error al iniciar el navegador: {e}")
             if attempt < retries - 1:
-                time.sleep(5)  # Espera 5 segundos antes de reintentar
+                time.sleep(5)  
             else:
                 raise
 
@@ -136,10 +137,8 @@ def generate_directory(url, output_dir=OUTPUT_DIR):
 
 
 def get_next_versioned_filename(folder_path, base_name="archivo"):
-    """
-    Busca el siguiente nombre de archivo disponible, incrementando versiones si existe.
-    """
-    logger = get_logger("generar siguiente versión de archivo")
+
+    logger = get_logger("GENERANDO LA SIGUIENTE VERSION DEL ARCHIVO")
     try:
         version = 0
         while True:
@@ -149,15 +148,13 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
                 return file_path
             version += 1
     except Exception as e:
-        logger.error(f"Error al generar el nombre del archivo: {str(e)}")
+        logger.error(f"ERROR al generar la siguiente versión del archivo: {str(e)}")
         raise
 
 
 def delete_old_documents(url, collection, fs, limit=2):
-    """
-    Elimina documentos antiguos si se supera el 'limit' de versiones guardadas.
-    """
-    logger = get_logger("eliminar documentos antiguos")
+
+    logger = get_logger("ELIMINACIÓN DE DOCUMENTOS ANTIGUOS")
     try:
         docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
         docs_count = collection.count_documents({"Url": url})
@@ -184,13 +181,11 @@ def delete_old_documents(url, collection, fs, limit=2):
 
 
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("guardar datos del scraper")
+    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
-        # Generar directorio de destino
         folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
-        # Guardar contenido en un archivo .txt
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
 
@@ -208,7 +203,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             collection.insert_one(data)
             logger.info(f"Datos guardados en MongoDB para la URL: {url}")
 
-            # Eliminar versiones antiguas si excede el límite
             delete_old_documents(url, collection, fs)
 
             response_data = {
@@ -226,7 +220,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("procesar datos del scraper")
+    logger = get_logger("PROCESANDO DATOS DEL SCRAPER")
     try:
         if all_scraper:
             response_data = save_scraper_data(
