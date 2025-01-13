@@ -45,8 +45,13 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
         extra_kwargs = {"password": {"write_only": True, "required": True}}
 
     def create(self, validated_data):
-        password = validated_data.pop("password", None)
+        email = validated_data.get("email", None)
+        if email and User.objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                {"email": "Este correo ya está en uso por otro usuario."}
+            )
 
+        password = validated_data.pop("password", None)
         user = super().create(validated_data)
 
         if password:
@@ -64,8 +69,14 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        password = validated_data.get("password", None)
+        email = validated_data.get("email", None)
 
+        if email and User.objects.filter(email=email).exclude(id=instance.id).exists():
+            raise serializers.ValidationError(
+                {"email": "Este correo ya está en uso por otro usuario."}
+            )
+
+        password = validated_data.get("password", None)
         user = super().update(instance, validated_data)
 
         if password:

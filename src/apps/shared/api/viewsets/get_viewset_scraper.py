@@ -1,13 +1,8 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from pymongo import MongoClient
-from datetime import datetime
-import requests
-import pdfplumber
-import os
-import json
 import gridfs
-import urllib.parse
+
 
 client = MongoClient("mongodb://localhost:27017/")
 db = client["scrapping-can"]
@@ -16,7 +11,7 @@ fs = gridfs.GridFS(db)
 
 
 @csrf_exempt
-def get_scraped_url(request):
+def get_scraper_url(request):
     if request.method == "GET":
         try:
             url = request.GET.get("url")
@@ -42,12 +37,12 @@ def get_scraped_url(request):
                     ),
                     "Tipo": record.get("Tipo", "No disponible"),
                     "Url": record.get("Url", ""),
-                    "Fecha_scrapper": record.get("Fecha_scrapper", "No disponible"),
+                    "Fecha_scraper": record.get("Fecha_scraper", "No disponible"),
                     "Etiquetas": record.get("Etiquetas", []),
                 }
                 data_to_return.append(record_data)
 
-            return JsonResponse({"scraped_data": data_to_return}, status=200)
+            return JsonResponse({"scraper_data": data_to_return}, status=200)
 
         except Exception as e:
             error_msg = f"Ocurrió un error inesperado: {str(e)}"
