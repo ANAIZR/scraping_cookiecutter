@@ -3,6 +3,7 @@ import hashlib
 from datetime import datetime
 import logging
 import random
+import undetected_chromedriver as uc
 
 from pymongo import MongoClient
 import gridfs
@@ -78,7 +79,7 @@ def initialize_driver(retries=3):
             logger.info(
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
-            options = webdriver.ChromeOptions()
+            options = uc.ChromeOptions()
             #options.binary_location = "/usr/bin/google-chrome"
             #options.add_argument("--headless")
             options.add_argument("--disable-gpu")
@@ -90,7 +91,7 @@ def initialize_driver(retries=3):
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
 
-            driver = webdriver.Chrome(
+            driver = uc.Chrome(
                 service=Service(ChromeDriverManager().install()), options=options
             )
 
