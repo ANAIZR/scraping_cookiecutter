@@ -61,3 +61,4 @@ def scraper_method_books(url, sobrenombre):
         
     except:
         print("Error al scrapear libros escaneados")
+        return Response({"message": "Scraper finalizado"}, status=status.HTTP_400_BAD_REQUEST)
