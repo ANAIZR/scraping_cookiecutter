@@ -45,7 +45,7 @@ def get_logger(name, level=logging.INFO, log_file="app.log"):
     ch.setLevel(level)
 
     # log_dir = "/home/staging/scraping_cookiecutter/logs"
-    log_dir = "../../../../files/logs"
+    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
