@@ -27,7 +27,8 @@ USER_AGENTS = [
 ]
 
 # OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-OUTPUT_DIR = "../../../../files/scrapers"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -42,12 +43,11 @@ def get_logger(name, level=logging.INFO, log_file="app.log"):
 
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    
-    
+
     # log_dir = "/home/staging/scraping_cookiecutter/logs"
-    log_dir = "../../../../files/logs"
+    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
     if not os.path.exists(log_dir):
-        os.makedirs(log_dir)  
+        os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
     fh = logging.FileHandler(log_path, encoding="utf-8")
     fh.setLevel(level)
