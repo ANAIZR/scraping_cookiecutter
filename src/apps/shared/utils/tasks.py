@@ -3,6 +3,10 @@ import requests
 
 
 @shared_task
+def add(x, y):
+    return x + y
+
+@shared_task
 def send_post_to_api(url):
     # api_url = "https://apiwebscraper.sgcan.dev/api/v1/scraper-url/"
     api_url = "http://127.0.0.1:8000/api/v1/scraper-url/"

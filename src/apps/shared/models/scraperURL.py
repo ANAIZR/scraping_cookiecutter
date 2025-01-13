@@ -2,7 +2,7 @@ import requests
 from django.utils import timezone
 from django.db import models
 from datetime import timedelta
-from celery import shared_task
+from celery import shared_task 
 from celery import current_app
 
 from ...core.models import CoreModel
