@@ -29,10 +29,10 @@ def load_keywords(file_path="../txt/plants.txt"):
             keywords = [
                 line.strip() for line in f if isinstance(line, str) and line.strip()
             ]
-        print(f"Palabras clave cargadas: {keywords}")
+        logger.info(f"Palabras clave cargadas: {keywords}")
         return keywords
     except Exception as e:
-        print(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
+        logger.info(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
         raise
 
 
@@ -61,7 +61,7 @@ def scraper_cabi_digital(url, sobrenombre):
                     driver.add_cookie(cookie)
             driver.refresh()
         except FileNotFoundError:
-            print("No se encontraron cookies guardadas.")
+            logger.info("No se encontraron cookies guardadas.")
 
         try:
             cookie_button = WebDriverWait(driver, 5).until(
@@ -71,7 +71,7 @@ def scraper_cabi_digital(url, sobrenombre):
             )
             cookie_button.click()
         except Exception:
-            print("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
+            logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
         try:
             preferences_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable(
@@ -99,9 +99,9 @@ def scraper_cabi_digital(url, sobrenombre):
                 time.sleep(random.uniform(3, 6))
 
                 search_input.submit()
-                print(f"Realizando búsqueda con la palabra clave: {keyword}")
+                logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
-                print(f"Error al realizar la búsqueda: {e}")
+                logger.info(f"Error al realizar la búsqueda: {e}")
                 scraping_failed = True
                 continue
 
@@ -110,22 +110,41 @@ def scraper_cabi_digital(url, sobrenombre):
                     WebDriverWait(driver, 60).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "ul.rlist li"))
                     )
-                    print("Resultados encontrados en la página.")
+                    logger.info("Resultados encontrados en la página.")
 
                     soup = BeautifulSoup(driver.page_source, "html.parser")
                     items = soup.select("ul.rlist li")
-                    print(f"Encontrados {len(items)} resultados.")
+                    logger.info(f"Encontrados {len(items)} resultados.")
                     for item in items:
                         href = item.find("a")["href"]
                         if href.startswith("/doi/10.1079/cabicompendium"):
                             absolut_href = f"{base_domain}{href}"
                             driver.get(absolut_href)
+                            try:
+                                cookie_button = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable(
+                                        (By.CSS_SELECTOR, "#onetrust-pc-btn-handler")
+                                    )
+                                )
+                                cookie_button.click()
+                            except Exception:
+                                logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
+                            try:
+                                preferences_button = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable(
+                                        (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
+                                    )
+                                )
+                                preferences_button.click()
+                            except Exception:
+                                logger.info("El botón de 'Guardar preferencias' no apareció o no fue clicable.")
                             visited_urls.add(absolut_href)
                             WebDriverWait(driver, 60).until(
                                 EC.presence_of_element_located(
                                     (By.CSS_SELECTOR, "body")
                                 )
                             )
+
                             time.sleep(random.uniform(6, 10))
                             soup = BeautifulSoup(driver.page_source, "html.parser")
                             abstracts = soup.select_one("#abstracts")
@@ -171,13 +190,13 @@ def scraper_cabi_digital(url, sobrenombre):
                         next_page_link = next_page_button.get_attribute("href")
 
                         if next_page_link:
-                            print(f"Yendo a la siguiente página: {next_page_link}")
+                            logger.info(f"Yendo a la siguiente página: {next_page_link}")
                             driver.get(next_page_link)
                         else:
                             break
                     except Exception:
-                        print("No se encontró el botón para la siguiente página.")
-                        print(f"Finalizada búsqueda con la palabra clave: {keyword}")
+                        logger.info("No se encontró el botón para la siguiente página.")
+                        logger.info(f"Finalizada búsqueda con la palabra clave: {keyword}")
                         driver.get(url)  # Volver al inicio
                         time.sleep(
                             random.uniform(6, 10)
@@ -192,12 +211,12 @@ def scraper_cabi_digital(url, sobrenombre):
                                 )
                             )
                             search_input.clear()
-                            print(f"Preparado para la próxima palabra clave.")
+                            logger.info(f"Preparado para la próxima palabra clave.")
                         except Exception as e:
-                            print(f"Error al regresar al inicio: {e}")
+                            logger.info(f"Error al regresar al inicio: {e}")
                         continue
                 except Exception as e:
-                    print(f"Error al procesar resultados: {e}")
+                    logger.error(f"Error al procesar resultados: {e}")
                     scraping_failed = True
                     break
 
