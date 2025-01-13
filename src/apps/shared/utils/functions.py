@@ -116,9 +116,6 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):
-    """
-    Genera un directorio basado en un hash de la URL para almacenar archivos.
-    """
     logger = get_logger("generar directorio")
     try:
         url_hash = hashlib.md5(url.encode()).hexdigest()
@@ -187,9 +184,6 @@ def delete_old_documents(url, collection, fs, limit=2):
 
 
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    """
-    Guarda el contenido scrapeado (all_scraper) en un archivo local y en MongoDB GridFS.
-    """
     logger = get_logger("guardar datos del scraper")
     try:
         # Generar directorio de destino
@@ -200,7 +194,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
 
-        # Subir archivo a GridFS
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
@@ -233,9 +226,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    """
-    Procesa y guarda la información scrapeada. Devuelve una Response de DRF.
-    """
     logger = get_logger("procesar datos del scraper")
     try:
         if all_scraper:
