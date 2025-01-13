@@ -2,6 +2,8 @@ import requests
 from django.utils import timezone
 from django.db import models
 from datetime import timedelta
+from celery import shared_task
+from celery import current_app
 
 from ...core.models import CoreModel
 
@@ -45,15 +47,27 @@ class ScraperURL(CoreModel):
     def get_time_limit(self):
         now = timezone.now()
 
-        if self.time_choices == 1:  
+        if self.time_choices == 1:
             return self.updated_at + timedelta(days=30)
-        elif self.time_choices == 2: 
+        elif self.time_choices == 2:
             return self.updated_at + timedelta(days=90)
-        elif self.time_choices == 3:  
+        elif self.time_choices == 3:
             return self.updated_at + timedelta(days=180)
         return self.updated_at
 
     def is_time_expired(self):
         return timezone.now() > self.get_time_limit()
 
-    
+    def schedule_task(self):
+        if not self.is_time_expired():
+            time_remaining = self.get_time_limit() - timezone.now()
+            if time_remaining.total_seconds() > 0:
+                current_app.send_task(
+                    "shared.utils.tasks.send_post_to_api",
+                    args=[self.url],
+                    countdown=time_remaining.total_seconds(),
+                )
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.schedule_task()
