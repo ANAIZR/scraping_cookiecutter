@@ -37,20 +37,22 @@ def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
 
-def get_logger(name, level=logging.INFO, log_file="app.log"):
+import logging
+import os
+
+def get_logger(name, level=logging.DEBUG, log_file="app.log"):
     logger = logging.getLogger(name)
-    logger.setLevel(level)
+    logger.setLevel(level)  
 
     ch = logging.StreamHandler()
-    ch.setLevel(level)
+    ch.setLevel(level)  
 
-    # log_dir = "/home/staging/scraping_cookiecutter/logs"
-    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
+    log_dir = os.path.join(os.getcwd(), "logs")  
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
     fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setLevel(level)
+    fh.setLevel(level)  
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -58,12 +60,12 @@ def get_logger(name, level=logging.INFO, log_file="app.log"):
     ch.setFormatter(formatter)
     fh.setFormatter(formatter)
 
-    # Evitar duplicar handlers
     if not logger.handlers:
         logger.addHandler(ch)
         logger.addHandler(fh)
 
     return logger
+
 
 
 import time
