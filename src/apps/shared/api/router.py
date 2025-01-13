@@ -10,7 +10,7 @@ router.register(r"urls", scraperURL_viewsets.ScraperURLViewSet, basename="urls")
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
-    path("scraper-get-url/", get_viewset_scraper.get_scraped_url, name="get_scraper_url"),
+    path("scraper-get-url/", get_viewset_scraper.get_scraper_url, name="get_scraper_url"),
     path("scraper-url/",  ScraperAPIView.as_view(), name="scraper_url"),
 ]
 urlpatterns += router.urls
