@@ -14,10 +14,11 @@ from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver
+    initialize_driver,
 )
 
 lock = Lock()
+
 
 def fetch_content(href, logger, scraped_count, failed_hrefs):
     try:
@@ -29,7 +30,9 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
         inner_content = soup.find(id="inner-content")
         if inner_content:
             content_text = inner_content.get_text(strip=True)
-            logger.info(f"Contenido obtenido del enlace: {href}, Longitud: {len(content_text)} caracteres")
+            logger.info(
+                f"Contenido obtenido del enlace: {href}, Longitud: {len(content_text)} caracteres"
+            )
             with lock:
                 scraped_count[0] += 1
             return f"URL: {href}\n{content_text}"
@@ -42,13 +45,14 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
         failed_hrefs.append(href)
         return None
 
+
 def scraper_iucngisd(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
-    scraped_count = [0] 
-    failed_hrefs = [] 
+    scraped_count = [0]
+    failed_hrefs = []
 
     try:
         driver = initialize_driver()
@@ -70,7 +74,9 @@ def scraper_iucngisd(url, sobrenombre):
 
         ul_tag = soup.select_one("ul.content.spec")
         if not ul_tag:
-            raise Exception("No se encontró el elemento ul con la clase 'content spec'.")
+            raise Exception(
+                "No se encontró el elemento ul con la clase 'content spec'."
+            )
 
         hrefs = []
         li_tags = ul_tag.find_all("li")
@@ -84,7 +90,9 @@ def scraper_iucngisd(url, sobrenombre):
         with ThreadPoolExecutor(max_workers=4) as executor:
             results = list(
                 executor.map(
-                    lambda href: fetch_content(href, logger, scraped_count, failed_hrefs),
+                    lambda href: fetch_content(
+                        href, logger, scraped_count, failed_hrefs
+                    ),
                     hrefs,
                 )
             )
@@ -92,6 +100,16 @@ def scraper_iucngisd(url, sobrenombre):
         for content in results:
             if content:
                 all_scraper += content + "\n\n"
+        if not all_scraper.strip():
+            logger.error(
+                "No se pudo obtener contenido de los enlaces. Proceso terminado con errores."
+            )
+            return Response(
+                {
+                    "error": "No se pudo obtener contenido de los enlaces. Revisa los logs para más detalles."
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         logger.info(f"Enlaces encontrados: {len(hrefs)}")
         logger.info(f"Enlaces scrapeados exitosamente: {scraped_count[0]}")
