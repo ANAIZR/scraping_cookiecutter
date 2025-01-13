@@ -26,9 +26,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-# OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -40,19 +40,20 @@ def get_random_user_agent():
 import logging
 import os
 
+
 def get_logger(name, level=logging.DEBUG, log_file="app.log"):
     logger = logging.getLogger(name)
-    logger.setLevel(level)  
+    logger.setLevel(level)
 
     ch = logging.StreamHandler()
-    ch.setLevel(level)  
-
-    log_dir = os.path.join(os.getcwd(), "logs")  
+    ch.setLevel(level)
+    log_dir = "/home/staging/scraping_cookiecutter/logs"
+    # log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
     fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setLevel(level)  
+    fh.setLevel(level)
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -67,7 +68,6 @@ def get_logger(name, level=logging.DEBUG, log_file="app.log"):
     return logger
 
 
-
 import time
 
 
@@ -79,7 +79,7 @@ def initialize_driver(retries=3):
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
             options = webdriver.ChromeOptions()
-            #options.binary_location = "/usr/bin/google-chrome"
+            options.binary_location = "/usr/bin/google-chrome"
             options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--no-sandbox")
@@ -141,9 +141,7 @@ def generate_directory(url, output_dir=OUTPUT_DIR):
 
 
 def get_next_versioned_filename(folder_path, base_name="archivo"):
-    """
-    Busca el siguiente nombre de archivo disponible, incrementando versiones si existe.
-    """
+
     logger = get_logger("generar siguiente versión de archivo")
     try:
         version = 0
@@ -159,9 +157,7 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
 
 
 def delete_old_documents(url, collection, fs, limit=2):
-    """
-    Elimina documentos antiguos si se supera el 'limit' de versiones guardadas.
-    """
+
     logger = get_logger("eliminar documentos antiguos")
     try:
         docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
@@ -191,11 +187,9 @@ def delete_old_documents(url, collection, fs, limit=2):
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("guardar datos del scraper")
     try:
-        # Generar directorio de destino
         folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
-        # Guardar contenido en un archivo .txt
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
 
@@ -213,7 +207,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             collection.insert_one(data)
             logger.info(f"Datos guardados en MongoDB para la URL: {url}")
 
-            # Eliminar versiones antiguas si excede el límite
             delete_old_documents(url, collection, fs)
 
             response_data = {
