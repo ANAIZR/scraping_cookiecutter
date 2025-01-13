@@ -77,7 +77,7 @@ def initialize_driver(retries=3):
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
             options = webdriver.ChromeOptions()
-            options.binary_location = "/usr/bin/google-chrome"
+            #options.binary_location = "/usr/bin/google-chrome"
             options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--no-sandbox")
