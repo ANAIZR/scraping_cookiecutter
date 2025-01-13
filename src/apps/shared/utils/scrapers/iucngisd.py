@@ -4,28 +4,27 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+from urllib.parse import urljoin
+from rest_framework.response import Response
+from rest_framework import status
+import time
+import requests
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver
 )
-from rest_framework.response import Response
-from rest_framework import status
-import time
-import requests
 
+lock = Lock()
 
 def fetch_content(href, logger, scraped_count, failed_hrefs):
+
     try:
-        response = requests.get(href)
+        response = requests.get(href, timeout=10)
         logger.info(f"Accediendo al enlace: {href}")
-        if response.status_code != 200:
-            logger.error(
-                f"Error al acceder al enlace: {href}, Código de estado: {response.status_code}"
-            )
-            failed_hrefs.append(href)  # Agregar a la lista de fallidos
-            return None
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
         inner_content = soup.find(id="inner-content")
@@ -34,27 +33,27 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
             logger.info(
                 f"Contenido obtenido del enlace: {href}, Longitud: {len(content_text)} caracteres"
             )
-            scraped_count[0] += 1  # Incrementa el contador de scrapeos exitosos
+            with lock:
+                scraped_count[0] += 1
             return f"URL: {href}\n{content_text}"
         else:
-            logger.error(f"No se encontró contenido interno en la página: {href}")
-            failed_hrefs.append(href)  # Agregar a la lista de fallidos
+            logger.warning(f"No se encontró contenido interno en la página: {href}")
+            failed_hrefs.append(href)
             return None
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         logger.error(f"Error al procesar el enlace {href}: {str(e)}")
-        failed_hrefs.append(href)  # Agregar a la lista de fallidos
+        failed_hrefs.append(href)
         return None
 
 
 def scraper_iucngisd(url, sobrenombre):
+
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
-    scraped_count = [
-        0
-    ]  # Usamos una lista para permitir la mutabilidad dentro de los hilos
-    failed_hrefs = []  # Lista para almacenar los enlaces fallidos
+    scraped_count = [0]  
+    failed_hrefs = []  
 
     try:
         driver = initialize_driver()
@@ -85,7 +84,7 @@ def scraper_iucngisd(url, sobrenombre):
         for li_tag in li_tags:
             a_tag = li_tag.find("a")
             if a_tag and a_tag.get("href"):
-                hrefs.append(a_tag["href"])
+                hrefs.append(urljoin(url, a_tag["href"]))
 
         logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
 
