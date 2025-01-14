@@ -43,12 +43,6 @@ def scraper_herbarium(url, sobrenombre):
     try:
         driver.get(url)
 
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "#wrapper")
-            )
-        )
-
         link_list = driver.find_elements(
             By.CSS_SELECTOR, "#nav ul li a"
         )
@@ -59,7 +53,7 @@ def scraper_herbarium(url, sobrenombre):
         while True:
             if not link_list:
                 break
-            new_links_found = False
+            
             for link in link_list:
                 href = link.get_attribute("href")
 
@@ -67,12 +61,11 @@ def scraper_herbarium(url, sobrenombre):
                     continue
 
                 processed_links.add(href)
-                new_links_found = True
+                
+                original_window = driver.current_window_handle
 
                 try:
                     driver.get(href)
-
-                    original_window = driver.current_window_handle
 
                     keywords = load_keywords()
                     visited_urls = set()
@@ -93,33 +86,31 @@ def scraper_herbarium(url, sobrenombre):
                             search_input.submit()
 
                             #######################PAGINA A SCRAPEAR#######################
-
+                            
                             driver.execute_script("window.open(arguments[0]);", href)
+                            time.sleep(random.uniform(3, 6))
 
                             WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
 
                             new_window = driver.window_handles[1]
                             driver.switch_to.window(new_window)
-
+                            driver.close()
+                            
                             driver.switch_to.window(original_window)
 
                             logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
                             time.sleep(random.uniform(3, 6))
+
                             # driver.back()
+                            # print("pagina anterior")
+                            # driver.close()
+                            # print("cerrando pagina")
                         except Exception as e:
                             logger.info(f"Error al realizar la búsqueda: {e}")
                             scraping_failed = True
                             continue
 
-                #     WebDriverWait(driver, 60).until(
-                #         EC.presence_of_element_located(
-                #             (By.CSS_SELECTOR, "div.c-wysiwyg")
-                #         )
-                #     )
 
-                #     page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                #     content_div = page_soup.find("div", class_="c-wysiwyg")
-                #     time.sleep(5)
                 except:
                     print("Error en el contenido")
 
