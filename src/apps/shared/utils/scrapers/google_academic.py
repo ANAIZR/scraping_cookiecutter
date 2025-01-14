@@ -90,6 +90,7 @@ def is_valid_href(url):
     except Exception as e:
         print(f"Error al verificar el enlace {url}: {e}")
         return False
+
 def scraper_google_academic(url, sobrenombre):
     print(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
@@ -148,25 +149,49 @@ def scraper_google_academic(url, sobrenombre):
                                 print(f"El enlace {result} devolvió un código HTTP 420. Ignorando.")
                                 continue
 
-                            href_name = re.sub(r'[^\w\-_]', '_', result)[:50]
+                            href_name = re.sub(r'[^\w\-_]', '_', result.split("/")[-1])[:50]
+
                             link_folder = generate_directory(keyword_folder, href_name)
+
+                            file_base_name = href_name
+
+                            if "download" in result.lower() or is_pdf(result):
+                                try:
+                                    save_path = get_next_versioned_filename(link_folder, base_name=file_base_name)
+                                    if not save_path.lower().endswith(".pdf"):
+                                        save_path += ".pdf"
+
+                                    if not os.path.exists(save_path):
+                                        download_pdf(result, save_path)
+                                        visited_urls.add(result)
+                                    continue
+                                except Exception as e:
+                                    print(f"Error al descargar el PDF: {e}")
 
                             driver.get(result)
                             time.sleep(2)
 
-                            body_content = driver.find_element(By.TAG_NAME, "body").text.strip()
+                            body_element = WebDriverWait(driver, 10).until(
+                                EC.presence_of_element_located((By.TAG_NAME, "body"))
+                            )
+                            body_content = body_element.text.strip() if body_element else ""
+
                             if body_content:
                                 cleaned_body_content = ' '.join(body_content.split())
+                                print(f"Contenido capturado:\n{cleaned_body_content[:500]}")
 
-                                file_path = get_next_versioned_filename(link_folder, base_name=href_name)
-                                with open(file_path, "w", encoding="utf-8") as f:
-                                    f.write(f"URL: {result}\n{cleaned_body_content}\n")
-                                print(f"Archivo guardado en: {file_path}")
+                                file_path = get_next_versioned_filename(link_folder, base_name=file_base_name)
+                                if not os.path.exists(file_path):
+                                    with open(file_path, "w", encoding="utf-8") as f:
+                                        f.write(f"URL: {result}\n{cleaned_body_content}\n")
+                                    print(f"Archivo guardado en: {file_path}")
 
                                 all_links.append({"url": result, "content": cleaned_body_content})
                                 visited_urls.add(result)
                                 driver.get(current_page_url)
                                 time.sleep(3)
+                            else:
+                                print(f"No se pudo capturar el contenido del body para el link: {result}")
 
                         except Exception as e:
                             print(f"No se pudo acceder al link {result}: {e}")
