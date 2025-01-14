@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import logging
 import random
+import shutil
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
@@ -43,6 +44,11 @@ def initialize_driver():
         options = webdriver.ChromeOptions()
         # options.add_argument("--headless")
         options.add_argument("--disable-gpu")
+        options.add_argument("--allow-insecure-localhost")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-site-isolation-trials")
+        #options.add_argument("--enable-logging")
+        #options.add_argument("--v=1")
         options.add_argument("--start-maximized")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -60,6 +66,7 @@ def initialize_driver():
         raise
 
 
+
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
     logger = get_logger("mongo_connection")
     try:
@@ -74,9 +81,9 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
         raise
 
 
-def generate_directory(output_dir, url):
+def generate_directory(output_dir, url, downloaded_file=None):
     logger = get_logger("generar directorio")
-
+ 
     try:
         url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
@@ -87,12 +94,15 @@ def generate_directory(output_dir, url):
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-        logger.info(f"Directorio generado: {folder_path}")
+            print(f"Directorio generado: {folder_path}")
+        if downloaded_file and os.path.isfile(downloaded_file):
+            destination = os.path.join(folder_path, os.path.basename(downloaded_file))
+            shutil.move(downloaded_file, destination)
+            print(f"Archivo descargado movido a: {destination}")
         return folder_path
     except Exception as e:
-        logger.error(f"Error al generar el directorio: {str(e)}")
+        print(f"Error al generar el directorio: {str(e)}")
         raise
-
 
 def get_next_versioned_filename(folder_path, base_name="archivo"):
     logger = get_logger("generar siguiente versión de archivo")
@@ -180,6 +190,68 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     try:
         if all_scraper.strip():
             response_data = save_scraper_data(
+                all_scraper, url, sobrenombre, collection, fs
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("guardar datos del scraper")
+    try:
+        folder_path = generate_directory(OUTPUT_DIR, url)
+
+        object_id = fs.put(all_scraper.encode("utf-8"), filename=sobrenombre)
+
+        data = {
+            "Objeto": object_id,
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+        }
+
+        collection.insert_one(data)
+        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+
+        delete_old_documents(url, collection, fs)
+
+        response_data = {
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": data["Fecha_scraper"],
+            "Etiquetas": data["Etiquetas"],
+            "Mensaje": "Los datos han sido scrapeados correctamente.",
+        }
+
+        return response_data
+    except Exception as e:
+        logger.error(f"Error al guardar datos del scraper: {str(e)}")
+        raise
+    
+def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("procesar datos del scraper")
+    try:
+        if all_scraper.strip():
+            response_data = save_scraper_data_without_file(
                 all_scraper, url, sobrenombre, collection, fs
             )
             return Response(response_data, status=status.HTTP_200_OK)
