@@ -18,7 +18,7 @@ from selenium.common.exceptions import StaleElementReferenceException
 
 logger = get_logger("scraper")
 
-def load_keywords(file_path="../txt/plants.txt"):
+def load_keywords(file_path="../txt/all.txt"):
     try:
         base_path = os.path.dirname(os.path.abspath(__file__))
         absolute_path = os.path.join(base_path, file_path)
@@ -26,7 +26,7 @@ def load_keywords(file_path="../txt/plants.txt"):
             keywords = [
                 line.strip() for line in f if isinstance(line, str) and line.strip()
             ]
-        logger.info(f"Palabras clave cargadas: {keywords}")
+        # logger.info(f"Palabras clave cargadas: {keywords}")
         return keywords
     except Exception as e:
         logger.info(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
@@ -48,17 +48,18 @@ def scraper_herbarium(url, sobrenombre):
         )
 
         main_folder = generate_directory(url)
-
+        visited_urls = set()
+        scraping_failed = False
     
         while True:
-            if not link_list:
-                break
-            
+            # if not link_list:
+            #     break
+
             for link in link_list:
                 href = link.get_attribute("href")
 
-                if href in processed_links:
-                    continue
+                # if href in processed_links:
+                #     continue
 
                 processed_links.add(href)
                 
@@ -68,12 +69,10 @@ def scraper_herbarium(url, sobrenombre):
                     driver.get(href)
 
                     keywords = load_keywords()
-                    visited_urls = set()
-                    scraping_failed = False
-
+                    cont = 1
 
                     for keyword in keywords:
-                        print(f"Buscando con la palabra clave: {keyword}")
+                        print(f"Buscando con la palabra clave {cont}: {keyword}")
                         keyword_folder = generate_directory(keyword, main_folder)
                         try:
                             search_input =  WebDriverWait(driver, 10).until(
@@ -81,30 +80,39 @@ def scraper_herbarium(url, sobrenombre):
                                 )
                             search_input.clear()
                             search_input.send_keys(keyword)
-                            time.sleep(random.uniform(3, 6))
+                            time.sleep(random.uniform(2, 4))
 
                             search_input.submit()
 
                             #######################PAGINA A SCRAPEAR#######################
-                            
+
                             driver.execute_script("window.open(arguments[0]);", href)
+                            new_window = driver.window_handles[1]
+                            driver.switch_to.window(new_window)
+
+                            page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                            
+                            content_div = page_soup.find("h1")       
+                            content_text = content_div.text.strip()                     
+                            
+                            if(content_text == "Fairchild Tropical Botanic Garden Virtual Herbarium"):
+                                print(f"No se encontraron resultados {cont}")
+                            else:
+                                print("Felicidades, si se encontraron resultados")
+                                driver.quit()
+
                             time.sleep(random.uniform(3, 6))
 
                             WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
 
-                            new_window = driver.window_handles[1]
-                            driver.switch_to.window(new_window)
+                            cont += 1
                             driver.close()
                             
                             driver.switch_to.window(original_window)
 
                             logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
-                            time.sleep(random.uniform(3, 6))
+                            time.sleep(random.uniform(10, 12))
 
-                            # driver.back()
-                            # print("pagina anterior")
-                            # driver.close()
-                            # print("cerrando pagina")
                         except Exception as e:
                             logger.info(f"Error al realizar la búsqueda: {e}")
                             scraping_failed = True
