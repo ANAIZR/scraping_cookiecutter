@@ -74,7 +74,7 @@ import time
 
 
 def initialize_driver(retries=3):
-    logger = get_logger("scraper")
+    logger = get_logger("INICIALIZANDO EL DRIVER")
     for attempt in range(retries):
         try:
             logger.info(
@@ -105,14 +105,14 @@ def initialize_driver(retries=3):
         except Exception as e:
             logger.error(f"Error al iniciar el navegador: {e}")
             if attempt < retries - 1:
-                time.sleep(5)  # Espera 5 segundos antes de reintentar
+                time.sleep(5)  
             else:
                 raise
 
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
-    logger = get_logger("mongo_connection")
+    logger = get_logger("MONGO_CONECCTION")
     try:
         logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
         client = MongoClient("mongodb://localhost:27017/")
@@ -126,7 +126,7 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):
-    logger = get_logger("generar directorio")
+    logger = get_logger("GENERANDO DIRECTORIO")
     try:
         url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
@@ -196,11 +196,9 @@ def delete_old_documents(url, collection, fs, limit=2):
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("guardar datos del scraper")
     try:
-        # Generar directorio de destino
         folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
-        # Guardar contenido en un archivo .txt
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
 
@@ -218,7 +216,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             collection.insert_one(data)
             logger.info(f"Datos guardados en MongoDB para la URL: {url}")
 
-            # Eliminar versiones antiguas si excede el límite
             delete_old_documents(url, collection, fs)
 
             response_data = {

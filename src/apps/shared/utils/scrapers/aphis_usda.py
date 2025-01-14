@@ -70,7 +70,6 @@ def scraper_aphis_usda(url, sobrenombre):
                     print(
                         f"Elemento obsoleto en la página {href}, recargando y volviendo a buscar el enlace."
                     )
-                    # Vuelve a cargar la página y buscar de nuevo el enlace
                     driver.get(href)
                     WebDriverWait(driver, 60).until(
                         EC.presence_of_element_located(
