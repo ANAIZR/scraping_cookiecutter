@@ -51,7 +51,7 @@ def scraper_cabi_digital(url, sobrenombre):
             keywords = load_keywords()
             visited_urls = set()
             scraping_failed = False
-            base_domain = "https://www.cabidigitallibrary.org/"
+            base_domain = "https://www.cabidigitallibrary.org"
         except Exception as e:
             logger.error(f"Error al inicializar el scraper: {str(e)}")
 
@@ -129,7 +129,7 @@ def scraper_cabi_digital(url, sobrenombre):
                                 )
                                 cookie_button.click()
                             except Exception:
-                                logger.info(
+                                print(
                                     "El botón de 'Aceptar Cookies' no apareció o no fue clicable."
                                 )
                             try:
