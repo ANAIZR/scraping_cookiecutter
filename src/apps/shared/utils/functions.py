@@ -84,10 +84,13 @@ def initialize_driver(retries=3):
             #options.binary_location = "/usr/bin/google-chrome"
             #options.add_argument("--headless")
             options.add_argument("--disable-gpu")
+            options.add_argument("--allow-insecure-localhost")
+            options.add_argument("--disable-web-security")
+            options.add_argument("--disable-site-isolation-trials")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-extensions")
-
+            options.add_argument("--no-sandbox")
             options.add_argument("--start-maximized")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
@@ -270,6 +273,68 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("guardar datos del scraper")
+    try:
+        folder_path = generate_directory(OUTPUT_DIR, url)
+
+        object_id = fs.put(all_scraper.encode("utf-8"), filename=sobrenombre)
+
+        data = {
+            "Objeto": object_id,
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+        }
+
+        collection.insert_one(data)
+        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+
+        delete_old_documents(url, collection, fs)
+
+        response_data = {
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": data["Fecha_scraper"],
+            "Etiquetas": data["Etiquetas"],
+            "Mensaje": "Los datos han sido scrapeados correctamente.",
+        }
+
+        return response_data
+    except Exception as e:
+        logger.error(f"Error al guardar datos del scraper: {str(e)}")
+        raise
+    
+def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("procesar datos del scraper")
+    try:
+        if all_scraper.strip():
+            response_data = save_scraper_data_without_file(
+                all_scraper, url, sobrenombre, collection, fs
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
         return Response(
