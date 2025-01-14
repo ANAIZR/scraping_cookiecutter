@@ -5,6 +5,7 @@ import os
 import time
 import pickle
 import random
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
@@ -50,7 +51,7 @@ def scraper_cabi_digital(url, sobrenombre):
             keywords = load_keywords()
             visited_urls = set()
             scraping_failed = False
-            base_domain = "https://www.cabidigitallibrary.org"
+            base_domain = "https://www.cabidigitallibrary.org/"
         except Exception as e:
             logger.error(f"Error al inicializar el scraper: {str(e)}")
 
@@ -128,16 +129,23 @@ def scraper_cabi_digital(url, sobrenombre):
                                 )
                                 cookie_button.click()
                             except Exception:
-                                logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
+                                logger.info(
+                                    "El botón de 'Aceptar Cookies' no apareció o no fue clicable."
+                                )
                             try:
                                 preferences_button = WebDriverWait(driver, 5).until(
                                     EC.element_to_be_clickable(
-                                        (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
+                                        (
+                                            By.CSS_SELECTOR,
+                                            "#accept-recommended-btn-handler",
+                                        )
                                     )
                                 )
                                 preferences_button.click()
                             except Exception:
-                                logger.info("El botón de 'Guardar preferencias' no apareció o no fue clicable.")
+                                logger.info(
+                                    "El botón de 'Guardar preferencias' no apareció o no fue clicable."
+                                )
                             visited_urls.add(absolut_href)
                             WebDriverWait(driver, 60).until(
                                 EC.presence_of_element_located(
@@ -190,17 +198,24 @@ def scraper_cabi_digital(url, sobrenombre):
                         next_page_link = next_page_button.get_attribute("href")
 
                         if next_page_link:
-                            logger.info(f"Yendo a la siguiente página: {next_page_link}")
+                            logger.info(
+                                f"Yendo a la siguiente página: {next_page_link}"
+                            )
                             driver.get(next_page_link)
                         else:
+                            logger.info(
+                                "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
+                            )
                             break
-                    except Exception:
-                        logger.info("No se encontró el botón para la siguiente página.")
-                        logger.info(f"Finalizada búsqueda con la palabra clave: {keyword}")
+                    except NoSuchElementException:
+                        logger.info(
+                            "No se encontró el botón para la siguiente página. Volviendo al inicio para la próxima palabra clave."
+                        )
                         driver.get(url)  # Volver al inicio
                         time.sleep(
                             random.uniform(6, 10)
                         )  # Pausa antes de interactuar de nuevo
+
                         try:
                             search_input = WebDriverWait(driver, 30).until(
                                 EC.presence_of_element_located(
@@ -211,10 +226,25 @@ def scraper_cabi_digital(url, sobrenombre):
                                 )
                             )
                             search_input.clear()
-                            logger.info(f"Preparado para la próxima palabra clave.")
+                            logger.info(
+                                f"Preparado para la próxima palabra clave: {keyword}"
+                            )
+                        except TimeoutException:
+                            logger.error(
+                                f"No se pudo encontrar el campo de búsqueda al regresar al inicio."
+                            )
+                            break
                         except Exception as e:
-                            logger.info(f"Error al regresar al inicio: {e}")
-                        continue
+                            logger.error(
+                                f"Error inesperado al intentar reiniciar la búsqueda: {str(e)}"
+                            )
+                            break
+                    except Exception as e:
+                        logger.error(
+                            f"Error inesperado al intentar navegar a la siguiente página: {str(e)}"
+                        )
+                        break
+
                 except Exception as e:
                     logger.error(f"Error al procesar resultados: {e}")
                     scraping_failed = True
