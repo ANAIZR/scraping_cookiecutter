@@ -198,9 +198,7 @@ def scraper_cabi_digital(url, sobrenombre):
                         next_page_link = next_page_button.get_attribute("href")
 
                         if next_page_link:
-                            logger.info(
-                                f"Yendo a la siguiente página: {next_page_link}"
-                            )
+                            logger.info(f"Yendo a la siguiente página: {next_page_link}")
                             driver.get(next_page_link)
                         else:
                             logger.info(
@@ -212,31 +210,36 @@ def scraper_cabi_digital(url, sobrenombre):
                             "No se encontró el botón para la siguiente página. Volviendo al inicio para la próxima palabra clave."
                         )
                         driver.get(url)  # Volver al inicio
-                        time.sleep(
-                            random.uniform(6, 10)
-                        )  # Pausa antes de interactuar de nuevo
+                        time.sleep(random.uniform(6, 10))  # Pausa para que cargue la página
 
-                        try:
-                            search_input = WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located(
-                                    (
-                                        By.CSS_SELECTOR,
-                                        "#AllFieldb117445f-c250-4d14-a8d9-7c66d5b6a4800",
+                        for retry in range(3):  # Reintentos para garantizar que se encuentra el campo
+                            try:
+                                search_input = WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located(
+                                        (
+                                            By.CSS_SELECTOR,
+                                            "#AllFieldb117445f-c250-4d14-a8d9-7c66d5b6a4800",
+                                        )
                                     )
                                 )
-                            )
-                            search_input.clear()
-                            logger.info(
-                                f"Preparado para la próxima palabra clave: {keyword}"
-                            )
-                        except TimeoutException:
+                                search_input.clear()  # Limpiar el campo por si contiene texto previo
+                                search_input.send_keys(keyword)  # Escribir la palabra clave
+                                search_input.submit()  # Ejecutar la búsqueda
+                                logger.info(f"Preparado y buscando con la palabra clave: {keyword}")
+                                break  # Salir del bucle si tiene éxito
+                            except TimeoutException:
+                                logger.warning(
+                                    f"No se encontró el campo de búsqueda. Reintento {retry + 1} de 3."
+                                )
+                                time.sleep(5)  # Pausa antes de reintentar
+                            except Exception as e:
+                                logger.error(
+                                    f"Error inesperado al intentar usar el campo de búsqueda: {str(e)}"
+                                )
+                                break
+                        else:
                             logger.error(
-                                f"No se pudo encontrar el campo de búsqueda al regresar al inicio."
-                            )
-                            break
-                        except Exception as e:
-                            logger.error(
-                                f"Error inesperado al intentar reiniciar la búsqueda: {str(e)}"
+                                "No se pudo encontrar el campo de búsqueda después de volver al inicio."
                             )
                             break
                     except Exception as e:
@@ -244,6 +247,7 @@ def scraper_cabi_digital(url, sobrenombre):
                             f"Error inesperado al intentar navegar a la siguiente página: {str(e)}"
                         )
                         break
+
 
                 except Exception as e:
                     logger.error(f"Error al procesar resultados: {e}")
