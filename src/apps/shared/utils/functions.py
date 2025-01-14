@@ -48,7 +48,8 @@ def get_logger(name, level=logging.DEBUG, log_file="app.log"):
     ch = logging.StreamHandler()
     ch.setLevel(level)  
 
-    log_dir = os.path.join(os.getcwd(), "logs")  
+    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
+
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
