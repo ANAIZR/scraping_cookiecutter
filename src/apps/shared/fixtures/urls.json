@@ -1051,7 +1051,7 @@
     "model": "shared.ScraperURL",
     "pk": 73,
     "fields": {
-      "url": "",
+      "url": "http://www.virtualherbarium.org/",
       "sobrenombre": "",
       "time_choices": 1,
       "mode_scrapeo": 46,
