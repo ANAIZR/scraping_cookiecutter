@@ -168,8 +168,31 @@ def scraper_google_academic(url, sobrenombre):
                                 except Exception as e:
                                     print(f"Error al descargar el PDF: {e}")
 
+                            if "books.google" in result:
+                                print("**********************Es un ebook. Extrayendo contenido de div#menu_scroll_wrapper.")
+                                driver.get(result)
+                                time.sleep(3)
+                                try:
+                                    menu_wrapper = WebDriverWait(driver, 60).until(
+                                        EC.presence_of_element_located((By.CSS_SELECTOR, "div#menu_scroll_wrapper"))
+                                    )
+                                    menu_content = menu_wrapper.text.strip() if menu_wrapper else ""
+                                    if menu_content:                                       
+                                        file_path = get_next_versioned_filename(link_folder, base_name="menu_scroll_wrapper")
+                                        with open(file_path, "w", encoding="utf-8") as f:
+                                            f.write(f"URL: {result}\n{menu_content}\n")
+                                        print(f"Archivo guardado en: {file_path}")
+                                    else:
+                                        print(f"No se pudo capturar el contenido del div#menu_scroll_wrapper para el link: {result}")
+                                except Exception as e:
+                                    print(f"Error al capturar el contenido del div#menu_scroll_wrapper: {e}")
+                                visited_urls.add(result)
+                                driver.back()
+                                continue
+
                             driver.get(result)
                             time.sleep(2)
+                            
 
                             body_element = WebDriverWait(driver, 10).until(
                                 EC.presence_of_element_located((By.TAG_NAME, "body"))
