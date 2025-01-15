@@ -91,13 +91,16 @@ def scraper_herbarium(url, sobrenombre):
                             driver.switch_to.window(new_window)
 
                             page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                            items = page_soup.select("tr:last-child")
+                            items = page_soup.select("tbody tr")
+                            print("pintando items ",len(items))
+                        
 
                             for item in items:
-                                td = item.get_attribute("td")
-                                for td in item:
-                                    all_scraper += f"{td}\n\n\n"
-                                logger.info("fila escrapeada por adrian ",td)
+                                tds = item.find_all("td")
+                                print("pintando tds ",len(tds))
+                                for td in tds:
+                                    all_scraper += f"{td.get_text(strip=True)}\n\n\n"
+                                logger.info("fila escrapeada por adrian ",all_scraper)
 
                             
                             # content_div = page_soup.find("body")       
