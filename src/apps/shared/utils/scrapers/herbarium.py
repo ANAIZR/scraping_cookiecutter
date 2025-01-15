@@ -12,7 +12,8 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
-    generate_directory
+    generate_directory,
+    get_next_versioned_filename
 )
 from selenium.common.exceptions import StaleElementReferenceException
 
@@ -48,87 +49,100 @@ def scraper_herbarium(url, sobrenombre):
         )
 
         main_folder = generate_directory(url)
-        visited_urls = set()
-        scraping_failed = False
     
         while True:
-            # if not link_list:
-            #     break
-
             for link in link_list:
                 href = link.get_attribute("href")
-
-                # if href in processed_links:
-                #     continue
 
                 processed_links.add(href)
                 
                 original_window = driver.current_window_handle
 
                 try:
+                    #abriendo enlaces principales(son 2)
                     driver.get(href)
 
                     keywords = load_keywords()
                     cont = 1
+                    print("abriendo enlace principal ",href)
 
                     for keyword in keywords:
-                        print(f"Buscando con la palabra clave {cont}: {keyword}")
-                        keyword_folder = generate_directory(keyword, main_folder)
-                        try:
-                            search_input =  WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='family']"))
+                        print("siguiente palabra clave ",keyword)
+                        if(keyword):
+                            print(f"Buscando con la palabra clave {cont}: {keyword}")
+                            # keyword_folder = generate_directory(keyword, main_folder)
+                            try:
+                                search_input =  WebDriverWait(driver, 10).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='family']"))
+                                    )
+                                search_input.clear()
+                                search_input.send_keys(keyword)
+                                time.sleep(random.uniform(2, 4))
+
+                                search_input.submit()
+
+                                #######################PAGINA A SCRAPEAR#######################
+
+                                driver.execute_script("window.open(arguments[0]);", href)
+                                new_window = driver.window_handles[1]
+                                driver.switch_to.window(new_window)
+
+                                page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                                items = page_soup.select("tbody tr")
+                                print("pintando items ",len(items))
+                            
+
+                                for item in items:
+                                    tds = item.find_all("td")
+                                    print("pintando tds ",len(tds))
+                                    for td in tds:
+                                        all_scraper += f"{td.get_text(strip=True)};"
+                                    all_scraper += "\n"
+                                    logger.info("fila escrapeada por adrian ",all_scraper)
+
+                                file_path = get_next_versioned_filename(
+                                    main_folder, keyword
                                 )
-                            search_input.clear()
-                            search_input.send_keys(keyword)
-                            time.sleep(random.uniform(2, 4))
 
-                            search_input.submit()
+                                ##CREACION Y ESCRITURA DE ARCHIVO
+                                with open(file_path, "w", encoding="utf-8") as file:
+                                    file.write(all_scraper)
+                                
+                                cont += 1
+                                driver.close()
+                                driver.switch_to.window(original_window)
+                                print("volviendo a la pagina principal")
 
-                            #######################PAGINA A SCRAPEAR#######################
+                                time.sleep(random.uniform(2, 4))
 
-                            driver.execute_script("window.open(arguments[0]);", href)
-                            new_window = driver.window_handles[1]
-                            driver.switch_to.window(new_window)
+                                # content_div = page_soup.find("body")       
+                                # content_text = content_div.text.strip()
+                                # print('pintando el cuerpo de la tabla ',content_text)               
+                                
+                                # if(content_text == "Fairchild Tropical Botanic Garden Virtual Herbarium"):
+                                #     print(f"No se encontraron resultados {cont}")
+                                # else:
+                                #     print("Felicidades, si se encontraron resultados")
+                                #     driver.quit()
 
-                            page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                            items = page_soup.select("tbody tr")
-                            print("pintando items ",len(items))
-                        
+                                #################################################################
 
-                            for item in items:
-                                tds = item.find_all("td")
-                                print("pintando tds ",len(tds))
-                                for td in tds:
-                                    all_scraper += f"{td.get_text(strip=True)}\n\n\n"
-                                logger.info("fila escrapeada por adrian ",all_scraper)
+                                # time.sleep(random.uniform(3, 6))
 
-                            
-                            # content_div = page_soup.find("body")       
-                            # content_text = content_div.text.strip()
-                            # print('pintando el cuerpo de la tabla ',content_text)               
-                            
-                            # if(content_text == "Fairchild Tropical Botanic Garden Virtual Herbarium"):
-                            #     print(f"No se encontraron resultados {cont}")
-                            # else:
-                            #     print("Felicidades, si se encontraron resultados")
-                            #     driver.quit()
+                                # WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
 
-                            time.sleep(random.uniform(3, 6))
+                                # cont += 1
+                                # driver.close()
+                                
+                                # driver.switch_to.window(original_window)
 
-                            WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+                                # logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
+                                # time.sleep(random.uniform(10, 12))
 
-                            cont += 1
-                            driver.close()
-                            
-                            driver.switch_to.window(original_window)
-
-                            logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
-                            time.sleep(random.uniform(10, 12))
-
-                        except Exception as e:
-                            logger.info(f"Error al realizar la búsqueda: {e}")
-                            scraping_failed = True
-                            continue
+                            except Exception as e:
+                                logger.info(f"Error al realizar la búsqueda: {e}")
+                                scraping_failed = True
+                                continue
 
 
                 except:
