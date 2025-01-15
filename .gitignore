@@ -274,3 +274,6 @@ dump.rdb
 crifcan_colaborativo/media/
 
 .pytest_cache/
+
+### archivos generados luego del scraping
+files/scrapers/
