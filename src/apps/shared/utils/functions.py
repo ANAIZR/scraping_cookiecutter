@@ -74,7 +74,7 @@ import time
 
 
 def initialize_driver(retries=3):
-    logger = get_logger("scraper")
+    logger = get_logger("INICIALIZANDO EL DRIVER")
     for attempt in range(retries):
         try:
             logger.info(
@@ -84,10 +84,13 @@ def initialize_driver(retries=3):
             #options.binary_location = "/usr/bin/google-chrome"
             #options.add_argument("--headless")
             options.add_argument("--disable-gpu")
+            options.add_argument("--allow-insecure-localhost")
+            options.add_argument("--disable-web-security")
+            options.add_argument("--disable-site-isolation-trials")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-extensions")
-
+            options.add_argument("--no-sandbox")
             options.add_argument("--start-maximized")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
@@ -105,14 +108,14 @@ def initialize_driver(retries=3):
         except Exception as e:
             logger.error(f"Error al iniciar el navegador: {e}")
             if attempt < retries - 1:
-                time.sleep(5)  # Espera 5 segundos antes de reintentar
+                time.sleep(5)  
             else:
                 raise
 
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
-    logger = get_logger("mongo_connection")
+    logger = get_logger("MONGO_CONECCTION")
     try:
         logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
         client = MongoClient("mongodb://localhost:27017/")
@@ -126,7 +129,7 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):
-    logger = get_logger("generar directorio")
+    logger = get_logger("GENERANDO DIRECTORIO")
     try:
         url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
@@ -196,11 +199,9 @@ def delete_old_documents(url, collection, fs, limit=2):
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("guardar datos del scraper")
     try:
-        # Generar directorio de destino
         folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
-        # Guardar contenido en un archivo .txt
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
 
@@ -218,7 +219,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             collection.insert_one(data)
             logger.info(f"Datos guardados en MongoDB para la URL: {url}")
 
-            # Eliminar versiones antiguas si excede el límite
             delete_old_documents(url, collection, fs)
 
             response_data = {
@@ -273,6 +273,68 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("guardar datos del scraper")
+    try:
+        folder_path = generate_directory(OUTPUT_DIR, url)
+
+        object_id = fs.put(all_scraper.encode("utf-8"), filename=sobrenombre)
+
+        data = {
+            "Objeto": object_id,
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+        }
+
+        collection.insert_one(data)
+        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+
+        delete_old_documents(url, collection, fs)
+
+        response_data = {
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": data["Fecha_scraper"],
+            "Etiquetas": data["Etiquetas"],
+            "Mensaje": "Los datos han sido scrapeados correctamente.",
+        }
+
+        return response_data
+    except Exception as e:
+        logger.error(f"Error al guardar datos del scraper: {str(e)}")
+        raise
+    
+def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("procesar datos del scraper")
+    try:
+        if all_scraper.strip():
+            response_data = save_scraper_data_without_file(
+                all_scraper, url, sobrenombre, collection, fs
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
         return Response(

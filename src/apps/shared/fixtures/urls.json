@@ -570,7 +570,7 @@
     "model": "shared.ScraperURL",
     "pk": 39,
     "fields": {
-      "url": "https://www.aphis.usda.gov/plant-pests-diseases",
+      "url": "https://www.aphis.usda.gov",
       "sobrenombre": "APHIS_USDA",
       "time_choices": 1,
       "mode_scrapeo": 32,

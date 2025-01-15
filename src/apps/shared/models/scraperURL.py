@@ -2,8 +2,8 @@ import requests
 from django.utils import timezone
 from django.db import models
 from datetime import timedelta
-
 from ...core.models import CoreModel
+#from .tasks import scrape_url  
 
 
 class ScraperURL(CoreModel):
@@ -43,8 +43,10 @@ class ScraperURL(CoreModel):
         return self.deleted_at is not None
 
     def get_time_limit(self):
+        """
+        Calcula el límite de tiempo basado en la elección de tiempo (mensual, trimestral, semestral).
+        """
         now = timezone.now()
-
         if self.time_choices == 1:  # Mensual
             return self.updated_at + timedelta(days=30)
         elif self.time_choices == 2:  # Trimestral
@@ -54,29 +56,16 @@ class ScraperURL(CoreModel):
         return self.updated_at
 
     def is_time_expired(self):
+        """
+        Verifica si el tiempo límite ha expirado.
+        """
         return timezone.now() > self.get_time_limit()
-
-    def post_to_api(self):
-        if self.is_time_expired():
-            try:
-                data = {
-                    "url": self.url,
-                }
-
-                response = requests.post(
-                    "http://127.0.0.1:8000/api/v1/scraper-url/", json=data
-                )
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.RequestException as e:
-
-                print(f"Error al hacer el POST a la API: {e}")
-                return None
-        else:
-            print("El tiempo límite no ha expirado aún.")
-            return None
-
+""" 
     def save(self, *args, **kwargs):
+        
+        is_new = self.pk is None  # Verifica si el objeto es nuevo
         super().save(*args, **kwargs)
 
-        self.post_to_api()
+        # Si es un nuevo objeto, programa la tarea de Celery
+        if is_new:
+            scrape_url.apply_async((self.id,), eta=self.get_time_limit()) """
