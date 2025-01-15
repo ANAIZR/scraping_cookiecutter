@@ -76,7 +76,7 @@ def scraper_herbarium(url, sobrenombre):
                         keyword_folder = generate_directory(keyword, main_folder)
                         try:
                             search_input =  WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='species']"))
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='family']"))
                                 )
                             search_input.clear()
                             search_input.send_keys(keyword)
@@ -91,15 +91,24 @@ def scraper_herbarium(url, sobrenombre):
                             driver.switch_to.window(new_window)
 
                             page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                            items = page_soup.select("tr:last-child")
+
+                            for item in items:
+                                td = item.get_attribute("td")
+                                for td in item:
+                                    all_scraper += f"{td}\n\n\n"
+                                logger.info("fila escrapeada por adrian ",td)
+
                             
-                            content_div = page_soup.find("h1")       
-                            content_text = content_div.text.strip()                     
+                            # content_div = page_soup.find("body")       
+                            # content_text = content_div.text.strip()
+                            # print('pintando el cuerpo de la tabla ',content_text)               
                             
-                            if(content_text == "Fairchild Tropical Botanic Garden Virtual Herbarium"):
-                                print(f"No se encontraron resultados {cont}")
-                            else:
-                                print("Felicidades, si se encontraron resultados")
-                                driver.quit()
+                            # if(content_text == "Fairchild Tropical Botanic Garden Virtual Herbarium"):
+                            #     print(f"No se encontraron resultados {cont}")
+                            # else:
+                            #     print("Felicidades, si se encontraron resultados")
+                            #     driver.quit()
 
                             time.sleep(random.uniform(3, 6))
 
