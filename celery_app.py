@@ -12,7 +12,7 @@ app = Celery('scraping_cookiecutter')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Registrar automáticamente las tareas definidas en las apps
-app.autodiscover_tasks(['src.apps.shared.models'])
+app.autodiscover_tasks(['src.apps.shared.models', 'src.apps.users'])
 
 @app.task(bind=True)
 def debug_task(self):
@@ -21,7 +21,11 @@ def debug_task(self):
 # Configurar programación de tareas con Celery Beat
 app.conf.beat_schedule = {
     'scrape-expired-urls': {
-        'task': 'src.apps.shared.models.tasks.scrape_url',
+        'task': 'src.apps.shared.tasks.scrape_url',
         'schedule': crontab(hour=0, minute=0),  # Ejecutar todos los días a medianoche
     },
+    'login-user':{
+        'task':'src.apps.users.tasks.renew_access_token',
+        'schedule': crontab(hour=23, minute=55),  # Ejecutar todos los
+    }
 }

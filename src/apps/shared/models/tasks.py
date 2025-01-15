@@ -2,24 +2,35 @@ from celery import shared_task
 import requests
 from django.utils.timezone import now
 from src.apps.shared.models.scraperURL import ScraperURL
+from src.apps.users.models import User  # Importar el modelo donde está el token
 import logging
-from dotenv import load_dotenv
-import os
-# Cargar las variables de entorno del archivo .env
-load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 @shared_task
+
 def scrape_url():
     """
     Tarea que revisa todas las URLs activas y realiza el scrapeo si ha expirado su tiempo.
     """
-    access_token = os.getenv("ACCESS_TOKEN")  # Obtener el token guardado
 
-    if not access_token:
-        return {"status": "error", "message": "No se encontró el access_token."}
+    # Obtener el usuario que tiene el token
+    try:
+        user = User.objects.filter(is_active=True).first()  # Ajustar el filtro según tu lógica de negocio
+        if not user:
+            logger.error("No se encontró un usuario activo.")
+            return {"status": "error", "message": "No se encontró un usuario activo."}
+
+        access_token = user.access_token  # Ajustar el nombre del campo donde se almacena el token
+        if not access_token:
+            logger.error("El usuario no tiene un access_token.")
+            return {"status": "error", "message": "El usuario no tiene un access_token."}
+    except Exception as e:
+        logger.critical(f"Error al obtener el token desde la base de datos: {str(e)}")
+        return {"status": "error", "message": f"Error al obtener el token: {str(e)}"}
 
     headers = {"Authorization": f"Bearer {access_token}"}
+
     try:
         # Filtrar solo las URLs activas cuyo tiempo ha expirado
         urls = ScraperURL.objects.filter(is_active=True).exclude(fecha_scraper__gt=now())
@@ -29,7 +40,7 @@ def scrape_url():
                 if scraper.is_time_expired():
                     data = {"url": scraper.url}
                     response = requests.post(
-                        "http://127.0.0.1:8000/api/v1/scraper-url/", headers=headers,json=data
+                        "http://127.0.0.1:8000/api/v1/scraper-url/", headers=headers, json=data
                     )
                     response.raise_for_status()
 
