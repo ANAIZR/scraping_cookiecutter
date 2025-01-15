@@ -18,7 +18,7 @@ from selenium.common.exceptions import StaleElementReferenceException
 
 logger = get_logger("scraper")
 
-def load_keywords(file_path="../txt/all.txt"):
+def load_keywords(file_path="../txt/family.txt"):
     try:
         base_path = os.path.dirname(os.path.abspath(__file__))
         absolute_path = os.path.join(base_path, file_path)
