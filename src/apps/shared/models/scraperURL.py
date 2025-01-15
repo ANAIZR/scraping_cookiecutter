@@ -21,6 +21,7 @@ class ScraperURL(CoreModel):
     deleted_at = models.DateTimeField(
         blank=True, null=True, db_index=True, editable=False
     )
+    fecha_scraper =  models.DateTimeField(null=True, blank=True)
     time_choices = models.PositiveSmallIntegerField(choices=TIME_CHOICES, default=1)
     is_active = models.BooleanField(default=True)
     parameters = models.JSONField(default=dict)

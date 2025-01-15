@@ -1,6 +1,7 @@
-""" from celery import shared_task
+from celery import shared_task
 import requests
 from models import ScraperURL
+
 
 @shared_task
 def scrape_url(scraper_id):
@@ -19,5 +20,4 @@ def scrape_url(scraper_id):
     except ScraperURL.DoesNotExist:
         return {"status": "error", "message": "Scraper no encontrado."}
     except requests.exceptions.RequestException as e:
-        return {"status": "error", "message": str(e)}
- """
+        return {"status": "error", "message": str(e)} 
