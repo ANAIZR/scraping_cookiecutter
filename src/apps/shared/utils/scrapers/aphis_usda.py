@@ -100,14 +100,13 @@ def scraper_aphis_usda(url, sobrenombre):
         while urls_to_scrape:
             logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
             urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
-            time.sleep(random.uniform(1, 3))  # Pause between iterations
+            time.sleep(random.uniform(1, 3))  
 
         all_scraper += f"\n\nTotal links found: {total_found_links}\n"
         all_scraper += f"Total links scraped: {total_scraped_links}\n"
         all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
         all_scraper += "\n\nURLs no scrapeadas:\n"
-        all_scraper += "\n".join(non_scraped_urls)  # List non-scraped URLs
-
+        all_scraper += "\n".join(non_scraped_urls)  
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
