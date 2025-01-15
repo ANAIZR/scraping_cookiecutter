@@ -3,7 +3,6 @@ from ...models.scraperURL import ScraperURL
 
 
 class ScraperURLSerializer(serializers.ModelSerializer):
-
     time_choices_display = serializers.CharField(
         source="get_time_choices_display", read_only=True
     )
@@ -15,17 +14,24 @@ class ScraperURLSerializer(serializers.ModelSerializer):
             "sobrenombre",
             "url",
             "time_choices",
+            "fecha_scraper", 
             "time_choices_display",
             "created_at",
             "updated_at",
         )
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.fecha_scraper is None:
+            representation["fecha_scraper"] = "Aún no se ha realizado el proceso de scraper"
+        return representation
+
     def validate_url(self, value):
-        
         instance = self.instance
         if instance and instance.url == value:
             return value
 
         if ScraperURL.objects.filter(url=value).exists():
             raise serializers.ValidationError("Esta URL ya ha sido registrada.")
-        
+
         return value
