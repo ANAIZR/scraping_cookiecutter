@@ -279,3 +279,4 @@ crifcan_colaborativo/media/
 files/scrapers/
 
 .env
+celerybeat-schedule.*
