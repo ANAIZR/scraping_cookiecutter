@@ -204,19 +204,34 @@ class ScraperAPIView(APIView):
             )
 
         try:
+    # Hacer la solicitud a la API de GET con limit=1
             mongo_response = requests.get(
-                f"http://127.0.0.1:8000/api/v1/scraper-get-url?url={url}"
+                f"http://127.0.0.1:8000/api/v1/scraper-get-url?url={url}&limit=1"
             )
 
             mongo_response.raise_for_status()
             mongo_data = mongo_response.json()
 
-            fecha_scraper = parse_datetime(mongo_data.get("Fecha_scraper"))
-            scraper_url.fecha_scraper = fecha_scraper
-            scraper_url.save()
+            # Validar y analizar Fecha_scraper
+            if "data" in mongo_data and len(mongo_data["data"]) > 0:
+                raw_fecha_scraper = mongo_data["data"][0].get("Fecha_scraper")
+                if raw_fecha_scraper and isinstance(raw_fecha_scraper, str):
+                    fecha_scraper = parse_datetime(raw_fecha_scraper)
+                else:
+                    fecha_scraper = None
+            else:
+                return Response(
+                    {"error": "No se encontraron registros en la API de MongoDB."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Actualizar el campo fecha_scraper si es válido
+            if fecha_scraper:
+                scraper_url.fecha_scraper = fecha_scraper
+                scraper_url.save()
 
             return Response(
-                {"status": "success", "mongo_data": mongo_data},
+                {"status": "Finalizo correctamente el proceso", "mongo_data": mongo_data},
                 status=status.HTTP_200_OK,
             )
         except requests.exceptions.RequestException as e:
