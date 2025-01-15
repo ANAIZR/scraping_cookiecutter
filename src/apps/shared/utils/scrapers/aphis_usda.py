@@ -1,113 +1,116 @@
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
+import time
+import random
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse, urljoin
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from rest_framework.response import Response
 from rest_framework import status
-import time
-from bs4 import BeautifulSoup
-from selenium.common.exceptions import StaleElementReferenceException
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver,
+    get_random_user_agent,
 )
 
 def scraper_aphis_usda(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     processed_links = set()
+    urls_to_scrape = [(url, 1)]  
+    non_scraped_urls = []  
 
-    try:
-        driver.get(url)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "div.c-link-list-multi-column")
-            )
-        )
+    total_found_links = 0
+    total_scraped_links = 0
+    total_non_scraped_links = 0
 
-        while True:
-            link_list = driver.find_elements(
-                By.CSS_SELECTOR, "div.c-link-list-multi-column ul li a"
-            )
+    def scrape_page(url, depth):
+        nonlocal total_found_links, total_scraped_links, total_non_scraped_links
 
-            if not link_list:
-                break
+        if url in processed_links or depth > 3: 
+            return []
+        processed_links.add(url)
 
-            new_links_found = False
-            for link in link_list:
-                href = link.get_attribute("href")
+        logger.info(f"Accediendo a {url} en el nivel {depth}")
 
-                if href in processed_links:
+        headers = {"User-Agent": get_random_user_agent()}
+        new_links = []
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.content, "html.parser")
+
+            if depth >= 2:
+                main_content = soup.find("main", id="main")
+                if main_content:
+                    nonlocal all_scraper
+                    page_text = main_content.get_text(strip=True)
+                    all_scraper += f"URL: {url}\n{page_text}\n\n" 
+
+            for link in soup.find_all("a", href=True):
+                inner_href = link.get("href")
+                full_url = urljoin(url, inner_href)
+
+                if full_url.lower().endswith(".pdf"):
+                    total_non_scraped_links += 1  
+                    non_scraped_urls.append(full_url)  
                     continue
 
-                processed_links.add(href)
-                new_links_found = True
+                if "forms" in full_url or "":  
+                    total_non_scraped_links += 1  
+                    non_scraped_urls.append(full_url)  
+                    continue
 
+                if (
+                    urlparse(full_url).netloc == "www.aphis.usda.gov"
+                    and full_url not in processed_links
+                ):
+                    total_found_links += 1  
+                    new_links.append((full_url, depth + 1))
+                    total_scraped_links += 1 
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error al procesar el enlace {url}: {e}")
+            total_non_scraped_links += 1  
+            non_scraped_urls.append(url)  
+
+        return new_links
+
+    def scrape_pages_in_parallel(url_list):
+        new_links = []
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_url = {
+                executor.submit(scrape_page, url, depth): (url, depth)
+                for url, depth in url_list
+            }
+            for future in as_completed(future_to_url):
                 try:
-                    driver.get(href)
-                    WebDriverWait(driver, 60).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, "div.c-wysiwyg")
-                        )
-                    )
+                    result_links = future.result()
+                    new_links.extend(result_links)
+                except Exception as e:
+                    logger.error(f"Error en tarea de scraping: {str(e)}")
+                    total_non_scraped_links += 1  
+        return new_links
 
-                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    content_div = page_soup.find("div", class_="c-wysiwyg")
-                    time.sleep(5)
+    try:
+        while urls_to_scrape:
+            logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
+            urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
+            time.sleep(random.uniform(1, 3))  # Pause between iterations
 
-                    if content_div:
-                        content_text = content_div.text.strip()
-                        if content_text:
-                            all_scraper += content_text + "\n\n"
-                        
-                    
-
-                except StaleElementReferenceException:
-                    print(
-                        f"Elemento obsoleto en la página {href}, recargando y volviendo a buscar el enlace."
-                    )
-                    driver.get(href)
-                    WebDriverWait(driver, 60).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, "div.c-wysiwyg")
-                        )
-                    )
-
-                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    content_div = page_soup.find("div", class_="c-wysiwyg")
-                    time.sleep(5)
-
-                    if content_div:
-                        content_text = content_div.text.strip()
-                        if content_text:
-                            all_scraper += content_text + "\n\n"
-                        
-                    
-
-                driver.back()
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "div.c-link-list-multi-column")
-                    )
-                )
-
-            if not new_links_found:
-                break
+        all_scraper += f"\n\nTotal links found: {total_found_links}\n"
+        all_scraper += f"Total links scraped: {total_scraped_links}\n"
+        all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
+        all_scraper += "\n\nURLs no scrapeadas:\n"
+        all_scraper += "\n".join(non_scraped_urls)  # List non-scraped URLs
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
-        print(f"Error general en el proceso de scraping: {str(e)}")
+        logger.error(f"Error durante el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    finally:
-        try:
-            driver.quit()
-        except Exception as e:
-            print(f"Error al cerrar el navegador: {e}")
