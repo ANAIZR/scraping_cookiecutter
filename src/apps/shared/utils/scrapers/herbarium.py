@@ -64,6 +64,7 @@ def scraper_herbarium(url, sobrenombre):
 
                     keywords = load_keywords()
                     cont = 1
+                    print("abriendo enlace principal ",href)
 
                     for keyword in keywords:
                         print("siguiente palabra clave ",keyword)
