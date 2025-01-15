@@ -25,8 +25,12 @@ class User(BaseUserModel):
     email = models.EmailField(unique=True)
     system_role = models.PositiveSmallIntegerField(choices=ROLE_CHOICES, default=2)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(blank=True, null=True, db_index=True, editable=False)
+    deleted_at = models.DateTimeField(
+        blank=True, null=True, db_index=True, editable=False
+    )
     is_active = models.BooleanField(default=True)
+    access_token = models.CharField(max_length=500, blank=True, null=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username", "password", "is_active"]
 
