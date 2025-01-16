@@ -27,9 +27,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-# OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -41,20 +41,20 @@ def get_random_user_agent():
 import logging
 import os
 
+
 def get_logger(name, level=logging.DEBUG, log_file="app.log"):
     logger = logging.getLogger(name)
-    logger.setLevel(level)  
+    logger.setLevel(level)
 
     ch = logging.StreamHandler()
-    ch.setLevel(level)  
-
-    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
-
+    ch.setLevel(level)
+    log_dir = "/home/staging/scraping_cookiecutter/logs"
+    # log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
     fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setLevel(level)  
+    fh.setLevel(level)
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -69,7 +69,6 @@ def get_logger(name, level=logging.DEBUG, log_file="app.log"):
     return logger
 
 
-
 import time
 
 
@@ -80,9 +79,9 @@ def initialize_driver(retries=3):
             logger.info(
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
-            options = uc.ChromeOptions()
-            #options.binary_location = "/usr/bin/google-chrome"
-            #options.add_argument("--headless")
+            options = webdriver.ChromeOptions()
+            options.binary_location = "/usr/bin/google-chrome"
+            options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
@@ -90,7 +89,6 @@ def initialize_driver(retries=3):
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-extensions")
-            options.add_argument("--no-sandbox")
             options.add_argument("--start-maximized")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
@@ -149,9 +147,7 @@ def generate_directory(url, output_dir=OUTPUT_DIR):
 
 
 def get_next_versioned_filename(folder_path, base_name="archivo"):
-    """
-    Busca el siguiente nombre de archivo disponible, incrementando versiones si existe.
-    """
+
     logger = get_logger("generar siguiente versión de archivo")
     try:
         version = 0
@@ -167,9 +163,7 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
 
 
 def delete_old_documents(url, collection, fs, limit=2):
-    """
-    Elimina documentos antiguos si se supera el 'limit' de versiones guardadas.
-    """
+
     logger = get_logger("eliminar documentos antiguos")
     try:
         docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
