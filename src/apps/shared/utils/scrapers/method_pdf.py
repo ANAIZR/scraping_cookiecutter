@@ -8,10 +8,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text
+from datetime import datetime
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
+    connect_to_mongo,
 )
 
 
@@ -23,19 +25,15 @@ def extract_text_with_pdfminer(pdf_file):
 
 
 def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
-
     try:
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client["scrapping-can"]
-        collection = db["collection"]
-        fs = gridfs.GridFS(db)
+        collection, fs = connect_to_mongo("scrapping-can", "collection")
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
         }
         response = requests.get(url, verify=False, headers=headers)
         response.raise_for_status()
 
-        folder_path = generate_directory( url)
+        folder_path = generate_directory(url)
         txt_filepath = get_next_versioned_filename(folder_path, base_name=sobrenombre)
         os.makedirs(os.path.dirname(txt_filepath), exist_ok=True)
         start_page = start_page or 1
@@ -44,6 +42,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 {"error": "El número de página inicial debe ser mayor o igual a 1."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         if "text/html" in response.headers["Content-Type"]:
             soup = BeautifulSoup(response.text, "html.parser")
             pages = soup.find_all("div#viewer div.page")
@@ -84,12 +83,28 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         with open(txt_filepath, "w", encoding="utf-8") as txt_file:
             txt_file.write(full_text.strip())
 
+        # Generar los datos para guardar en MongoDB
+        data = {
+            "Objeto": sobrenombre,
+            "Tipo": "PDF",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+        }
+
+        collection.insert_one(data)
         delete_old_documents(url, collection, fs)
 
-        return Response(
-            {"message": "Scraping completado y datos guardados en MongoDB."},
-            status=status.HTTP_200_OK,
-        )
+        # Respuesta de éxito
+        response_data = {
+            "Tipo": "PDF",
+            "Url": url,
+            "Fecha_scraper": data["Fecha_scraper"],
+            "Etiquetas": data["Etiquetas"],
+            "Mensaje": "Los datos han sido scrapeados correctamente y guardados.",
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     except requests.exceptions.RequestException as e:
         return Response(
