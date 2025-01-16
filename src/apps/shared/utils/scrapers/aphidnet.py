@@ -98,7 +98,7 @@ def scraper_aphidnet(url=None, wait_time=None, sobrenombre=None):
                     if new_links:
                         urls_to_scrape.extend(new_links)
                 except Exception as e:
-                    print(f"Error en tarea de scraping: {str(e)}")
+                    logger.info(f"Error en tarea de scraping: {str(e)}")
 
     try:
         urls_to_scrape.append((url, 0))

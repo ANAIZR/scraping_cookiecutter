@@ -46,6 +46,8 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.admin",
     "django.forms",
+    'django_celery_beat',
+
 ]
 
 THIRD_PARTY_APPS = [
@@ -54,6 +56,7 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "drf_spectacular",
+    
 ]
 
 LOCAL_APPS = [
