@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 import os
 from celery import Celery
 from celery.schedules import crontab  # Para definir tareas programadas
+from celery import chain
 
 # Configurar el entorno de Django para Celery
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.local')
@@ -20,12 +21,9 @@ def debug_task(self):
 
 # Configurar programación de tareas con Celery Beat
 app.conf.beat_schedule = {
-    'scrape-expired-urls': {
-        'task': 'src.apps.shared.tasks.scrape_url',
-        'schedule': crontab(hour=0, minute=0),  # Ejecutar todos los días a medianoche
+    'scrape-and-renew-chain': {
+        'task': 'celery.chain',
+        'schedule': crontab(hour=23, minute=55),  # Comienza con login a las 23:55 y continúa con el scrapeo
+        'args': [['src.apps.users.tasks.renew_access_token', 'src.apps.shared.tasks.scrape_url']],
     },
-    'login-user':{
-        'task':'src.apps.users.tasks.renew_access_token',
-        'schedule': crontab(hour=23, minute=55),  # Ejecutar todos los
-    }
 }

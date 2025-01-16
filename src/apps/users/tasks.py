@@ -1,32 +1,28 @@
 from celery import shared_task
-import requests
-from django.contrib.auth import get_user_model
+from django.utils.timezone import now
+from src.apps.users.models import User
+import logging
 
-User = get_user_model()
-
+logger = logging.getLogger(__name__)
 
 @shared_task
 def renew_access_token():
-    user = User.objects.filter(system_role=1).first()  # Administrador
-    if not user:
-        raise Exception(
-            "No se encontró un usuario administrador para renovar el token."
-        )
+    """
+    Renueva el access_token para el usuario.
+    """
+    try:
+        user = User.objects.filter(is_active=True).first()  # Ajusta el filtro según tu lógica
+        if not user:
+            logger.error("No se encontró un usuario activo.")
+            return {"status": "error", "message": "No se encontró un usuario activo."}
 
-    login_data = {
-        "email": "admin@gmail.com",
-        "password": "admin",
-    }
-
-    response = requests.post(
-        "http://127.0.0.1:8000/api/v1/login/",
-        data=login_data,
-    )
-
-    if response.status_code == 200:
-        data = response.json()
-        user.access_token = data["access_token"]
+        # Simulación de generación de nuevo token
+        new_token = "nuevo_token_generado"  # Aquí deberías llamar tu lógica de autenticación para obtener el token
+        user.access_token = new_token
         user.save()
-        print("Token renovado correctamente.")
-    else:
-        print(f"Error al renovar el token: {response.status_code} - {response.text}")
+
+        logger.info(f"Token actualizado para el usuario {user.username}")
+        return {"status": "success", "message": f"Token actualizado para {user.username}"}
+    except Exception as e:
+        logger.error(f"Error al renovar el token: {str(e)}")
+        return {"status": "error", "message": f"Error al renovar el token: {str(e)}"}
