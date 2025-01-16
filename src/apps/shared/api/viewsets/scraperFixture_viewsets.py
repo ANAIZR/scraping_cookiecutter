@@ -207,7 +207,6 @@ class ScraperAPIView(APIView):
             )
 
         try:
-    # Hacer la solicitud a la API de GET con limit=1
             mongo_response = requests.get(
                 f"http://127.0.0.1:8000/api/v1/scraper-get-url?url={url}&limit=1"
             )
@@ -215,7 +214,6 @@ class ScraperAPIView(APIView):
             mongo_response.raise_for_status()
             mongo_data = mongo_response.json()
 
-            # Validar y analizar Fecha_scraper
             if "data" in mongo_data and len(mongo_data["data"]) > 0:
                 raw_fecha_scraper = mongo_data["data"][0].get("Fecha_scraper")
                 if raw_fecha_scraper and isinstance(raw_fecha_scraper, str):
@@ -228,7 +226,6 @@ class ScraperAPIView(APIView):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            # Actualizar el campo fecha_scraper si es válido
             if fecha_scraper:
                 scraper_url.fecha_scraper = fecha_scraper
                 scraper_url.save()
