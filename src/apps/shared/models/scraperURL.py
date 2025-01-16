@@ -42,9 +42,15 @@ class ScraperURL(CoreModel):
         return self.deleted_at is not None
 
     def get_time_limit(self):
-        reference_date = (
-            self.fecha_scraper or self.updated_at
-        )  # Usa `fecha_scraper` si está disponible, de lo contrario `updated_at`
+        """
+        Calcula la fecha límite basada en `fecha_scraper` o `updated_at`.
+        """
+        reference_date = self.fecha_scraper or self.updated_at
+
+        # Asegura que `reference_date` sea timezone-aware
+        if timezone.is_naive(reference_date):
+            reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
+
         if self.time_choices == 1:  # Mensual
             return reference_date + timedelta(days=30)
         elif self.time_choices == 2:  # Trimestral
