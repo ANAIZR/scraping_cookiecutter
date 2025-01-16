@@ -43,3 +43,5 @@ from .bugwood import scraper_bugwood
 from .padil import scraper_padil
 from .cal_ipc import scraper_cal_ipc
 from .method_books import scraper_method_books
+from .herbarium import scraper_herbarium
+from .agriculture import scraper_agriculture

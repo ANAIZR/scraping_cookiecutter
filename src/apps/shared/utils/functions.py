@@ -3,6 +3,7 @@ import hashlib
 from datetime import datetime
 import logging
 import random
+import undetected_chromedriver as uc
 
 from pymongo import MongoClient
 import gridfs
@@ -26,9 +27,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+# OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -47,8 +48,8 @@ def get_logger(name, level=logging.DEBUG, log_file="app.log"):
 
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    log_dir = "/home/staging/scraping_cookiecutter/logs"
-    # log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
+    # log_dir = "/home/staging/scraping_cookiecutter/logs"
+    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
@@ -72,16 +73,19 @@ import time
 
 
 def initialize_driver(retries=3):
-    logger = get_logger("scraper")
+    logger = get_logger("INICIALIZANDO EL DRIVER")
     for attempt in range(retries):
         try:
             logger.info(
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
-            options = webdriver.ChromeOptions()
-            options.binary_location = "/usr/bin/google-chrome"
-            options.add_argument("--headless")
+            options = uc.ChromeOptions()
+            # options.binary_location = "/usr/bin/google-chrome"
+            #options.add_argument("--headless")
             options.add_argument("--disable-gpu")
+            options.add_argument("--allow-insecure-localhost")
+            options.add_argument("--disable-web-security")
+            options.add_argument("--disable-site-isolation-trials")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-extensions")
@@ -92,7 +96,7 @@ def initialize_driver(retries=3):
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
 
-            driver = webdriver.Chrome(
+            driver = uc.Chrome(
                 service=Service(ChromeDriverManager().install()), options=options
             )
 
@@ -102,14 +106,14 @@ def initialize_driver(retries=3):
         except Exception as e:
             logger.error(f"Error al iniciar el navegador: {e}")
             if attempt < retries - 1:
-                time.sleep(5)  # Espera 5 segundos antes de reintentar
+                time.sleep(5)
             else:
                 raise
 
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
-    logger = get_logger("mongo_connection")
+    logger = get_logger("MONGO_CONECCTION")
     try:
         logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
         client = MongoClient("mongodb://localhost:27017/")
@@ -123,7 +127,7 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):
-    logger = get_logger("generar directorio")
+    logger = get_logger("GENERANDO DIRECTORIO")
     try:
         url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
@@ -228,11 +232,11 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("procesar datos del scraper")
     try:
-        if all_scraper:
+        if all_scraper.strip():
             response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response({"data": response_data}, status=status.HTTP_200_OK)
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
             return Response(
@@ -273,3 +277,69 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("guardar datos del scraper")
+    try:
+        folder_path = generate_directory(OUTPUT_DIR, url)
+
+        object_id = fs.put(all_scraper.encode("utf-8"), filename=sobrenombre)
+
+        data = {
+            "Objeto": object_id,
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+        }
+
+        collection.insert_one(data)
+        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+
+        delete_old_documents(url, collection, fs)
+
+        response_data = {
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": data["Fecha_scraper"],
+            "Etiquetas": data["Etiquetas"],
+            "Mensaje": "Los datos han sido scrapeados correctamente.",
+        }
+
+        return response_data
+    except Exception as e:
+        logger.error(f"Error al guardar datos del scraper: {str(e)}")
+        raise
+
+
+def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("procesar datos del scraper")
+    try:
+        if all_scraper:
+            response_data = save_scraper_data_without_file(
+                all_scraper, url, sobrenombre, collection, fs
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos para scrapear.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+

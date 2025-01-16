@@ -570,7 +570,7 @@
     "model": "shared.ScraperURL",
     "pk": 39,
     "fields": {
-      "url": "https://www.aphis.usda.gov/plant-pests-diseases",
+      "url": "https://www.aphis.usda.gov",
       "sobrenombre": "APHIS_USDA",
       "time_choices": 1,
       "mode_scrapeo": 32,
@@ -1010,12 +1010,12 @@
   },
   {
     "model": "shared.ScraperURL",
-    "pk": 70,
+    "pk": 73,
     "fields": {
-      "url": "https://books.google.com.bo/books?id=_wxn-mJcTX0C&pg=PA182&lpg=PA182&dq=carpophilus+hemipterus+en+sesamo&source=bl&ots=3Kit4Gok3I&sig=ACfU3U1MZqPeMbmF0WX1qBENcT3nmdehGw&hl=es&sa=X&ved=2ahUKEwjIvbu6p9jvAhWfF7kGHc9sBtgQ6AEwD3oECBAQAw#v=onepage&q=carpophilus%20hemipterus%20en%20sesamo&f=false",
-      "sobrenombre": "carpophilus",
+      "url": "http://www.virtualherbarium.org/",
+      "sobrenombre": "herbarium",
       "time_choices": 1,
-      "mode_scrapeo": 45,
+      "mode_scrapeo": 46,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
@@ -1023,25 +1023,12 @@
   },
   {
     "model": "shared.ScraperURL",
-    "pk": 71,
+    "pk": 74,
     "fields": {
-      "url": "https://books.google.com.bo/books?hl=es&lr=&id=MKFJEAAAQBAJ&oi=fnd&pg=PT4&dq=Monitoreo+para+Mealybug+wilt&ots=K206HF7TfV&sig=0yYgkUEu3l_tb7SIGAFWsBHLqKA#v=onepage&q&f=false",
-      "sobrenombre": "Monitoreo",
+      "url": "https://www.fao.org/agriculture/crops/core-themes/theme/biodiversity/weeds/db-countries/en/",
+      "sobrenombre": "agriculture",
       "time_choices": 1,
-      "mode_scrapeo": 45,
-      "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {}
-    }
-  },
-  {
-    "model": "shared.ScraperURL",
-    "pk": 72,
-    "fields": {
-      "url": "https://books.google.com.bo/books?id=9pLGDwAAQBAJ&pg=PA800&lpg=PA800&dq=manual+de+sanidad+vegetal+pdf&source=bl&ots=cTV2Lu_M-n&sig=ACfU3U3MIaDsMIk2PAmFjPsgztU9dCTDOw&hl=es&sa=X&ved=2ahUKEwjQm8T3n5ryAhUSGLkGHYkWCS04ZBDoAXoECAcQAw#v=onepage&q=manual%20de%20sanidad%20vegetal%20pdf&f=false",
-      "sobrenombre": "manual_de_sanidad",
-      "time_choices": 1,
-      "mode_scrapeo": 45,
+      "mode_scrapeo": 47,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
