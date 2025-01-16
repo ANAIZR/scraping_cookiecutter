@@ -1052,9 +1052,22 @@
     "pk": 73,
     "fields": {
       "url": "http://www.virtualherbarium.org/",
-      "sobrenombre": "",
+      "sobrenombre": "herbarium",
       "time_choices": 1,
       "mode_scrapeo": 46,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 74,
+    "fields": {
+      "url": "https://www.fao.org/agriculture/crops/core-themes/theme/biodiversity/weeds/db-countries/en/",
+      "sobrenombre": "agriculture",
+      "time_choices": 1,
+      "mode_scrapeo": 47,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}

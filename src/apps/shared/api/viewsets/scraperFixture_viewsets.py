@@ -52,6 +52,7 @@ from ...utils.scrapers import (
     scraper_cal_ipc,
     scraper_method_books,
     scraper_herbarium,
+    scraper_agriculture,
 )
 
 
@@ -192,6 +193,8 @@ class ScraperAPIView(APIView):
                 scraper_method_books(url, sobrenombre)
             elif mode_scrapeo == 46:
                 scraper_herbarium(url, sobrenombre)
+            elif mode_scrapeo == 47:
+                scraper_agriculture(url, sobrenombre)                
             else:
                 return Response(
                     {"error": "Modo de scrapeo no reconocido."},
