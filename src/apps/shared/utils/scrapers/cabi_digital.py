@@ -20,19 +20,16 @@ from rest_framework.response import Response
 from rest_framework import status
 
 logger = get_logger("scraper")
-
 def load_keywords(file_path="../txt/plants.txt"):
     try:
         base_path = os.path.dirname(os.path.abspath(__file__))
         absolute_path = os.path.join(base_path, file_path)
         with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [
-                line.strip() for line in f if isinstance(line, str) and line.strip()
-            ]
+            keywords = [line.strip() for line in f if isinstance(line, str) and line.strip()]
         logger.info(f"Palabras clave cargadas: {keywords}")
         return keywords
     except Exception as e:
-        logger.info(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
+        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
         raise
 
 def scraper_cabi_digital(url, sobrenombre):
@@ -79,7 +76,9 @@ def scraper_cabi_digital(url, sobrenombre):
             )
             preferences_button.click()
         except Exception:
-            logger.info("El botón de 'Guardar preferencias' no apareció o no fue clicable.")
+            logger.info(
+                "El botón de 'Guardar preferencias' no apareció o no fue clicable."
+            )
 
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
@@ -121,7 +120,9 @@ def scraper_cabi_digital(url, sobrenombre):
                             driver.get(absolut_href)
                             visited_urls.add(absolut_href)
                             WebDriverWait(driver, 60).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR, "body")
+                                )
                             )
 
                             time.sleep(random.uniform(6, 10))
@@ -169,7 +170,9 @@ def scraper_cabi_digital(url, sobrenombre):
                         next_page_link = next_page_button.get_attribute("href")
 
                         if next_page_link:
-                            logger.info(f"Yendo a la siguiente página: {next_page_link}")
+                            logger.info(
+                                f"Yendo a la siguiente página: {next_page_link}"
+                            )
                             driver.get(next_page_link)
                         else:
                             logger.info(
@@ -212,9 +215,15 @@ def scraper_cabi_digital(url, sobrenombre):
 
             collection.insert_one(data)
             delete_old_documents(url, collection, fs)
-            response = Response(response_data, status=status.HTTP_200_OK)
-            return response
 
+            return Response(
+                {
+                    "status": "success",
+                    "message": "Los datos han sido scrapeados correctamente.",
+                    "data": response_data,
+                },
+                status=status.HTTP_200_OK,
+            )
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
         return Response(
