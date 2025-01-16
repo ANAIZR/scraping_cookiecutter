@@ -2,8 +2,6 @@ import requests
 import os
 import pdfplumber
 from io import BytesIO
-from pymongo import MongoClient
-import gridfs
 from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
