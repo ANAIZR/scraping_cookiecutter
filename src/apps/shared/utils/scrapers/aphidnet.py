@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def scraper_aphidnet(url=None, wait_time=None, sobrenombre=None):
     headers = {"User-Agent": get_random_user_agent()}
-    logger = get_logger("scraper")
+    logger = get_logger("APHIDNET")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     total_urls_found = 0

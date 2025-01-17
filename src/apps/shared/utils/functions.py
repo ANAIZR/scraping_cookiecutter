@@ -4,7 +4,7 @@ from datetime import datetime
 import logging
 import random
 import undetected_chromedriver as uc
-
+import time
 from pymongo import MongoClient
 import gridfs
 
@@ -73,7 +73,6 @@ def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
     return logger
 
 
-import time
 
 
 def initialize_driver(retries=3):

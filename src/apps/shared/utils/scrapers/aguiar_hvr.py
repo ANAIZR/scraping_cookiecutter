@@ -11,7 +11,6 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("INICIANDO EL SCRAPER")
 
 
 def wait_for_element(driver, wait_time, locator):
@@ -25,6 +24,7 @@ def wait_for_element(driver, wait_time, locator):
 
 
 def scrape_table_rows(driver, wait_time, all_scraper, processed_links):
+
     rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
     extracted_count = 0
 
