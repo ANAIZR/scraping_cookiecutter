@@ -27,9 +27,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+#OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -48,8 +48,8 @@ def get_logger(name, level=logging.DEBUG, log_file="app.log"):
 
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    log_dir = "/home/staging/scraping_cookiecutter/logs"
-    #log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
+    #log_dir = "/home/staging/scraping_cookiecutter/logs"
+    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
@@ -80,8 +80,8 @@ def initialize_driver(retries=3):
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
             options = uc.ChromeOptions()
-            options.binary_location = "/usr/bin/google-chrome"
-            options.add_argument("--headless")
+            #options.binary_location = "/usr/bin/google-chrome"
+            #options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
@@ -164,7 +164,7 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
 
 def delete_old_documents(url, collection, fs, limit=2):
 
-    logger = get_logger("eliminar documentos antiguos")
+    logger = get_logger("ELIMINAR DE LA BD DOCUMENTOS ANTIGUOS")
     try:
         docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
         docs_count = collection.count_documents({"Url": url})
@@ -191,7 +191,7 @@ def delete_old_documents(url, collection, fs, limit=2):
 
 
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("guardar datos del scraper")
+    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
         folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
@@ -230,7 +230,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("procesar datos del scraper")
+    logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
         if all_scraper.strip():
             response_data = save_scraper_data(
@@ -280,7 +280,7 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("guardar datos del scraper")
+    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
         folder_path = generate_directory(OUTPUT_DIR, url)
 
