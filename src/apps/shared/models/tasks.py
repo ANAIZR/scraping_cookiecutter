@@ -2,28 +2,30 @@ from celery import shared_task
 import requests
 from django.utils.timezone import now
 from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.users.models import User  # Importar el modelo donde está el token
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
 import logging
 
 logger = logging.getLogger(__name__)
 
-@shared_task
+EMAIL = "admin@gmail.com"
+PASSWORD = "admin"
 
+@shared_task
 def scrape_url():
 
     try:
-        user = User.objects.filter(is_active=True).first()  
+        user = authenticate(email=EMAIL, password=PASSWORD)
         if not user:
-            logger.error("No se encontró un usuario activo.")
-            return {"status": "error", "message": "No se encontró un usuario activo."}
+            logger.error("Credenciales inválidas. No se pudo autenticar al usuario.")
+            return {"status": "error", "message": "Credenciales inválidas."}
 
-        access_token = user.access_token  
-        if not access_token:
-            logger.error("El usuario no tiene un access_token.")
-            return {"status": "error", "message": "El usuario no tiene un access_token."}
+        tokens = get_tokens_for_user(user)
+        access_token = tokens["access"]
+
     except Exception as e:
-        logger.critical(f"Error al obtener el token desde la base de datos: {str(e)}")
-        return {"status": "error", "message": f"Error al obtener el token: {str(e)}"}
+        logger.critical(f"Error durante la autenticación: {str(e)}")
+        return {"status": "error", "message": f"Error durante la autenticación: {str(e)}"}
 
     headers = {"Authorization": f"Bearer {access_token}"}
 
@@ -53,3 +55,11 @@ def scrape_url():
     except Exception as e:
         logger.critical(f"Error crítico en la tarea de scrapeo: {str(e)}")
         return {"status": "error", "message": f"Error general: {str(e)}"}
+
+def get_tokens_for_user(user):
+    tokens = RefreshToken.for_user(user)
+
+    return {
+        "refresh": str(tokens),
+        "access": str(tokens.access_token),
+    }

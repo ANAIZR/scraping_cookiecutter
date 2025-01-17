@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 import os
 from celery import Celery
 from celery.schedules import crontab
-from celery import chain
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 
@@ -19,14 +18,9 @@ def debug_task(self):
 
 
 app.conf.beat_schedule = {
-    "scrape-and-renew-chain": {
-        "task": "celery.chain",
+    "scrape-url-periodic": {
+        "task": "src.apps.shared.tasks.scrape_url",
         "schedule": crontab(hour=1, minute=55),
-        "args": [
-            [
-                "src.apps.users.tasks.renew_access_token",
-                "src.apps.shared.tasks.scrape_url",
-            ]
-        ],
     },
 }
+
