@@ -7,17 +7,14 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def renew_access_token():
-    """
-    Renueva el access_token para el usuario.
-    """
+
     try:
-        user = User.objects.filter(is_active=True).first()  # Ajusta el filtro según tu lógica
+        user = User.objects.filter(is_active=True).first()  
         if not user:
             logger.error("No se encontró un usuario activo.")
             return {"status": "error", "message": "No se encontró un usuario activo."}
 
-        # Simulación de generación de nuevo token
-        new_token = "nuevo_token_generado"  # Aquí deberías llamar tu lógica de autenticación para obtener el token
+        new_token = "nuevo_token_generado"  
         user.access_token = new_token
         user.save()
 

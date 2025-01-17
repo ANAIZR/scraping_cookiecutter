@@ -10,18 +10,14 @@ logger = logging.getLogger(__name__)
 @shared_task
 
 def scrape_url():
-    """
-    Tarea que revisa todas las URLs activas y realiza el scrapeo si ha expirado su tiempo.
-    """
 
-    # Obtener el usuario que tiene el token
     try:
-        user = User.objects.filter(is_active=True).first()  # Ajustar el filtro según tu lógica de negocio
+        user = User.objects.filter(is_active=True).first()  
         if not user:
             logger.error("No se encontró un usuario activo.")
             return {"status": "error", "message": "No se encontró un usuario activo."}
 
-        access_token = user.access_token  # Ajustar el nombre del campo donde se almacena el token
+        access_token = user.access_token  
         if not access_token:
             logger.error("El usuario no tiene un access_token.")
             return {"status": "error", "message": "El usuario no tiene un access_token."}
@@ -32,7 +28,6 @@ def scrape_url():
     headers = {"Authorization": f"Bearer {access_token}"}
 
     try:
-        # Filtrar solo las URLs activas cuyo tiempo ha expirado
         urls = ScraperURL.objects.filter(is_active=True).exclude(fecha_scraper__gt=now())
 
         for scraper in urls:
@@ -40,11 +35,9 @@ def scrape_url():
                 if scraper.is_time_expired():
                     data = {"url": scraper.url}
                     response = requests.post(
-                        "http://127.0.0.1:8000/api/v1/scraper-url/", headers=headers, json=data
+                        "https://apiwebscraper.sgcan.dev/api/v1/scraper-url/", headers=headers, json=data
                     )
                     response.raise_for_status()
-
-                    # Actualizar la fecha de scrapeo
                     scraper.fecha_scraper = now()
                     scraper.save()
 
