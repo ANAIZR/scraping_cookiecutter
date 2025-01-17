@@ -11,7 +11,7 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("scraper")
+logger = get_logger("INICIANDO EL SCRAPER")
 
 
 def wait_for_element(driver, wait_time, locator):
@@ -41,7 +41,7 @@ def scrape_table_rows(driver, wait_time, all_scraper, processed_links):
             processed_links.add(link)
             extracted_count += 1
 
-            logger.info(f"Procesando enlace: {link}")
+            logger.info(f"PROCESANDO ENLACE: {link}")
             driver.get(link)
             wait_for_element(
                 driver, wait_time, (By.CSS_SELECTOR, "section.container div.rfInv")
@@ -81,7 +81,7 @@ def scrape_table_rows(driver, wait_time, all_scraper, processed_links):
         except Exception as e:
             logger.error(f"Error procesando una fila: {str(e)}")
 
-    logger.info(f"Total de datos extraídos: {extracted_count}")
+    logger.info(f"TOTAL DE DATOS EXTRAIDOS: {extracted_count}")
     return all_scraper, extracted_count
 
 
@@ -91,7 +91,7 @@ def get_current_page_number(driver):
             By.CSS_SELECTOR, ".pagination .active a"
         )
         page_number = int(page_number_element.text)
-        logger.info(f"Número de página actual: {page_number}")
+        logger.info(f"Página actual: {page_number}")
         return page_number
     except Exception as e:
         logger.error(f"No se pudo obtener el número de página actual: {str(e)}")
@@ -104,17 +104,14 @@ def click_next_page(driver, wait_time):
             driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_next a")
         )
         if "disabled" in next_button.get_attribute("class"):
-            logger.info("Botón 'Siguiente' deshabilitado. No hay más páginas.")
             return False
 
         current_page = get_current_page_number(driver)
-        logger.info(f"Página actual antes de hacer clic: {current_page}")
         next_button.click()
 
         WebDriverWait(driver, wait_time).until(
             lambda d: get_current_page_number(d) != current_page
         )
-        logger.info(f"Avanzó a la página: {get_current_page_number(driver)}")
         wait_for_element(
             driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
         )
@@ -141,7 +138,6 @@ def scraper_aguiar_hvr(url, wait_time, sobrenombre):
             )
 
             current_page = get_current_page_number(driver)
-            logger.info(f"Procesando la página: {current_page}")
 
             all_scraper, extracted_count = scrape_table_rows(
                 driver, wait_time, all_scraper, processed_links
@@ -162,4 +158,3 @@ def scraper_aguiar_hvr(url, wait_time, sobrenombre):
 
     finally:
         driver.quit()
-        logger.info("Navegador cerrado.")
