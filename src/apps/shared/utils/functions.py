@@ -27,9 +27,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-# OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -48,8 +48,8 @@ def get_logger(name, level=logging.DEBUG, log_file="app.log"):
 
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    # log_dir = "/home/staging/scraping_cookiecutter/logs"
-    log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
+    log_dir = "/home/staging/scraping_cookiecutter/logs"
+    #log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_path = os.path.join(log_dir, log_file)
@@ -80,8 +80,8 @@ def initialize_driver(retries=3):
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
             options = uc.ChromeOptions()
-            # options.binary_location = "/usr/bin/google-chrome"
-            #options.add_argument("--headless")
+            options.binary_location = "/usr/bin/google-chrome"
+            options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
