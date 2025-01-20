@@ -29,7 +29,7 @@ def scraper_biota_nz(url, sobrenombre):
         driver = initialize_driver()
         base_domain = "https://biotanz.landcareresearch.co.nz"
         collection, fs = connect_to_mongo("scrapping-can", "collection")
-
+        driver.get(url)
         main_folder = generate_directory(url)
         if not main_folder:
             raise ValueError(f"No se pudo generar el directorio principal para la URL {url}.")
