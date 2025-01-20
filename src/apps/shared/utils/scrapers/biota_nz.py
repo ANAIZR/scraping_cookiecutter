@@ -24,6 +24,7 @@ def scraper_biota_nz(url, sobrenombre):
     driver = initialize_driver()
     driver.get(url)
     time.sleep(random.uniform(1, 3))
+    logger = get_logger("scraper", sobrenombre)
 
     try:
         keywords = load_keywords("plants.txt")
@@ -32,7 +33,6 @@ def scraper_biota_nz(url, sobrenombre):
                 "El archivo de palabras clave está vacío o no se pudo cargar."
             )
 
-        logger = get_logger("scraper", sobrenombre)
 
         base_domain = "https://biotanz.landcareresearch.co.nz"
         collection, fs = connect_to_mongo("scrapping-can", "collection")
