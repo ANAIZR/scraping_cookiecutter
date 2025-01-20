@@ -4,16 +4,13 @@ from datetime import datetime
 import logging
 import random
 import undetected_chromedriver as uc
-
+import time
 from pymongo import MongoClient
 import gridfs
 
-# Django REST Framework
 from rest_framework.response import Response
 from rest_framework import status
 
-# Selenium
-from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
@@ -27,9 +24,11 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files"
-#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+# OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files/scrapers"
+# LOG_DIR = "/home/staging/scraping_cookiecutter/files/logs"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -38,23 +37,28 @@ def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
 
-import logging
-import os
-
-
-def get_logger(name, level=logging.DEBUG, log_file="app.log"):
+def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
     logger = logging.getLogger(name)
     logger.setLevel(level)
-
+    log_file ="app.log"
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    log_dir = "/home/staging/scraping_cookiecutter/logs"
-    #log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    log_path = os.path.join(log_dir, log_file)
-    fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setLevel(level)
+    # log_dir = "/home/staging/scraping_cookiecutter/logs"
+    folder_path = os.path.join(output_dir,log_file)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path, exist_ok=True)
+
+    log_path = os.path.join(folder_path, log_file)
+    if not os.path.exists(log_path):
+        with open(log_path, "w", encoding="utf-8") as f:
+            pass
+
+    try:
+        fh = logging.FileHandler(log_path, encoding="utf-8")
+        fh.setLevel(level)
+    except Exception as e:
+        print(f"Error al crear el FileHandler: {e}")
+        raise
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -69,7 +73,6 @@ def get_logger(name, level=logging.DEBUG, log_file="app.log"):
     return logger
 
 
-import time
 
 
 def initialize_driver(retries=3):
@@ -80,8 +83,8 @@ def initialize_driver(retries=3):
                 f"Intento {attempt + 1} de inicializar el navegador con Selenium."
             )
             options = uc.ChromeOptions()
-            options.binary_location = "/usr/bin/google-chrome"
-            options.add_argument("--headless")
+            # options.binary_location = "/usr/bin/google-chrome"
+            # options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
@@ -92,6 +95,7 @@ def initialize_driver(retries=3):
             options.add_argument("--start-maximized")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--disable-infobars")                             # Elimina banners de control automático
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
@@ -164,7 +168,7 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
 
 def delete_old_documents(url, collection, fs, limit=2):
 
-    logger = get_logger("eliminar documentos antiguos")
+    logger = get_logger("ELIMINAR DE LA BD DOCUMENTOS ANTIGUOS")
     try:
         docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
         docs_count = collection.count_documents({"Url": url})
@@ -191,7 +195,7 @@ def delete_old_documents(url, collection, fs, limit=2):
 
 
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("guardar datos del scraper")
+    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
         folder_path = generate_directory(url, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
@@ -230,7 +234,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("procesar datos del scraper")
+    logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
         if all_scraper.strip():
             response_data = save_scraper_data(
@@ -280,7 +284,7 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
 
 def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("guardar datos del scraper")
+    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
         folder_path = generate_directory(OUTPUT_DIR, url)
 
@@ -341,5 +345,3 @@ def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection,
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-
