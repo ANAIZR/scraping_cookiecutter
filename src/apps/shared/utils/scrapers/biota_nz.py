@@ -33,13 +33,11 @@ def scraper_biota_nz(url, sobrenombre):
         logger.info(f"Iniciando scraping para URL: {url}")
         collection, fs = connect_to_mongo("scrapping-can", "collection")
         main_folder = generate_directory(url)
-
         keywords = load_keywords("plants.txt")
         visited_urls = set()
         scraping_failed = False
         logger.info("Página de BIOTA NZ cargada exitosamente.")
 
-        # Localizar la barra de búsqueda en Google Académico
 
         for keyword in keywords:
             print(f"Buscando la palabra clave: {keyword}")
