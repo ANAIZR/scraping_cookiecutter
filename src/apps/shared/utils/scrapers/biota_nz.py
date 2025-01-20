@@ -14,15 +14,12 @@ from ..functions import (
     initialize_driver,
     get_logger,
     connect_to_mongo,
-    load_keywords
+    load_keywords,
 )
 from rest_framework.response import Response
 from rest_framework import status
 
 logger = get_logger("scraper")
-
-
-
 
 
 def scraper_biota_nz(url, sobrenombre):
@@ -31,7 +28,7 @@ def scraper_biota_nz(url, sobrenombre):
 
     try:
         driver.get(url)
-        
+
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
         collection, fs = connect_to_mongo("scrapping-can", "collection")
@@ -165,16 +162,31 @@ def scraper_biota_nz(url, sobrenombre):
             )
         else:
             data = {
-                "Objecto": object_id,
+                "Objeto": object_id,
                 "Tipo": "Web",
                 "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Etiquetas": ["planta", "plaga"],
             }
+            response_data = {
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scraper": data["Fecha_scraper"],
+                "Etiquetas": data["Etiquetas"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
+            }
+
             collection.insert_one(data)
             delete_old_documents(url, collection, fs)
-            response = Response(data, status=status.HTTP_200_OK)
-            return response
+
+            return Response(
+                {
+                    "status": "success",
+                    "message": "Los datos han sido scrapeados correctamente.",
+                    "data": response_data,
+                },
+                status=status.HTTP_200_OK,
+            )
 
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
