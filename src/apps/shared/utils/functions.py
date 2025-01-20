@@ -37,16 +37,21 @@ if not os.path.exists(OUTPUT_DIR):
 def load_keywords(file_name, base_dir=BASE_DIR):
     logger = get_logger("CARGAR PALABRAS CLAVE")
     try:
-        file_path = os.path.join(base_dir, file_name) 
+        file_path = os.path.join(base_dir, file_name)
         if not os.path.exists(file_path):
+            logger.error(f"El archivo '{file_path}' no existe.")
             raise FileNotFoundError(f"El archivo '{file_path}' no existe.")
         
         with open(file_path, "r", encoding="utf-8") as file:
-            content = file.readlines()  
+            content = [line.strip() for line in file if line.strip()]  # Strip whitespace and skip empty lines
         return content
-    except Exception as e:
-        print(f"Error leyendo el archivo '{file_name}': {e}")
+    except FileNotFoundError as e:
+        logger.error(e)
         return None
+    except Exception as e:
+        logger.error(f"Error leyendo el archivo '{file_name}': {e}")
+        return None
+
 
 
 def get_random_user_agent():
