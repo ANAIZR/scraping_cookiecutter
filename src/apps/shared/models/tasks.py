@@ -9,8 +9,8 @@ from decouple import config
 
 logger = logging.getLogger(__name__)
 
-EMAIL = config("ADMIN_EMAIL")
-PASSWORD = config("ADMIN_PASSWORD")
+EMAIL = "admin@gmail.com"
+PASSWORD = "admin"
 
 @shared_task
 def scrape_url():
