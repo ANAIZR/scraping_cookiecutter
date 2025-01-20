@@ -5,11 +5,12 @@ from src.apps.shared.models.scraperURL import ScraperURL
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
+from decouple import config
 
 logger = logging.getLogger(__name__)
 
-EMAIL = "admin@gmail.com"
-PASSWORD = "admin"
+EMAIL = config("ADMIN_EMAIL")
+PASSWORD = config("ADMIN_PASSWORD")
 
 @shared_task
 def scrape_url():

@@ -19,7 +19,7 @@ def debug_task(self):
 
 app.conf.beat_schedule = {
     "scrape-url-periodic": {
-        "task": "src.apps.shared.tasks.scrape_url",
+        "task": "src.apps.shared.models.tasks.scrape_url",
         "schedule": crontab(hour=1, minute=55),
     },
 }
