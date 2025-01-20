@@ -35,7 +35,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
 
-def get_logger(name, path, level=logging.DEBUG, output_dir=LOG_DIR, log_file="app.log"):
+def get_logger(name, path=None, level=logging.DEBUG, output_dir=LOG_DIR, log_file="app.log"):
     logger = logging.getLogger(name)
     logger.setLevel(level)
     ch = logging.StreamHandler()
