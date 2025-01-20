@@ -26,11 +26,27 @@ USER_AGENTS = [
 
 # OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files/scrapers"
 # LOG_DIR = "/home/staging/scraping_cookiecutter/files/logs"
+# LOAD_KEYWORDS = "/home/staging/scraping_cookiecutter/files/keywords/keywords.txt"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
+
+
+def load_keywords(file_name, base_dir=BASE_DIR):
+    logger = get_logger("CARGAR PALABRAS CLAVE")
+    try:
+        file_path = os.path.join(base_dir, file_name) 
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"El archivo '{file_path}' no existe.")
+        
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.readlines()  
+        return content
+    except Exception as e:
+        print(f"Error leyendo el archivo '{file_name}': {e}")
+        return None
 
 
 def get_random_user_agent():
