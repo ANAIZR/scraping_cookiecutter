@@ -19,20 +19,28 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
+
 def scraper_biota_nz(url, sobrenombre):
+    driver = initialize_driver()
+    driver.get(url)
+    time.sleep(random.uniform(1, 3))
+
     try:
         keywords = load_keywords("plants.txt")
         if not keywords:
-            raise ValueError("El archivo de palabras clave está vacío o no se pudo cargar.")
-        
+            raise ValueError(
+                "El archivo de palabras clave está vacío o no se pudo cargar."
+            )
+
         logger = get_logger("scraper", sobrenombre)
-        driver = initialize_driver()
+
         base_domain = "https://biotanz.landcareresearch.co.nz"
         collection, fs = connect_to_mongo("scrapping-can", "collection")
-        driver.get(url)
         main_folder = generate_directory(url)
         if not main_folder:
-            raise ValueError(f"No se pudo generar el directorio principal para la URL {url}.")
+            raise ValueError(
+                f"No se pudo generar el directorio principal para la URL {url}."
+            )
 
         visited_urls = set()
         scraping_failed = False
@@ -41,7 +49,9 @@ def scraper_biota_nz(url, sobrenombre):
         for keyword in keywords:
             keyword_folder = generate_directory(keyword, main_folder)
             if not keyword_folder:
-                logger.error(f"No se pudo generar el directorio para la palabra clave: {keyword}")
+                logger.error(
+                    f"No se pudo generar el directorio para la palabra clave: {keyword}"
+                )
                 continue
 
             try:
@@ -71,12 +81,18 @@ def scraper_biota_nz(url, sobrenombre):
 
                                 link_folder = generate_directory(href, keyword_folder)
                                 if not link_folder:
-                                    logger.error(f"No se pudo generar el directorio para el enlace: {href}")
+                                    logger.error(
+                                        f"No se pudo generar el directorio para el enlace: {href}"
+                                    )
                                     continue
 
-                                file_path = get_next_versioned_filename(link_folder, keyword)
+                                file_path = get_next_versioned_filename(
+                                    link_folder, keyword
+                                )
                                 if not file_path:
-                                    logger.error(f"No se pudo generar el archivo para {href}")
+                                    logger.error(
+                                        f"No se pudo generar el archivo para {href}"
+                                    )
                                     continue
 
                                 driver.get(full_url)
@@ -87,13 +103,19 @@ def scraper_biota_nz(url, sobrenombre):
                                 )
                                 soup = BeautifulSoup(driver.page_source, "html.parser")
                                 body = soup.select_one("div.page-content-wrapper")
-                                body_text = body.get_text(strip=True) if body else "No body found"
+                                body_text = (
+                                    body.get_text(strip=True)
+                                    if body
+                                    else "No body found"
+                                )
 
                                 with open(file_path, "w", encoding="utf-8") as file:
                                     file.write(body_text)
 
                                 with open(file_path, "rb") as file_data:
-                                    object_id = fs.put(file_data, filename=os.path.basename(file_path))
+                                    object_id = fs.put(
+                                        file_data, filename=os.path.basename(file_path)
+                                    )
 
                                 driver.back()
                             except Exception as e:
@@ -101,7 +123,8 @@ def scraper_biota_nz(url, sobrenombre):
                                 continue
 
                         next_page = driver.find_element(
-                            By.XPATH, "//a[contains(@class, 'paging-hyperlink') and contains(text(), 'Next')]"
+                            By.XPATH,
+                            "//a[contains(@class, 'paging-hyperlink') and contains(text(), 'Next')]",
                         )
                         driver.execute_script("arguments[0].click();", next_page)
                         time.sleep(random.uniform(3, 6))
@@ -110,7 +133,9 @@ def scraper_biota_nz(url, sobrenombre):
                         break
 
             except Exception as e:
-                logger.error(f"Error al procesar la palabra clave '{keyword}': {str(e)}")
+                logger.error(
+                    f"Error al procesar la palabra clave '{keyword}': {str(e)}"
+                )
                 scraping_failed = True
 
         if scraping_failed:
