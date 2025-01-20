@@ -11,6 +11,7 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
+logger = get_logger("INICIANDO EL SCRAPER")
 
 
 def wait_for_element(driver, wait_time, locator):
@@ -24,9 +25,10 @@ def wait_for_element(driver, wait_time, locator):
 
 
 def scrape_table_rows(driver, wait_time, all_scraper, processed_links):
-
     rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
     extracted_count = 0
+    skipped_count = 0
+    skipped_links = []
 
     logger.info(f"{len(rows)} filas encontradas en la tabla.")
     for row in rows:
@@ -51,26 +53,31 @@ def scrape_table_rows(driver, wait_time, all_scraper, processed_links):
             for card in cards:
                 link_in_card = card.find_element(By.CSS_SELECTOR, "a")
                 link_in_card.click()
-
                 original_window = driver.current_window_handle
                 all_windows = driver.window_handles
                 new_window = [
                     window for window in all_windows if window != original_window
                 ][0]
                 driver.switch_to.window(new_window)
-
-                new_page_content = wait_for_element(
-                    driver, wait_time, (By.CSS_SELECTOR, "main.container div.parteesq")
-                )
-                extracted_text = new_page_content.text
-
-                all_scraper += f"Datos extraídos de {driver.current_url}\n"
-                all_scraper += extracted_text + "\n\n"
-                all_scraper += "*************************"
-
-                driver.close()
-                driver.switch_to.window(original_window)
-
+                try:
+                    new_page_content = wait_for_element(
+                        driver,
+                        wait_time,
+                        (By.CSS_SELECTOR, "main.container div.parteesq"),
+                    )
+                    extracted_text = new_page_content.text
+                    if not extracted_text:
+                        continue
+                    processed_links.add(driver.current_url)
+                    logger.info(f"URL visitad:{driver.current_url}")
+                    all_scraper += f"Datos extraídos de {driver.current_url}\n"
+                    all_scraper += extracted_text + "\n\n"
+                    all_scraper += "*************************\n"
+                    extracted_count += 1
+                    driver.close()
+                    driver.switch_to.window(original_window)
+                except Exception as e:
+                    logger.error(f"Error al procesar una ventana: {str(e)}")
             driver.back()
             time.sleep(2)
             wait_for_element(
@@ -79,7 +86,14 @@ def scrape_table_rows(driver, wait_time, all_scraper, processed_links):
                 (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"),
             )
         except Exception as e:
+            skipped_count += 1
             logger.error(f"Error procesando una fila: {str(e)}")
+
+    all_scraper += f"TOTAL ENLACES PROCESADOS: {extracted_count}\n"
+    all_scraper += f"TOTAL ENLACES NO PROCESADOS: {skipped_count}\n"
+    if skipped_links:
+        all_scraper += "ENLACES NO PROCESADOS:\n"
+        all_scraper += "\n".join(skipped_links) + "\n"
 
     logger.info(f"TOTAL DE DATOS EXTRAIDOS: {extracted_count}")
     return all_scraper, extracted_count

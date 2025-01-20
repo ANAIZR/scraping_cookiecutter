@@ -95,6 +95,7 @@ def initialize_driver(retries=3):
             options.add_argument("--start-maximized")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--disable-infobars")                             # Elimina banners de control automático
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
