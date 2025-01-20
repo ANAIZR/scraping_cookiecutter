@@ -5,7 +5,6 @@ from src.apps.shared.models.scraperURL import ScraperURL
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
-from decouple import config
 
 logger = logging.getLogger(__name__)
 
