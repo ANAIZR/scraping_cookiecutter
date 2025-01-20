@@ -190,6 +190,9 @@ def scraper_biota_nz(url, sobrenombre):
 
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
-        return {"status": "error", "message": f"Error durante el scraping: {str(e)}"}
+        return Response(
+            {"status": "error", "message": f"Error durante el scraping: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
     finally:
         driver.quit()
