@@ -37,14 +37,12 @@ def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
 
-def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
+def get_logger(name, path, level=logging.DEBUG, output_dir=LOG_DIR, log_file ="app.log"):
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    log_file ="app.log"
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    # log_dir = "/home/staging/scraping_cookiecutter/logs"
-    folder_path = os.path.join(output_dir,log_file)
+    folder_path = os.path.join(output_dir,path)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path, exist_ok=True)
 

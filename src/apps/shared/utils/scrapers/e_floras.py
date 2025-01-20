@@ -11,7 +11,7 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("Iniciando")
+logger = get_logger("Iniciando","e_floras")
 
 
 def scraper_e_floras(

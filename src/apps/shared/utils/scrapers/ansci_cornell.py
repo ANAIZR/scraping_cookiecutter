@@ -10,7 +10,6 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("Iniciando")
 
 
 def scraper_ansci_cornell(
@@ -18,6 +17,8 @@ def scraper_ansci_cornell(
     wait_time,
     sobrenombre,
 ):
+    logger = get_logger("ANSCI_CORNELL", sobrenombre)
+
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
 

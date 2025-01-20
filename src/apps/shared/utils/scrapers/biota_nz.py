@@ -18,7 +18,7 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("scraper")
+logger = get_logger("scraper","biota_nz")
 
 
 def load_keywords(file_path="../txt/plants.txt"):

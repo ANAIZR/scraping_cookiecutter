@@ -19,7 +19,7 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("scraper")
+logger = get_logger("scraper","CABI_DIGITAL")
 def load_keywords(file_path="../txt/plants.txt"):
     try:
         base_path = os.path.dirname(os.path.abspath(__file__))

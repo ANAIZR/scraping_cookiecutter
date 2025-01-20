@@ -12,7 +12,7 @@ from ..functions import (
 )
 
 def scraper_iucnredlist(url, sobrenombre):
-    logger = get_logger("scraper")
+    logger = get_logger("scraper", sobrenombre)
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")

@@ -15,7 +15,7 @@ import random
 import time
 from bs4 import BeautifulSoup
 
-logger = get_logger("scraper")
+logger = get_logger("scraper","catalogue_of_life")
 
 
 # Cargar palabras clave desde utils/txt/all.txt

@@ -14,7 +14,7 @@ from ..functions import (
 )
 
 def scraper_aphis_usda(url, sobrenombre):
-    logger = get_logger("scraper")
+    logger = get_logger("APHIS", sobrenombre)
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""

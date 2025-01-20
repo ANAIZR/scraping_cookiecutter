@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 import requests
 import re
 
-logger = get_logger("scraper")
+logger = get_logger("scraper", "google_academic")
 
 def load_keywords(file_path="../txt/plants.txt"):
     try:
