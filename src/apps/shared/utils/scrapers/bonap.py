@@ -16,7 +16,7 @@ def scraper_bonap(
     url,
     sobrenombre,
 ):
-    logger = get_logger("scraper", "bonap")
+    logger = get_logger("scraper")
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()

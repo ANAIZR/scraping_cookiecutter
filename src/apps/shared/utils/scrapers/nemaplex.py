@@ -14,7 +14,7 @@ def scraper_nemaplex(
     url,
     sobrenombre,
 ):
-    logger = get_logger("scraper", sobrenombre)
+    logger = get_logger("scraper")
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()

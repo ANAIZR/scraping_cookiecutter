@@ -17,7 +17,7 @@ def scraper_ansci_cornell(
     wait_time,
     sobrenombre,
 ):
-    logger = get_logger("ANSCI_CORNELL", sobrenombre)
+    logger = get_logger("ANSCI_CORNELL")
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()

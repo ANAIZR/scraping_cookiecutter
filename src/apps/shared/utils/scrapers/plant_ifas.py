@@ -15,7 +15,7 @@ from rest_framework import status
 import time
 import random
 
-logger = get_logger("scraper","plant_ifas")
+logger = get_logger("scraper")
 
 
 def scraper_plant_ifas(

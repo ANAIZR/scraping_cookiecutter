@@ -13,7 +13,7 @@ from ..functions import (
 
 def scraper_bugwood(url, sobrenombre, max_depth=3):
     headers = {"User-Agent": get_random_user_agent()}
-    logger = get_logger("scraper", "bugwood")
+    logger = get_logger("scraper")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     total_urls_found = 0

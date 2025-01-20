@@ -14,7 +14,7 @@ def scraper_fao_org(
     url,
     sobrenombre,
 ):
-    logger = get_logger("scraper",sobrenombre)
+    logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")

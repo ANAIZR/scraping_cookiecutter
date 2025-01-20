@@ -17,7 +17,7 @@ from ..functions import (
     get_next_versioned_filename
 )
 
-logger = get_logger("scraper","herbarium")
+logger = get_logger("scraper")
 
 def load_keywords(file_path="../txt/family.txt"):
     try:

@@ -12,7 +12,7 @@ from ..functions import (
     initialize_driver,
 )
 def scraper_extento(url, sobrenombre):
-    logger = get_logger("scraper",sobrenombre)
+    logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")

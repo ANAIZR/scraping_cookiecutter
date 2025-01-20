@@ -7,7 +7,7 @@ from ..functions import process_scraper_data, connect_to_mongo, get_logger, init
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("scraper", "first_mode")
+logger = get_logger("scraper")
 
 
 def scraper_first_mode(

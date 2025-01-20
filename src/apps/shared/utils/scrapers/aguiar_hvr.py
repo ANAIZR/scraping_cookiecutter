@@ -12,7 +12,7 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("INICIANDO EL SCRAPER","AGUIAR")
+logger = get_logger("INICIANDO EL SCRAPER")
 
 
 class ScraperState:

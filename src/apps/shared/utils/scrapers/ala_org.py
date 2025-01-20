@@ -14,7 +14,7 @@ def scraper_ala_org(
     url,
     sobrenombre,
 ):
-    logger = get_logger("ALA_ORG",sobrenombre)
+    logger = get_logger("ALA_ORG")
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()

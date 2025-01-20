@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("scraper","padil")
+logger = get_logger("scraper")
 
 
 def load_keywords(file_path="../txt/all.txt"):
