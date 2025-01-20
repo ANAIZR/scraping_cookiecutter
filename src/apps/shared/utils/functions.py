@@ -26,23 +26,21 @@ USER_AGENTS = [
 
 # OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files/scrapers"
 # LOG_DIR = "/home/staging/scraping_cookiecutter/files/logs"
+# LOAD_KEYWORDS = "/home/staging/scraping_cookiecutter/src/apps/shared/utils/txt"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
+LOAD_KEYWORDS = os.path.join(BASE_DIR, "../utils/txt")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
 
-def get_random_user_agent():
-    return random.choice(USER_AGENTS)
-
-
-def get_logger(name, path, level=logging.DEBUG, output_dir=LOG_DIR, log_file ="app.log"):
+def get_logger(name, path, level=logging.DEBUG, output_dir=LOG_DIR, log_file="app.log"):
     logger = logging.getLogger(name)
     logger.setLevel(level)
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    folder_path = os.path.join(output_dir,path)
+    folder_path = os.path.join(output_dir, path)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path, exist_ok=True)
 
@@ -71,6 +69,24 @@ def get_logger(name, path, level=logging.DEBUG, output_dir=LOG_DIR, log_file ="a
     return logger
 
 
+def get_random_user_agent():
+    return random.choice(USER_AGENTS)
+
+
+def load_keywords(file_name, base_dir=LOAD_KEYWORDS):
+    logger = get_logger("CARGANDO PALABRAS CLAVE")
+
+    try:
+        file_path = os.path.join(base_dir, file_name)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"El archivo '{file_path}' no existe.")
+
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.readlines()
+        return content
+    except Exception as e:
+        logger.error(f"Error leyendo el archivo '{file_name}': {e}")
+        return None
 
 
 def initialize_driver(retries=3):
@@ -93,7 +109,9 @@ def initialize_driver(retries=3):
             options.add_argument("--start-maximized")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument("--disable-infobars")                             # Elimina banners de control automático
+            options.add_argument(
+                "--disable-infobars"
+            )  # Elimina banners de control automático
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")

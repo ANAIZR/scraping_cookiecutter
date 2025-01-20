@@ -14,27 +14,16 @@ from ..functions import (
     initialize_driver,
     get_logger,
     connect_to_mongo,
+    load_keywords,
 )
 from rest_framework.response import Response
 from rest_framework import status
 
-logger = get_logger("scraper","biota_nz")
-
-
-def load_keywords(file_path="../txt/plants.txt"):
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        absolute_path = os.path.join(base_path, file_path)
-        with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [line.strip() for line in f if line.strip()]
-        logger.info(f"Palabras clave cargadas: {keywords}")
-        return keywords
-    except Exception as e:
-        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
-        raise
-
 
 def scraper_biota_nz(url, sobrenombre):
+    keywords = load_keywords("plants.txt")
+    logger = get_logger("scraper", sobrenombre)
+
     driver = initialize_driver()
     base_domain = "https://biotanz.landcareresearch.co.nz"
     try:
@@ -44,7 +33,6 @@ def scraper_biota_nz(url, sobrenombre):
         collection, fs = connect_to_mongo("scrapping-can", "collection")
         main_folder = generate_directory(url)
 
-        keywords = load_keywords()
         visited_urls = set()
         scraping_failed = False
         logger.info("Página de BIOTA NZ cargada exitosamente.")

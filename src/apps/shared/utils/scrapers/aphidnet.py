@@ -35,7 +35,6 @@ def scraper_aphidnet(url=None, wait_time=None, sobrenombre="APHIDNET"):
             print(f"URL fuera del dominio permitido: {current_url}")
             return []
 
-        print(f"Procesando URL: {current_url} (Nivel: {current_depth})")
         visited_urls.add(current_url)
         try:
             response = requests.get(current_url, headers=headers)
