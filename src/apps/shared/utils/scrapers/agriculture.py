@@ -16,9 +16,8 @@ from ..functions import (
     generate_directory,
     get_next_versioned_filename
 )
-from selenium.common.exceptions import StaleElementReferenceException
 
-logger = get_logger("scraper")
+logger = get_logger("scraper","agriculture")
 
 def load_keywords(file_path="../txt/family.txt"):
     try:
