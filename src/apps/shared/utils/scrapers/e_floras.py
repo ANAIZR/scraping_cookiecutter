@@ -13,7 +13,6 @@ from rest_framework import status
 
 logger = get_logger("Iniciando")
 
-
 def scraper_e_floras(
     url=None,
     page_principal=None,

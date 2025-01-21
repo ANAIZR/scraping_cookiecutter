@@ -14,7 +14,6 @@ from ..functions import (
     get_random_user_agent,
     generate_directory
 )
-from selenium.common.exceptions import StaleElementReferenceException
 
 logger = get_logger("scraper")
 
