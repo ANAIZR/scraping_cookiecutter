@@ -2,7 +2,7 @@ from .iucngisd import scraper_iucngisd
 from .e_floras import scraper_e_floras
 from .coleoptera_neotropical import scraper_coleoptera_neotropical
 from .ansci_cornell import scraper_ansci_cornell
-from .first_mode import scraper_first_mode
+from .flora_harvard import scraper_flora_harvard
 from .aphidnet import scraper_aphidnet
 from .method_pdf import scraper_pdf
 from .aguiar_hvr import scraper_aguiar_hvr

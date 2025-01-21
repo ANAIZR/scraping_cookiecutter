@@ -1,15 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from ...models.scraperURL import ScraperURL
 from datetime import datetime
-
+from ...models.scraperURL import ScraperURL
 from ...utils.scrapers import (
     scraper_iucngisd,
-    scraper_e_floras,
     scraper_coleoptera_neotropical,
+    scraper_e_floras,
     scraper_ansci_cornell,
-    scraper_first_mode,
+    scraper_flora_harvard,
     scraper_aphidnet,
     scraper_pdf,
     scraper_aguiar_hvr,
@@ -54,6 +53,55 @@ from ...utils.scrapers import (
     scraper_agriculture,
 )
 
+SCRAPER_FUNCTIONS = {
+    1: scraper_iucngisd,
+    2: scraper_coleoptera_neotropical,
+    3: scraper_e_floras,
+    4: scraper_ansci_cornell,
+    5: scraper_flora_harvard,
+    6: scraper_aphidnet,
+    7: scraper_pdf,
+    8: scraper_aguiar_hvr,
+    9: scraper_gene_affrc,
+    10: scraper_plant_ifas,
+    11: scraper_plant_atlas,
+    12: scraper_flmnh_ufl,
+    13: scraper_iucnredlist,
+    14: scraper_ala_org,
+    15: scraper_pnw_hand_books,
+    16: scraper_ipm_illinoes,
+    17: scraper_pest_alerts,
+    18: scraper_cabi_digital,
+    19: scraper_ndrs_org,
+    20: scraper_ippc,
+    21: scraper_eppo,
+    22: scraper_se_eppc,
+    23: scraper_mycobank_org,
+    24: scraper_nematode,
+    25: scraper_diaspididae,
+    26: scraper_genome_jp,
+    27: scraper_plants_usda_gov,
+    28: scraper_fws_gov,
+    29: scraper_fao_org,
+    30: scraper_index_fungorum,
+    31: scraper_nemaplex_plant_host,
+    32: scraper_aphis_usda,
+    33: scraper_eppo_quarentine,
+    34: scraper_extento,
+    35: scraper_ncbi,
+    36: scraper_bonap,
+    37: scraper_google_academic,
+    38: scraper_biota_nz,
+    39: scraper_catalogue_of_life,
+    40: scraper_delta,
+    41: scraper_nemaplex,
+    42: scraper_bugwood,
+    43: scraper_padil,
+    44: scraper_cal_ipc,
+    45: scraper_method_books,
+    46: scraper_herbarium,
+    47: scraper_agriculture,
+}
 
 class ScraperAPIView(APIView):
     def post(self, request):
@@ -72,141 +120,23 @@ class ScraperAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        parameters = scraper_url.parameters
         mode_scrapeo = scraper_url.mode_scrapeo
-        search_button_selector = parameters.get("search_button_selector")
-        page_principal = parameters.get("page_principal")
-        content_selector = parameters.get("content_selector")
-        wait_time = parameters.get("wait_time", 10)
-        sobrenombre = scraper_url.sobrenombre
-        tag_name_first = parameters.get("tag_name_first")
-        tag_name_second = parameters.get("tag_name_second")
-        tag_name_third = parameters.get("tag_name_third")
-        attribute = parameters.get("attribute")
-        selector = parameters.get("selector")
-        next_page_selector = parameters.get("next_page_selector")
-        start_page = parameters.get("start_page", 1)
-        end_page = parameters.get("end_page", None)
+        scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
+        
+        if not scraper_function:
+            return Response(
+                {"error": "Modo de scrapeo no reconocido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Extract parameters
+        kwargs = {
+            "url": url,
+            "sobrenombre": scraper_url.sobrenombre
+        }
 
         try:
-            if mode_scrapeo == 1:
-                response = scraper_iucngisd(url, sobrenombre)
-            elif mode_scrapeo == 2:
-                response = scraper_coleoptera_neotropical(url, sobrenombre)
-            elif mode_scrapeo == 3:
-                response = scraper_e_floras(
-                    url,
-                    page_principal,
-                    wait_time,
-                    sobrenombre,
-                    next_page_selector,
-                )
-            elif mode_scrapeo == 4:
-                response = scraper_ansci_cornell(url, wait_time, sobrenombre)
-            elif mode_scrapeo == 5:
-                response = scraper_first_mode(
-                    url,
-                    search_button_selector,
-                    tag_name_first,
-                    tag_name_second,
-                    tag_name_third,
-                    attribute,
-                    content_selector,
-                    selector,
-                    page_principal,
-                    sobrenombre,
-                )
-            elif mode_scrapeo == 6:
-                response = scraper_aphidnet(url, wait_time, sobrenombre)
-            elif mode_scrapeo == 7:
-                response = scraper_pdf(
-                    url, sobrenombre, start_page=start_page, end_page=end_page
-                )
-            elif mode_scrapeo == 8:
-                response = scraper_aguiar_hvr(url, wait_time, sobrenombre)
-            elif mode_scrapeo == 9:
-                response = scraper_gene_affrc(url, sobrenombre)
-            elif mode_scrapeo == 10:
-                response = scraper_plant_ifas(url, sobrenombre)
-            elif mode_scrapeo == 11:
-                response = scraper_plant_atlas(url, sobrenombre)
-            elif mode_scrapeo == 12:
-                response = scraper_flmnh_ufl(url, sobrenombre)
-            elif mode_scrapeo == 13:
-                response = scraper_iucnredlist(url, sobrenombre)
-            elif mode_scrapeo == 14:
-                response = scraper_ala_org(url, sobrenombre)
-            elif mode_scrapeo == 15:
-                response = scraper_pnw_hand_books(url, sobrenombre)
-            elif mode_scrapeo == 16:
-                response = scraper_ipm_illinoes(url)
-            elif mode_scrapeo == 17:
-                response = scraper_pest_alerts(url, sobrenombre)
-            elif mode_scrapeo == 18:
-                response = scraper_cabi_digital(url, sobrenombre)
-            elif mode_scrapeo == 19:
-                response = scraper_ndrs_org(url, sobrenombre)
-            elif mode_scrapeo == 20:
-                response = scraper_ippc(url, sobrenombre)
-            elif mode_scrapeo == 21:
-                response = scraper_eppo(url, sobrenombre)
-            elif mode_scrapeo == 22:
-                response = scraper_se_eppc(url, sobrenombre)
-            elif mode_scrapeo == 23:
-                response = scraper_mycobank_org(url, sobrenombre)
-            elif mode_scrapeo == 24:
-                response = scraper_nematode(url, sobrenombre)
-            elif mode_scrapeo == 25:
-                response = scraper_diaspididae(url, sobrenombre)
-            elif mode_scrapeo == 26:
-                response = scraper_genome_jp(url, wait_time, sobrenombre)
-            elif mode_scrapeo == 27:
-                response = scraper_plants_usda_gov(url, sobrenombre)
-            elif mode_scrapeo == 28:
-                response = scraper_fws_gov(url, sobrenombre)
-            elif mode_scrapeo == 29:
-                response = scraper_fao_org(url, sobrenombre)
-            elif mode_scrapeo == 30:
-                response = scraper_index_fungorum(url, sobrenombre)
-            elif mode_scrapeo == 31:
-                response = scraper_nemaplex_plant_host(url, sobrenombre)
-            elif mode_scrapeo == 32:
-                response = scraper_aphis_usda(url, sobrenombre)
-            elif mode_scrapeo == 33:
-                response = scraper_eppo_quarentine(url, sobrenombre)
-            elif mode_scrapeo == 34:
-                response = scraper_extento(url, sobrenombre)
-            elif mode_scrapeo == 35:
-                response = scraper_ncbi(url, sobrenombre)
-            elif mode_scrapeo == 36:
-                response = scraper_bonap(url, sobrenombre)
-            elif mode_scrapeo == 37:
-                response = scraper_google_academic(url, sobrenombre)
-            elif mode_scrapeo == 38:
-                response = scraper_biota_nz(url, sobrenombre)
-            elif mode_scrapeo == 39:
-                response = scraper_catalogue_of_life(url, sobrenombre)
-            elif mode_scrapeo == 40:
-                response = scraper_delta(url, sobrenombre)
-            elif mode_scrapeo == 41:
-                response = scraper_nemaplex(url, sobrenombre)
-            elif mode_scrapeo == 42:
-                response = scraper_bugwood(url, sobrenombre)
-            elif mode_scrapeo == 43:
-                response = scraper_padil(url, sobrenombre)
-            elif mode_scrapeo == 44:
-                response = scraper_cal_ipc(url, sobrenombre)
-            elif mode_scrapeo == 45:
-                response = scraper_method_books(url, sobrenombre)
-            elif mode_scrapeo == 46:
-                response = scraper_herbarium(url, sobrenombre)
-            elif mode_scrapeo == 47:
-                response = scraper_agriculture(url, sobrenombre)
-            else:
-                return Response(
-                    {"error": "Modo de scrapeo no reconocido."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            response = scraper_function(**kwargs)
 
             scraper_url.fecha_scraper = datetime.now()
             scraper_url.save()
