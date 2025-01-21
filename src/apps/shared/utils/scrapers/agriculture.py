@@ -34,6 +34,8 @@ def scraper_agriculture(url, sobrenombre):
 
     def scrape_page_agriculture(url, sobrenombre):
         try:
+            collection, fs = connect_to_mongo("scrapping-can", "collection")
+            nonlocal all_scraper
             scrapper =""
             print("depth 1")
             main_folder = generate_directory(url)
@@ -70,11 +72,13 @@ def scraper_agriculture(url, sobrenombre):
                     response_page3.raise_for_status()
                     soup_page3 = BeautifulSoup(response_page3.content, "html.parser")
                     container_div = soup_page3.find("td", class_="newsroom_2cols")
+                    
                     page_text = container_div.get_text(strip=True)
-                    scrapper += f"URL: {page_text} \n"
+                    # print('text scraped',page_text)
+                    all_scraper += f"URL: {page_text} \n"
 
                     processed_links.add(inner_href)
-            return scrapper
+                # all_scraper += scrapper
         except Exception as e:
             logger.error(f"Error en tarea de scraping por href: {str(e)}")
 
@@ -161,11 +165,12 @@ def scraper_agriculture(url, sobrenombre):
         #     urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
         #     time.sleep(random.uniform(1, 3)) 
         
-        res = scrape_page_agriculture(url,sobrenombre) 
+        res = scrape_page_agriculture(url,sobrenombre)
+        print("todo scraped",res)
         file_path = os.path.join(main_folder, "scraped.txt")
         ##CREACION Y ESCRITURA DE ARCHIVO
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write(res)
+            file.write(all_scraper)
 
         print("despues de las funciones")
 
