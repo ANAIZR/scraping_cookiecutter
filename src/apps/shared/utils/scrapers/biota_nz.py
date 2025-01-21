@@ -3,11 +3,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import os
 import time
+import pickle
 import random
+import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from rest_framework.response import Response
-from rest_framework import status
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
@@ -16,108 +16,50 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
+    get_random_user_agent,
 )
+from rest_framework.response import Response
+from rest_framework import status
+from selenium.common.exceptions import TimeoutException
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger("scraper")
 
 
-def process_results(driver, base_domain, keyword_folder, fs):
-    """Procesa los resultados de una página."""
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    items = soup.select("div.row-separation.specimen-list-item")
-    if not items:
-        logger.warning("No se encontraron resultados en esta página.")
-        return False
-
-    logger.info(f"Encontrados {len(items)} resultados.")
-    for item in items:
-        try:
-            href_element = item.select_one("div.col-12 > a[href]")
-            if not href_element:
-                continue
-            href = href_element["href"]
-            logger.info(f"Procesando enlace: {href}")
-            full_url = f"{base_domain}{href}"
-
-            driver.get(full_url)
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div.page-content-wrapper"))
-            )
-            time.sleep(random.uniform(6, 10))
-
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-            body = soup.select_one("div.page-content-wrapper")
-            body_text = body.get_text(strip=True) if body else "No body found"
-            if body_text:
-                file_path = save_content(body_text, href, keyword_folder)
-                save_to_mongo(fs, file_path)
-            else:
-                logger.warning(f"No se encontró contenido en la página: {full_url}")
-        except Exception as e:
-            logger.error(f"Error procesando elemento: {e}")
-            continue
-    return True
-
-
-def save_content(content, href, keyword_folder):
-    """Guarda el contenido de la página en un archivo."""
-    link_folder = generate_directory(href, keyword_folder)
-    file_path = get_next_versioned_filename(link_folder, href)
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(content)
-    logger.info(f"Contenido guardado en: {file_path}")
-    return file_path
-
-
-def save_to_mongo(fs, file_path):
-    """Guarda el archivo en MongoDB."""
-    with open(file_path, "rb") as file_data:
-        object_id = fs.put(file_data, filename=os.path.basename(file_path))
-    logger.info(f"Archivo guardado en MongoDB con ID: {object_id}")
-    return object_id
-
-
-def navigate_to_next_page(driver):
-    """Navega a la siguiente página si existe."""
-    try:
-        next_page = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.XPATH, "//a[contains(@class, 'paging-hyperlink') and contains(text(), 'Next')]")
-            )
-        )
-        driver.execute_script("arguments[0].click();", next_page)
-        time.sleep(random.uniform(6, 10))
-        return True
-    except Exception:
-        logger.info("No hay más páginas disponibles o el botón no es clickeable.")
-        return False
-
-
 def scraper_biota_nz(url, sobrenombre):
+    content_found = False
+    object_id = None
     driver = initialize_driver()
     base_domain = "https://biotanz.landcareresearch.co.nz"
+    all_links = []
 
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
-
         collection, fs = connect_to_mongo("scrapping-can", "collection")
         main_folder = generate_directory(url)
+
         keywords = load_keywords("plants.txt")
         if not keywords:
             return Response(
-                {"message": "El archivo de palabras clave está vacío o no se pudo cargar."},
+                {
+                    "status": "error",
+                    "message": "El archivo de palabras clave está vacío o no se pudo cargar.",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        scraping_failed = False
+        logger.info("Página de BIOTA NZ cargada exitosamente.")
 
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
-            keyword_folder = generate_directory(keyword, main_folder)
 
             try:
+                # Volver al URL inicial antes de cada búsqueda
+                driver.get(url)
+                time.sleep(random.uniform(6, 10))
+
                 search_box = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "#query"))
                 )
@@ -127,29 +69,148 @@ def scraper_biota_nz(url, sobrenombre):
                 search_box.submit()
             except Exception as e:
                 logger.error(f"Error al buscar la palabra clave '{keyword}': {e}")
-                scraping_failed = True
                 continue
 
             while True:
-                if not process_results(driver, base_domain, keyword_folder, fs):
-                    break
-                if not navigate_to_next_page(driver):
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "list-result"))
+                    )
+                    logger.info(f"Resultados cargados para: {keyword}")
+                    time.sleep(random.uniform(1, 3))
+                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                    items = soup.select("div.row-separation.specimen-list-item")
+
+                    if not items:
+                        logger.warning(
+                            f"No se encontraron resultados para la palabra clave: {keyword}"
+                        )
+                        break
+
+                    for item in items:
+                        link_element = item.select_one("div.col-12 > a[href]")
+                        if link_element:
+                            href = link_element["href"]
+                            full_url = f"{base_domain}{href}"
+                            all_links.append(full_url)
+                            logger.info(f"Enlace recolectado: {full_url}")
+
+                    try:
+                        next_page = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable(
+                                (
+                                    By.XPATH,
+                                    "//a[contains(@class, 'paging-hyperlink') and contains(text(), 'Next')]",
+                                )
+                            )
+                        )
+                        driver.execute_script("arguments[0].click();", next_page)
+                        time.sleep(random.uniform(6, 10))
+                    except Exception:
+                        logger.info("No hay más páginas disponibles.")
+                        break
+                except TimeoutException:
+                    logger.warning(
+                        f"No se encontraron resultados para '{keyword}' después de esperar."
+                    )
                     break
 
-        if scraping_failed:
+        driver.quit()
+
+        def process_link(link):
+            nonlocal object_id
+            headers = {"User-Agent": get_random_user_agent()}
+            try:
+                response = requests.get(link, timeout=10, headers=headers)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.content, "html.parser")
+                    body = soup.select_one(
+                        "div#detail-page>div.page-content-wrapper>div.details-page-content"
+                    )
+                    body_text = body.get_text(strip=True) if body else None
+
+                    if body_text:
+                        keyword_folder = generate_directory(link, main_folder)
+                        file_path = get_next_versioned_filename(
+                            keyword_folder, sobrenombre
+                        )
+                        contenido = f"URL: {link}\n\n{body_text}"
+
+                        with open(file_path, "w", encoding="utf-8") as file:
+                            file.write(contenido)
+
+                        with open(file_path, "rb") as file_data:
+                            object_id = fs.put(
+                                file_data,
+                                filename=os.path.basename(file_path),
+                            )
+
+                        logger.info(f"Contenido guardado para {link}")
+                        return True
+                    else:
+                        logger.warning(f"No se encontró contenido en {link}")
+                        return False
+                else:
+                    logger.warning(
+                        f"Solicitud fallida para {link} con código {response.status_code}"
+                    )
+                    return False
+            except Exception as e:
+                logger.error(f"Error al procesar el enlace {link}: {e}")
+                return False
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(process_link, link): link for link in all_links}
+            for future in as_completed(futures):
+                link = futures[future]
+                try:
+                    if future.result():
+                        content_found = True
+                except Exception as e:
+                    logger.error(f"Error procesando el enlace {link}: {e}")
+
+        if content_found:
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+            response_data = {
+                "Tipo": "Web",
+                "Url": url,
+                "Fecha_scraper": data["Fecha_scraper"],
+                "Etiquetas": data["Etiquetas"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
+            }
+            collection.insert_one(data)
+            delete_old_documents(url, collection, fs)
+
             return Response(
-                {"message": "Error durante el scraping. Algunas palabras clave fallaron."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {
+                    "status": "success",
+                    "message": "Los datos han sido scrapeados correctamente.",
+                    "data": response_data,
+                },
+                status=status.HTTP_200_OK,
             )
-        return Response(
-            {"status": "success", "message": "Scraping completado con éxito."},
-            status=status.HTTP_200_OK,
-        )
+        else:
+            return Response(
+                {
+                    "status": "success",
+                    "message": "El scraping se completó, pero no se encontró contenido para guardar.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
     except Exception as e:
         logger.error(f"Error durante el scraping: {e}")
         return Response(
             {"status": "error", "message": f"Error durante el scraping: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
     finally:
-        driver.quit()
+        if driver:
+            driver.quit()

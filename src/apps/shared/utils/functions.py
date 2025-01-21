@@ -26,7 +26,7 @@ USER_AGENTS = [
 
 # OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files/scrapers"
 # LOG_DIR = "/home/staging/scraping_cookiecutter/files/logs"
-# LOAD_KEYWORDS = "/home/staging/scraping_cookiecutter/files/keywords/keywords.txt"
+# LOAD_KEYWORDS = "/home/staging/scraping_cookiecutter/apps/shared/utils/txt"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
@@ -106,7 +106,7 @@ def initialize_driver(retries=3):
             )
             options = uc.ChromeOptions()
             # options.binary_location = "/usr/bin/google-chrome"
-            # options.add_argument("--headless")
+            options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
