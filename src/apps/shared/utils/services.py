@@ -1,4 +1,3 @@
-from datetime import datetime
 from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS
 

@@ -1,6 +1,6 @@
 from celery import shared_task
 from src.apps.shared.utils.services import WebScraperService
-from ..models.scraperURL import ScraperURL
+from src.apps.shared.models.scraperURL import ScraperURL
 from datetime import datetime
 import logging
 
