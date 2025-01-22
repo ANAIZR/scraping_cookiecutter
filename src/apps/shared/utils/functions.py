@@ -44,7 +44,7 @@ def load_keywords(file_name, base_dir=LOAD_KEYWORDS):
             raise FileNotFoundError(f"El archivo '{file_path}' no existe.")
         
         with open(file_path, "r", encoding="utf-8") as file:
-            content = [line.strip() for line in file if line.strip()]  # Strip whitespace and skip empty lines
+            content = [line.strip() for line in file if line.strip()] 
         return content
     except FileNotFoundError as e:
         logger.error(e)
