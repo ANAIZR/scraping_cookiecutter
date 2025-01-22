@@ -9,7 +9,7 @@ app = Celery("scraping_cookiecutter")
 
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
-app.autodiscover_tasks(["src.apps.shared.models", "src.apps.users"])
+app.autodiscover_tasks(["src.apps.shared.utils"])
 
 
 @app.task(bind=True)
@@ -18,9 +18,12 @@ def debug_task(self):
 
 
 app.conf.beat_schedule = {
-    "scrape-url-periodic": {
-        "task": "src.apps.shared.models.tasks.scrape_url",
-        "schedule": crontab(hour=1, minute=55),
+    "scrape-url-weekly": {
+        "task": "src.apps.shared.utils.tasks.scrape_url_task",  
+        "schedule": crontab(
+            hour=1, minute=55, day_of_week=0
+        ),  
     },
 }
+
 

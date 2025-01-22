@@ -71,7 +71,7 @@ class ScraperURL(CoreModel):
 
         # Si es un nuevo objeto o si se actualiza, programa la tarea de Celery
         if is_new or self.is_time_expired():
-            from .tasks import (
+            from ..utils.tasks import (
                 scrape_url,
             )  # Importa la tarea aquí para evitar problemas circulares
 
