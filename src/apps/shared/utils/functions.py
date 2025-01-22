@@ -239,7 +239,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
             delete_old_documents(url, collection, fs)
 
-            response_data = {
+            return {
                 "Tipo": "Web",
                 "Url": url,
                 "Fecha_scraper": data["Fecha_scraper"],
@@ -247,7 +247,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
                 "Mensaje": "Los datos han sido scrapeados correctamente.",
             }
 
-        return response_data
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
