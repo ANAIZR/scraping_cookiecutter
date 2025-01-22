@@ -42,37 +42,29 @@ class ScraperURL(CoreModel):
         return self.deleted_at is not None
 
     def get_time_limit(self):
-        """
-        Calcula la fecha límite basada en `fecha_scraper` o `updated_at`.
-        """
         reference_date = self.fecha_scraper or self.updated_at
 
-        # Asegura que `reference_date` sea timezone-aware
         if timezone.is_naive(reference_date):
             reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
 
-        if self.time_choices == 1:  # Mensual
+        if self.time_choices == 1: 
             return reference_date + timedelta(days=30)
-        elif self.time_choices == 2:  # Trimestral
+        elif self.time_choices == 2: 
             return reference_date + timedelta(days=90)
-        elif self.time_choices == 3:  # Semestral
+        elif self.time_choices == 3: 
             return reference_date + timedelta(days=180)
         return reference_date
 
     def is_time_expired(self):
-        """
-        Verifica si el tiempo límite ha expirado.
-        """
         return timezone.now() > self.get_time_limit()
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None  # Verifica si es un objeto nuevo
+        is_new = self.pk is None  
         super().save(*args, **kwargs)
 
-        # Si es un nuevo objeto o si se actualiza, programa la tarea de Celery
         if is_new or self.is_time_expired():
-            from .tasks import (
+            from ..utils.tasks import (
                 scrape_url,
-            )  # Importa la tarea aquí para evitar problemas circulares
+            )  
 
             scrape_url.apply_async((self.url,), eta=self.get_time_limit())

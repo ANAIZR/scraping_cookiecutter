@@ -25,13 +25,7 @@
       "sobrenombre": "IUCNGISD",
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
-      "mode_scrapeo": 1,
-      "parameters": {
-        "search_button_selector": "#go",
-        "content_selector": "ul.content.spec",
-        "wait_time": 10,
-        "tag_name_first": "li"
-      }
+      "mode_scrapeo": 1
     }
   },
   {
@@ -166,32 +160,19 @@
       "mode_scrapeo": 9,
       "sobrenombre": "GENE",
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "wait_time": 20
-      }
+      "updated_at": "2024-09-16T12:00:00Z"
     }
   },
   {
     "model": "shared.ScraperURL",
     "pk": 12,
     "fields": {
-      "url": "http://flora.huh.harvard.edu/china/",
+      "url": "http://flora.huh.harvard.edu/china/mss/alphabetical_families.htm",
       "time_choices": 1,
       "mode_scrapeo": 5,
-      "sobrenombre": "FLORA",
+      "sobrenombre": "FLORA_HARVARD",
       "created_at": "2024-09-16T12:00:00Z",
-      "updated_at": "2024-09-16T12:00:00Z",
-      "parameters": {
-        "search_button_selector": "body table tr:nth-child(2) td:nth-child(2) font p:nth-child(4) a",
-        "tag_name_first": "li",
-        "tag_name_second": "a",
-        "tag_name_third": "href",
-        "attribute": "href",
-        "content_selector": "ul",
-        "selector": "#tdContent",
-        "page_principal": ""
-      }
+      "updated_at": "2024-09-16T12:00:00Z"
     }
   },
   {

@@ -14,7 +14,7 @@ def scraper_ala_org(
     url,
     sobrenombre,
 ):
-    logger = get_logger("scraper")
+    logger = get_logger("ALA_ORG")
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
@@ -79,7 +79,6 @@ def scraper_ala_org(
                 break
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
     finally:
         driver.quit()

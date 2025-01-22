@@ -25,28 +25,60 @@ USER_AGENTS = [
 ]
 
 OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files/scrapers"
+LOG_DIR = "/home/staging/scraping_cookiecutter/files/logs"
+LOAD_KEYWORDS = "/home/staging/scraping_cookiecutter/apps/shared/utils/txt"
 #BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
+#LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
+#LOAD_KEYWORDS = os.path.join(BASE_DIR, "../utils/txt")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
+
+
+def load_keywords(file_name, base_dir=LOAD_KEYWORDS):
+    logger = get_logger("CARGAR PALABRAS CLAVE")
+    try:
+        file_path = os.path.join(base_dir, file_name)
+        if not os.path.exists(file_path):
+            logger.error(f"El archivo '{file_path}' no existe.")
+            raise FileNotFoundError(f"El archivo '{file_path}' no existe.")
+        
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = [line.strip() for line in file if line.strip()] 
+        return content
+    except FileNotFoundError as e:
+        logger.error(e)
+        return None
+    except Exception as e:
+        logger.error(f"Error leyendo el archivo '{file_name}': {e}")
+        return None
+
 
 
 def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
-def get_logger(name, level=logging.DEBUG, log_file="app.log"):
+def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
     logger = logging.getLogger(name)
     logger.setLevel(level)
-
+    log_file ="app.log"
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    log_dir = "/home/staging/scraping_cookiecutter/logs"
-    #log_dir = os.path.join(BASE_DIR, "../../../../files/logs")
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    log_path = os.path.join(log_dir, log_file)
-    fh = logging.FileHandler(log_path, encoding="utf-8")
-    fh.setLevel(level)
+    folder_path = os.path.join(output_dir,log_file)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path, exist_ok=True)
+
+    log_path = os.path.join(folder_path, log_file)
+    if not os.path.exists(log_path):
+        with open(log_path, "w", encoding="utf-8") as f:
+            pass
+
+    try:
+        fh = logging.FileHandler(log_path, encoding="utf-8")
+        fh.setLevel(level)
+    except Exception as e:
+        print(f"Error al crear el FileHandler: {e}")
+        raise
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -165,7 +197,6 @@ def delete_old_documents(url, collection, fs, limit=2):
             docs_to_delete = list(docs_for_url)[limit:]
             for doc in docs_to_delete:
                 collection.delete_one({"_id": doc["_id"]})
-                # Borrar el archivo de GridFS
                 fs.delete(doc["Objeto"])
 
             logger.info(

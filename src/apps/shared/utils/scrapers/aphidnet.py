@@ -11,7 +11,7 @@ from ..functions import (
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def scraper_aphidnet(url=None, wait_time=None, sobrenombre=None):
+def scraper_aphidnet(url=None, wait_time=None, sobrenombre="APHIDNET"):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("APHIDNET")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
@@ -35,7 +35,6 @@ def scraper_aphidnet(url=None, wait_time=None, sobrenombre=None):
             print(f"URL fuera del dominio permitido: {current_url}")
             return []
 
-        print(f"Procesando URL: {current_url} (Nivel: {current_depth})")
         visited_urls.add(current_url)
         try:
             response = requests.get(current_url, headers=headers)

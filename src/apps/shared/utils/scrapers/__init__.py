@@ -2,7 +2,7 @@ from .iucngisd import scraper_iucngisd
 from .e_floras import scraper_e_floras
 from .coleoptera_neotropical import scraper_coleoptera_neotropical
 from .ansci_cornell import scraper_ansci_cornell
-from .first_mode import scraper_first_mode
+from .flora_harvard import scraper_flora_harvard
 from .aphidnet import scraper_aphidnet
 from .method_pdf import scraper_pdf
 from .aguiar_hvr import scraper_aguiar_hvr
@@ -45,3 +45,53 @@ from .cal_ipc import scraper_cal_ipc
 from .method_books import scraper_method_books
 from .herbarium import scraper_herbarium
 from .agriculture import scraper_agriculture
+
+SCRAPER_FUNCTIONS = {
+    1: scraper_iucngisd,
+    2: scraper_coleoptera_neotropical,
+    3: scraper_e_floras,
+    4: scraper_ansci_cornell,
+    5: scraper_flora_harvard,
+    6: scraper_aphidnet,
+    7: scraper_pdf,
+    8: scraper_aguiar_hvr,
+    9: scraper_gene_affrc,
+    10: scraper_plant_ifas,
+    11: scraper_plant_atlas,
+    12: scraper_flmnh_ufl,
+    13: scraper_iucnredlist,
+    14: scraper_ala_org,
+    15: scraper_pnw_hand_books,
+    16: scraper_ipm_illinoes,
+    17: scraper_pest_alerts,
+    18: scraper_cabi_digital,
+    19: scraper_ndrs_org,
+    20: scraper_ippc,
+    21: scraper_eppo,
+    22: scraper_se_eppc,
+    23: scraper_mycobank_org,
+    24: scraper_nematode,
+    25: scraper_diaspididae,
+    26: scraper_genome_jp,
+    27: scraper_plants_usda_gov,
+    28: scraper_fws_gov,
+    29: scraper_fao_org,
+    30: scraper_index_fungorum,
+    31: scraper_nemaplex_plant_host,
+    32: scraper_aphis_usda,
+    33: scraper_eppo_quarentine,
+    34: scraper_extento,
+    35: scraper_ncbi,
+    36: scraper_bonap,
+    37: scraper_google_academic,
+    38: scraper_biota_nz,
+    39: scraper_catalogue_of_life,
+    40: scraper_delta,
+    41: scraper_nemaplex,
+    42: scraper_bugwood,
+    43: scraper_padil,
+    44: scraper_cal_ipc,
+    45: scraper_method_books,
+    46: scraper_herbarium,
+    47: scraper_agriculture,
+}

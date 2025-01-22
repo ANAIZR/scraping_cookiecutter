@@ -231,5 +231,6 @@ def scraper_cabi_digital(url, sobrenombre):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
+
     finally:
         driver.quit()

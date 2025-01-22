@@ -10,13 +10,14 @@ from rest_framework.response import Response
 from rest_framework import status
 import time
 
-logger = get_logger("scraper")
 
 
 def scraper_bonap(
     url,
     sobrenombre,
 ):
+    logger = get_logger("scraper")
+
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
