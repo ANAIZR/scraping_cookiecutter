@@ -31,14 +31,21 @@ class WebScraperService:
 
             if not scraper_function:
                 logger.error(f"Modo de scrapeo no reconocido para URL: {url}")
-                return
+                return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
             kwargs = {"url": url, "sobrenombre": scraper_url.sobrenombre}
             response = scraper_function(**kwargs)
 
-            logger.info(f"Scraping completado para URL: {url}")
-            return response
+            if isinstance(response, dict):  # Verifica que sea un diccionario
+                logger.info(f"Scraping completado para URL: {url}")
+                return response
+            else:
+                logger.error(f"Respuesta no serializable para URL: {url}")
+                return {"error": f"Respuesta no serializable para URL: {url}"}
         except ScraperURL.DoesNotExist:
             logger.error(f"No se encontraron parámetros para la URL: {url}")
+            return {"error": f"No se encontraron parámetros para la URL: {url}"}
         except Exception as e:
             logger.error(f"Error durante el scraping para {url}: {str(e)}")
+            return {"error": f"Error durante el scraping para {url}: {str(e)}"}
+
