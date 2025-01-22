@@ -11,7 +11,7 @@ from ..functions import (
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def scraper_aphidnet(url=None, wait_time=None, sobrenombre="APHIDNET"):
+def scraper_aphidnet(url=None, sobrenombre="APHIDNET"):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("APHIDNET")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
