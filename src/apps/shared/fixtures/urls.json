@@ -971,8 +971,8 @@
     "model": "shared.ScraperURL",
     "pk": 69,
     "fields": {
-      "url": "https://www.cal-ipc.org/",
-      "sobrenombre": "CAL-IPC",
+      "url": "http://www.cal-ipc.org/ip/inventory/index.php",
+      "sobrenombre": "CAL_IPC",
       "time_choices": 1,
       "mode_scrapeo": 44,
       "created_at": "2024-09-16T12:00:00Z",
