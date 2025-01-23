@@ -10,7 +10,7 @@ import gridfs
 
 from rest_framework.response import Response
 from rest_framework import status
-
+from dotenv import load_dotenv
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
@@ -24,9 +24,13 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-OUTPUT_DIR = os.path.expanduser("~/scraping_cookiecutter/files/scrapers")
-LOG_DIR = os.path.expanduser("~/scraping_cookiecutter/files/logs")
-LOAD_KEYWORDS = os.path.expanduser("~/scraping_cookiecutter/apps/shared/utils/txt")
+
+load_dotenv()
+
+
+OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR"))
+LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR"))
+LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS"))
 #BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 #LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")

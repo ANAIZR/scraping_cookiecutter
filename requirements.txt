@@ -44,3 +44,4 @@ django-celery-results
 python-decouple
 redis
 flower
+python-dotenv
