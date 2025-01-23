@@ -70,11 +70,12 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 end = min(total_pages, end_page) if end_page else total_pages
 
                 if start >= total_pages:
-                    return build_response(
-                        success=False,
-                        message="El número de página inicial excede el total de páginas del PDF.",
-                        status_code=status.HTTP_400_BAD_REQUEST
-                    )
+                    return {
+                        "success": False,
+                        "message": "El número de página inicial excede el total de páginas del PDF.",
+                        "status_code": status.HTTP_400_BAD_REQUEST,
+                    }
+
 
                 for i in range(start, end):
                     text = pdf.pages[i].extract_text()
