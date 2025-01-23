@@ -12,6 +12,7 @@ from ..functions import (
     get_next_versioned_filename,
     delete_old_documents,
     connect_to_mongo,
+    get_logger
 )
 
 
@@ -29,6 +30,7 @@ def build_response(success, data=None, message=None, status_code=status.HTTP_200
     }, status=status_code)
 
 def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
+    logger = get_logger("Extrayendo texto de PDF")
     try:
         collection, fs = connect_to_mongo("scrapping-can", "collection")
         headers = {
