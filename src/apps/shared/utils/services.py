@@ -34,6 +34,10 @@ class WebScraperService:
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
             kwargs = {"url": url, "sobrenombre": scraper_url.sobrenombre}
+            if mode_scrapeo == 7:  # scraper_pdf
+                kwargs["start_page"] = scraper_url.start_page
+                kwargs["end_page"] = scraper_url.end_page
+
             response = scraper_function(**kwargs)
 
             if isinstance(response, dict):  # Verifica que sea un diccionario
@@ -48,4 +52,5 @@ class WebScraperService:
         except Exception as e:
             logger.error(f"Error durante el scraping para {url}: {str(e)}")
             return {"error": f"Error durante el scraping para {url}: {str(e)}"}
+
 
