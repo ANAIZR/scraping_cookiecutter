@@ -15,14 +15,13 @@ from rest_framework import status
 import time
 import random
 
-logger = get_logger("scraper")
 
 
 def scraper_plant_ifas(
     url,
     sobrenombre,
 ):
-
+    logger = get_logger("IFAS")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
@@ -49,7 +48,7 @@ def scraper_plant_ifas(
                     if link_card:
                         base_url = f"{url+link_card}"
                         driver.get(base_url)
-                        print(f"Url scrapeada {base_url}")
+                        logger.info(f"Url scrapeada {base_url}")
                         all_scraper += "Url scrapeada " + base_url + "\n"
                         WebDriverWait(driver, wait_time).until(
                             EC.presence_of_element_located(
