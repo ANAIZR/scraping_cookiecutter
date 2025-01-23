@@ -980,7 +980,7 @@
     "model": "shared.ScraperURL",
     "pk": 69,
     "fields": {
-      "url": "https://www.cal-ipc.org/",
+      "url": "http://www.cal-ipc.org/ip/inventory/index.php",
       "sobrenombre": "CAL-IPC",
       "time_choices": 1,
       "mode_scrapeo": 44,
