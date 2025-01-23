@@ -21,6 +21,12 @@ def extract_text_with_pdfminer(pdf_file):
     except Exception as e:
         raise Exception(f"Error al extraer texto con pdfminer: {e}")
 
+def build_response(success, data=None, message=None, status_code=status.HTTP_200_OK):
+    return Response({
+        "success": success,
+        "data": data,
+        "message": message
+    }, status=status_code)
 
 def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
     try:
@@ -34,11 +40,12 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         folder_path = generate_directory(url)
         txt_filepath = get_next_versioned_filename(folder_path, base_name=sobrenombre)
         os.makedirs(os.path.dirname(txt_filepath), exist_ok=True)
-        start_page = start_page or 1
+
         if start_page < 1:
-            return Response(
-                {"error": "El número de página inicial debe ser mayor o igual a 1."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return build_response(
+                success=False,
+                message="El número de página inicial debe ser mayor o igual a 1.",
+                status_code=status.HTTP_400_BAD_REQUEST
             )
 
         if "text/html" in response.headers["Content-Type"]:
@@ -47,9 +54,9 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
             extracted_pages = [
                 int(page["data-page-number"])
                 for page in pages
-                if start_page <= int(page["data-page-number"]) <= end_page
+                if start_page <= int(page["data-page-number"]) <= (end_page or float("inf"))
             ]
-            return Response({"pages": extracted_pages}, status=status.HTTP_200_OK)
+            return build_response(success=True, data={"pages": extracted_pages})
 
         pdf_file = BytesIO(response.content)
         full_text = ""
@@ -58,13 +65,14 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 total_pages = len(pdf.pages)
                 start = max(0, start_page - 1)
                 end = min(total_pages, end_page) if end_page else total_pages
+
                 if start >= total_pages:
-                    return Response(
-                        {
-                            "error": "El número de página inicial excede el total de páginas del PDF."
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
+                    return build_response(
+                        success=False,
+                        message="El número de página inicial excede el total de páginas del PDF.",
+                        status_code=status.HTTP_400_BAD_REQUEST
                     )
+
                 for i in range(start, end):
                     text = pdf.pages[i].extract_text()
                     if text:
@@ -81,7 +89,6 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         with open(txt_filepath, "w", encoding="utf-8") as txt_file:
             txt_file.write(full_text.strip())
 
-        # Generar los datos para guardar en MongoDB
         data = {
             "Objeto": sobrenombre,
             "Tipo": "PDF",
@@ -93,24 +100,26 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         collection.insert_one(data)
         delete_old_documents(url, collection, fs)
 
-        # Respuesta de éxito
-        response_data = {
-            "Tipo": "PDF",
-            "Url": url,
-            "Fecha_scraper": data["Fecha_scraper"],
-            "Etiquetas": data["Etiquetas"],
-            "Mensaje": "Los datos han sido scrapeados correctamente y guardados.",
-        }
-
-        return Response(response_data, status=status.HTTP_200_OK)
+        return build_response(
+            success=True,
+            data={
+                "Tipo": "PDF",
+                "Url": url,
+                "Fecha_scraper": data["Fecha_scraper"],
+                "Etiquetas": data["Etiquetas"]
+            },
+            message="Los datos han sido scrapeados correctamente y guardados."
+        )
 
     except requests.exceptions.RequestException as e:
-        return Response(
-            {"error": f"Error al descargar el PDF: {e}"},
-            status=status.HTTP_400_BAD_REQUEST,
+        return build_response(
+            success=False,
+            message=f"Error al descargar el PDF: {e}",
+            status_code=status.HTTP_400_BAD_REQUEST
         )
     except Exception as e:
-        return Response(
-            {"error": f"Error al procesar el PDF o extraer el texto: {e}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        return build_response(
+            success=False,
+            message=f"Error al procesar el PDF o extraer el texto: {e}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
