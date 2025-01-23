@@ -9,7 +9,7 @@ app = Celery("scraping_cookiecutter")
 
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
-app.autodiscover_tasks(["src.apps.shared.utils"])
+app.autodiscover_tasks(["src.apps.shared.utils", "src.apps.users.utils"])
 
 
 @app.task(bind=True)

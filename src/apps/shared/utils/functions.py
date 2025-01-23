@@ -238,7 +238,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
             delete_old_documents(url, collection, fs)
 
-            response_data = {
+            return {
                 "Tipo": "Web",
                 "Url": url,
                 "Fecha_scraper": data["Fecha_scraper"],
@@ -246,7 +246,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
                 "Mensaje": "Los datos han sido scrapeados correctamente.",
             }
 
-        return response_data
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
@@ -259,47 +258,42 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
-            return Response({"data": response_data}, status=status.HTTP_200_OK)
+            logger.info(f"Datos procesados correctamente para la URL: {url}")
+            return {
+                "status": "success",
+                "data": response_data,
+                "url": url,
+                "message": "Datos procesados correctamente.",
+            }
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+            return {
+                "status": "no_content",
+                "url": url,
+                "message": "No se encontraron datos para scrapear.",
+            }
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
-            },
-            status=status.HTTP_408_REQUEST_TIMEOUT,
-        )
+        return {
+            "status": "timeout",
+            "url": url,
+            "message": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+        }
     except ConnectionError:
         logger.error("Error de conexión a la URL.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "No se pudo conectar a la página web.",
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        return {
+            "status": "connection_error",
+            "url": url,
+            "message": "No se pudo conectar a la página web.",
+        }
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "Ocurrió un error al procesar los datos.",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return {
+            "status": "error",
+            "url": url,
+            "message": "Ocurrió un error al procesar los datos.",
+            "error": str(e),
+        }
 
 
 def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
