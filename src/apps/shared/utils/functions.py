@@ -24,9 +24,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-OUTPUT_DIR = "/home/staging/scraping_cookiecutter/files/scrapers"
-LOG_DIR = "/home/staging/scraping_cookiecutter/files/logs"
-LOAD_KEYWORDS = "/home/staging/scraping_cookiecutter/apps/shared/utils/txt"
+OUTPUT_DIR = os.path.expanduser("~/scraping_cookiecutter/files/scrapers")
+LOG_DIR = os.path.expanduser("~/scraping_cookiecutter/files/logs")
+LOAD_KEYWORDS = os.path.expanduser("~/scraping_cookiecutter/apps/shared/utils/txt")
 #BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 #LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
@@ -61,34 +61,37 @@ def get_random_user_agent():
 def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    log_file ="app.log"
-    ch = logging.StreamHandler()
-    ch.setLevel(level)
-    folder_path = os.path.join(output_dir,log_file)
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path, exist_ok=True)
+
+    log_file = "app.log"
+    folder_path = os.path.abspath(output_dir)  
+    os.makedirs(folder_path, exist_ok=True) 
 
     log_path = os.path.join(folder_path, log_file)
-    if not os.path.exists(log_path):
-        with open(log_path, "w", encoding="utf-8") as f:
-            pass
 
     try:
+        if not os.path.exists(log_path):
+            with open(log_path, "w", encoding="utf-8") as f:
+                pass
+
         fh = logging.FileHandler(log_path, encoding="utf-8")
         fh.setLevel(level)
+
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        fh.setFormatter(formatter)
+
+        ch = logging.StreamHandler()
+        ch.setLevel(level)
+        ch.setFormatter(formatter)
+
+        if not logger.handlers:
+            logger.addHandler(ch)
+            logger.addHandler(fh)
+
     except Exception as e:
-        print(f"Error al crear el FileHandler: {e}")
+        print(f"Error al configurar el logger: {e}")
         raise
-
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    ch.setFormatter(formatter)
-    fh.setFormatter(formatter)
-
-    if not logger.handlers:
-        logger.addHandler(ch)
-        logger.addHandler(fh)
 
     return logger
 
