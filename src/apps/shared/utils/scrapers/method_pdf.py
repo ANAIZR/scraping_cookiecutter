@@ -22,12 +22,7 @@ def extract_text_with_pdfminer(pdf_file):
     except Exception as e:
         raise Exception(f"Error al extraer texto con pdfminer: {e}")
 
-def build_response(success, data=None, message=None, status_code=status.HTTP_200_OK):
-    return Response({
-        "success": success,
-        "data": data,
-        "message": message
-    }, status=status_code)
+
 
 def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
     logger = get_logger("Extrayendo texto de PDF")
@@ -44,11 +39,11 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         os.makedirs(os.path.dirname(txt_filepath), exist_ok=True)
 
         if start_page < 1:
-            return build_response(
-                success=False,
-                message="El número de página inicial debe ser mayor o igual a 1.",
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
+            return {
+                "success": False,
+                "message": "El número de página inicial debe ser mayor o igual a 1.",
+                "status_code": status.HTTP_400_BAD_REQUEST,
+            }
 
         if "text/html" in response.headers["Content-Type"]:
             soup = BeautifulSoup(response.text, "html.parser")
@@ -58,7 +53,13 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 for page in pages
                 if start_page <= int(page["data-page-number"]) <= (end_page or float("inf"))
             ]
-            return build_response(success=True, data={"pages": extracted_pages})
+            return {
+                "success": True,
+                "data": {"pages": extracted_pages},
+                "message": "Páginas extraídas correctamente del contenido HTML.",
+                "status_code": status.HTTP_200_OK,
+            }
+
 
         pdf_file = BytesIO(response.content)
         full_text = ""
@@ -102,26 +103,27 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         collection.insert_one(data)
         delete_old_documents(url, collection, fs)
 
-        return build_response(
-            success=True,
-            data={
+        return {
+            "success": True,
+            "data": {
                 "Tipo": "PDF",
                 "Url": url,
                 "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"]
+                "Etiquetas": data["Etiquetas"],
             },
-            message="Los datos han sido scrapeados correctamente y guardados."
-        )
+            "message": "Los datos han sido scrapeados correctamente y guardados.",
+            "status_code": status.HTTP_200_OK,
+        }
 
     except requests.exceptions.RequestException as e:
-        return build_response(
-            success=False,
-            message=f"Error al descargar el PDF: {e}",
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
+        return {
+            "success": False,
+            "message": f"Error al descargar el PDF: {e}",
+            "status_code": status.HTTP_400_BAD_REQUEST,
+        }
     except Exception as e:
-        return build_response(
-            success=False,
-            message=f"Error al procesar el PDF o extraer el texto: {e}",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return {
+            "success": False,
+            "message": f"Error al procesar el PDF o extraer el texto: {e}",
+            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }

@@ -22,4 +22,6 @@ def scraper_url_task(self, url):
         scraper_url.save()
     except Exception as e:
         logger.error(f"Error al actualizar fecha de scraping para {url}: {str(e)}")
+    if "error" in result:
+        logger.error(f"Scraping fallido para {url}: {result['error']}")
     return result

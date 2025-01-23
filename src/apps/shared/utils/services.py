@@ -34,13 +34,13 @@ class WebScraperService:
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
             kwargs = {"url": url, "sobrenombre": scraper_url.sobrenombre}
-            if mode_scrapeo == 7:  # scraper_pdf
+            if mode_scrapeo == 7:  
                 kwargs["start_page"] = scraper_url.start_page
                 kwargs["end_page"] = scraper_url.end_page
 
             response = scraper_function(**kwargs)
 
-            if isinstance(response, dict):  # Verifica que sea un diccionario
+            if isinstance(response, dict):  
                 logger.info(f"Scraping completado para URL: {url}")
                 return response
             else:
