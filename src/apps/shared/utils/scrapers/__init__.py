@@ -46,3 +46,4 @@ from .method_books import scraper_method_books
 from .herbarium import scraper_herbarium
 from .agriculture import scraper_agriculture
 from .flora_habitas import scraper_flora_habitas
+from .cdfa_ca import scraper_cdfa

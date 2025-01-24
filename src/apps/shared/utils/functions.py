@@ -58,6 +58,26 @@ def load_keywords(file_name, base_dir=LOAD_KEYWORDS):
 def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
+def get_next_versioned_pdf_filename(folder_path, base_name="archivo"):
+    """
+    Busca el siguiente nombre de archivo PDF disponible, incrementando versiones si existe.
+    Trunca nombres largos o genera un hash para evitar rutas largas.
+    """
+    logger = get_logger("generar siguiente versión de archivo PDF")
+    try:
+        # Truncar el nombre base o usar un hash para evitar problemas de longitud
+        if len(base_name) > 50:
+            base_name = hashlib.md5(base_name.encode()).hexdigest()[:10]  # Usa los primeros 10 caracteres del hash
+        version = 0
+        while True:
+            file_name = f"{base_name}_v{version}.pdf"  # Genera nombres terminados en .pdf
+            file_path = os.path.join(folder_path, file_name)
+            if not os.path.exists(file_path):  # Verifica si ya existe
+                return file_path  # Devuelve el primer nombre disponible
+            version += 1
+    except Exception as e:
+        logger.error(f"Error al generar el nombre del archivo PDF: {str(e)}")
+        raise
 
 def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
     logger = logging.getLogger(name)
