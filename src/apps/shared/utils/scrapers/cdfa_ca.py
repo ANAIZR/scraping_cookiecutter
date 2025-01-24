@@ -9,7 +9,8 @@ from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     get_next_versioned_pdf_filename,
-    process_scraper_data_without_file
+    process_scraper_data_without_file,
+    load_keywords
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -30,22 +31,10 @@ from pathlib import Path
 
 logger = get_logger("scraper")
 
-def load_keywords(file_path="../txt/plants.txt"):
-    try:
-        base_path = os.path.dirname(os.path.abspath(_file_))
-        absolute_path = os.path.join(base_path, file_path)
-        with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [line.strip() for line in f if isinstance(line, str) and line.strip()]
-        logger.info(f"Palabras clave cargadas: {keywords}")
-        return keywords
-    except Exception as e:
-        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
-        raise
-
 def scraper_cdfa(url, sobrenombre):
     driver = initialize_driver()
     all_hrefs = []
-    keywords = load_keywords()
+    keywords = load_keywords("plants.txt")
 
     try:
         driver.get(url)
