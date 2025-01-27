@@ -52,7 +52,8 @@ from ...utils.scrapers import (
     scraper_herbarium,
     scraper_agriculture,
     scraper_flora_habitas,
-    scraper_cdfa
+    scraper_cdfa,
+    scraper_nal_usda
 )
 
 SCRAPER_FUNCTIONS = {
@@ -104,7 +105,8 @@ SCRAPER_FUNCTIONS = {
     46: scraper_herbarium,
     47: scraper_agriculture,
     48:scraper_flora_habitas,
-    49: scraper_cdfa
+    49: scraper_cdfa,
+    51: scraper_nal_usda
 
 }
 

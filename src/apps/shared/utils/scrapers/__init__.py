@@ -47,3 +47,4 @@ from .herbarium import scraper_herbarium
 from .agriculture import scraper_agriculture
 from .flora_habitas import scraper_flora_habitas
 from .cdfa_ca import scraper_cdfa
+from .nal_usda import scraper_nal_usda

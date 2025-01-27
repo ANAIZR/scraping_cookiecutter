@@ -1018,5 +1018,18 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 77,
+    "fields": {
+      "url": "https://www.nal.usda.gov/",
+      "sobrenombre": "nal-usda",
+      "time_choices": 1,
+      "mode_scrapeo": 51,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
   }
 ]
