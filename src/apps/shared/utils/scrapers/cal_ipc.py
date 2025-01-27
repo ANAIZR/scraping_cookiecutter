@@ -1,8 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from django.http import JsonResponse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from PyPDF2 import PdfReader
+from io import BytesIO
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -24,29 +25,45 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
 
     base_domain = "https://www.cal-ipc.org/"
 
+    def extract_text_from_pdf(pdf_url):
+        """
+        Extrae texto de un archivo PDF dado su URL.
+        """
+        try:
+            response = requests.get(pdf_url, headers=headers, timeout=20)
+            response.raise_for_status()
+            pdf_file = BytesIO(response.content)
+            reader = PdfReader(pdf_file)
+            extracted_text = ""
+            for page in reader.pages:
+                extracted_text += page.extract_text() + "\n"
+            return extracted_text.strip()
+        except Exception as e:
+            logger.error(f"Error al extraer texto del PDF {pdf_url}: {str(e)}")
+            return None
+
     def scrape_initial_page(current_url):
         """
-        Scrapes the initial URL to extract all hrefs with class 'paf-list'.
+        Primer nivel: Encuentra todos los enlaces en el tbody con clase td.it-latin:has(a[href]).
         """
         logger.info(f"Scraping la página inicial: {current_url}")
         try:
-            response = requests.get(current_url, headers=headers, timeout=20)
+            response = requests.get(current_url, headers=headers, timeout=50)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             
-            # Buscar todos los hrefs con clase 'paf-list'
-            links = soup.find_all("a", class_="paf-list", href=True)
-            extracted_links = []
+            td_with_links = soup.select("tbody td.it-latin:has(a[href])")
+            logger.info(f"Se encontraron {len(td_with_links)} celdas con la clase 'it-latin'.")
 
-            for link in links:
-                href = link["href"]
-                full_url = urljoin(base_domain, href)
-
-                if full_url.startswith(base_domain):
-                    logger.info(f"URL válida encontrada en página inicial: {full_url}")
-                    extracted_links.append((full_url, 1))
-
-            return extracted_links
+            links = [a['href'] for td in td_with_links for a in td.find_all("a", href=True)]
+            valid_links = [
+                (urljoin(base_domain, link), 1)
+                for link in links
+                if urljoin(base_domain, link).startswith(base_domain)
+                and not any(link.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".gif"])
+                and "upload" not in link.lower()
+            ]
+            return valid_links
 
         except requests.RequestException as e:
             logger.error(f"Error al procesar la página inicial {current_url}: {str(e)}")
@@ -54,7 +71,7 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
 
     def scrape_page(current_url, current_depth):
         """
-        Scrapes individual pages to extract the ID 'container' and additional links.
+        Procesa cada página, extrae el texto del div id=container y encuentra nuevos enlaces.
         """
         nonlocal total_urls_found, total_urls_scraped, all_scraper
 
@@ -67,32 +84,35 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
         try:
             response = requests.get(current_url, headers=headers, timeout=20)
             response.raise_for_status()
-            time.sleep(1)  # Esperar un segundo para no sobrecargar el servidor
+            time.sleep(1)
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # Extraer contenido de ID 'container'
             container_div = soup.find("div", id="container")
+            extracted_links = []
+
             if container_div:
-                content = container_div.get_text()
+                content = container_div.get_text(strip=True)
                 all_scraper += f"URL: {current_url}\n\n"
                 all_scraper += f"{content}\n"
                 all_scraper += "-" * 80 + "\n\n"
                 total_urls_scraped += 1
 
-            # Extraer nuevos links de 'paftable'
-            table = soup.find("table", id="paftable")
-            links = table.find_all("a", href=True) if table else []
-            extracted_links = []
+                links = container_div.find_all("a", href=True)
+                for link in links:
+                    href = link["href"]
+                    full_url = urljoin(base_domain, href)
 
-            for link in links:
-                href = link["href"]
-                full_url = urljoin(base_domain, href)
-
-                if full_url.startswith(base_domain) and not any(
-                    href.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".gif", ".pdf"]
-                ):
-                    logger.info(f"URL válida encontrada: {full_url}")
-                    extracted_links.append((full_url, current_depth + 1))
+                    if full_url.startswith(base_domain) and "upload" not in href.lower():
+                        if href.lower().endswith(".pdf"):
+                            pdf_text = extract_text_from_pdf(full_url)
+                            if pdf_text:
+                                all_scraper += f"Texto extraído del PDF: {full_url}\n\n"
+                                all_scraper += f"{pdf_text}\n"
+                                all_scraper += "-" * 80 + "\n\n"
+                            else:
+                                all_scraper += f"Enlace PDF (no se pudo extraer texto): {full_url}\n"
+                        elif not any(href.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".gif"]):
+                            extracted_links.append((full_url, current_depth + 1))
 
             total_urls_found += len(extracted_links)
             return extracted_links
@@ -104,7 +124,7 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
 
     def scrape_pages_in_parallel(url_list):
         """
-        Parallel scraping of pages.
+        Procesa las páginas en paralelo.
         """
         with ThreadPoolExecutor(max_workers=6) as executor:
             future_to_url = {
@@ -119,11 +139,11 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
                     logger.error(f"Error en tarea de scraping: {str(e)}")
 
     try:
-        # Paso 1: Obtener URLs iniciales desde la página principal
+        # Nivel 1: Obtener URLs iniciales
         initial_links = scrape_initial_page(url)
         urls_to_scrape.extend(initial_links)
 
-        # Paso 2: Procesar las URLs extraídas
+        # Niveles subsiguientes: Procesar URLs extraídas
         while urls_to_scrape:
             current_batch = [
                 (url, depth)
@@ -146,7 +166,6 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
             all_scraper += "URLs no scrapeadas:\n\n"
             all_scraper += "\n".join(urls_not_scraped) + "\n"
 
-        # Guardar los datos procesados
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
