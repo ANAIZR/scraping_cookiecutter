@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from src.apps.shared.views import compare
 
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
@@ -18,6 +19,7 @@ urlpatterns = [
         name="api-swagger",
     ),
     path("api/v1/", include("src.apps.shared.api.router")),
+    path('api/compare', compare, name='compare')
 ]
 
 if settings.DEBUG:

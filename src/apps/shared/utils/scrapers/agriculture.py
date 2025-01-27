@@ -1,10 +1,6 @@
 import requests
-import time
-import os
-import random
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urljoin
 from rest_framework.response import Response
 from rest_framework import status
 from ..functions import (
@@ -12,168 +8,100 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
-    generate_directory
+    generate_directory,
 )
 
-logger = get_logger("scraper")
 
 def scraper_agriculture(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
-    processed_links = set()
-    urls_to_scrape = [(url, 1)]  
-    non_scraped_urls = []  
+    nivel_1_links = []
+    nivel_2_links = []
+    processed_links = {}  
+    headers = {"User-Agent": get_random_user_agent()}
 
-    total_found_links = 0
-    total_scraped_links = 0
-    total_non_scraped_links = 0
-
-    main_folder = ""
-
-    def scrape_page_agriculture(url, sobrenombre):
-        try:
-            scrapper =""
-            print("depth 1")
-            main_folder = generate_directory(url)
-            headers = {"User-Agent": get_random_user_agent()}
-            new_links = []
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  
-            soup = BeautifulSoup(response.content, "html.parser")
- 
-            #depth = 0 : nivel de profundidad, primera pagina
-            div = soup.find("td", class_="newsroom_2cols")
-            links = div.find_all("a", href=True, target="_blank")
-            print("depth after 1, links: ",len(links))
-
-            for link in links:
-                # scrape_page_block()
-                # if link in processed_links :
-                #     return 0
-                #obtencion del href
-                print("depth 2")
-
-                link_href = link.get("href")
-                response_page2 = requests.get(link_href, headers=headers)
-                response_page2.raise_for_status()
-                soup_page2 = BeautifulSoup(response_page2.content, "html.parser")
-                div_page2 = soup_page2.find("td", class_="newsroom_2cols")
-                links_page2 = div_page2.find_all("a", href=True, target="_blank")
-                for link_page in links_page2:                    
-                    print("depth 3")
-                    inner_href = link_page.get("href")
-                    if inner_href in processed_links :
-                        return 0
-                    response_page3 = requests.get(inner_href, headers=headers)
-                    response_page3.raise_for_status()
-                    soup_page3 = BeautifulSoup(response_page3.content, "html.parser")
-                    container_div = soup_page3.find("td", class_="newsroom_2cols")
-                    page_text = container_div.get_text(strip=True)
-                    scrapper += f"URL: {page_text} \n"
-
-                    processed_links.add(inner_href)
-            return scrapper
-        except Exception as e:
-            logger.error(f"Error en tarea de scraping por href: {str(e)}")
-
-    def scrape_page_block():
-        ## div que contiene la info para scrapeo
-        soup = BeautifulSoup(response.content, "html.parser")
-        container_div = soup.find("div", class_="newsroom_2cols")
-        page_text = container_div.get_text(strip=True)
-        return page_text
-    
-    def scrape_page(url, depth):
-        nonlocal total_found_links, total_scraped_links, total_non_scraped_links
-
-        if url in processed_links or depth > 3: 
+    def extract_links(current_url):
+        if processed_links.get(current_url, 0) >= 2:
+            logger.warning(f"Saltando URL (ya procesada más de 2 veces): {current_url}")
             return []
-        processed_links.add(url)
-
-        logger.info(f"Accediendo a {url} en el nivel {depth}")
-
-        headers = {"User-Agent": get_random_user_agent()}
-        new_links = []
 
         try:
-            response = requests.get(url, headers=headers)
+            logger.info(f"Conectando a la URL: {current_url}")
+            response = requests.get(current_url, headers=headers, timeout=10) 
+            
+            if not (200 <= response.status_code < 300):
+                logger.warning(f"HTTP {response.status_code} recibido para {current_url}. Saltando URL.")
+                return []
+
+            logger.info(f"Conexión exitosa. Procesando contenido de {current_url}")
+            processed_links[current_url] = processed_links.get(current_url, 0) + 1  
+            soup = BeautifulSoup(response.content, "html.parser")
+
+            td_element = soup.find("td", class_="newsroom_2cols")
+            if not td_element:
+                logger.warning(f"No se encontró el td con la clase 'newsroom_2cols' en {current_url}")
+                return []
+
+            links = [
+                urljoin(current_url, link.get("href"))
+                for link in td_element.find_all("a", href=True, target="_blank")
+            ]
+            logger.info(f"Se encontraron {len(links)} enlaces en {current_url}")
+            return links
+
+        except requests.exceptions.Timeout:
+            logger.error(f"Tiempo de espera agotado para {current_url}")
+            return []
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error al procesar la URL {current_url}: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error inesperado al procesar {current_url}: {e}")
+            return []
+
+
+    def extract_text(current_url):
+        if processed_links.get(current_url, 0) >= 1:
+            logger.warning(f"Saltando URL (ya procesada 1 vez): {current_url}")
+            return ""
+
+        try:
+            response = requests.get(current_url, headers=headers)
             response.raise_for_status()
 
+            processed_links[current_url] = processed_links.get(current_url, 0) + 1 
             soup = BeautifulSoup(response.content, "html.parser")
+            td_element = soup.find("td", class_="newsroom_2cols")
+            if not td_element:
+                logger.warning(f"No se encontró el td con la clase 'newsroom_2cols' en {current_url}")
+                return ""
 
-            if depth >= 2:
-                main_content = soup.find("main", id="main")
-                if main_content:
-                    nonlocal all_scraper
-                    page_text = main_content.get_text(strip=True)
-                    all_scraper += f"URL: {url}\n{page_text}\n\n" 
-
-            for link in soup.find_all("a", href=True):
-                inner_href = link.get("href")
-                full_url = urljoin(url, inner_href)
-
-                if full_url.lower().endswith(".pdf"):
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
-                    continue
-
-                if "forms" in full_url or "":  
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
-                    continue
-
-                if (
-                    urlparse(full_url).netloc == "www.aphis.usda.gov"
-                    and full_url not in processed_links
-                ):
-                    total_found_links += 1  
-                    new_links.append((full_url, depth + 1))
-                    total_scraped_links += 1 
-
+            return td_element.get_text(separator=" ", strip=True)
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error al procesar el enlace {url}: {e}")
-            total_non_scraped_links += 1  
-            non_scraped_urls.append(url)  
+            logger.error(f"Error al procesar la URL {current_url}: {e}")
+            return ""
 
-        return new_links
 
-    def scrape_pages_in_parallel(url_list):
-        new_links = []
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            future_to_url = {
-                executor.submit(scrape_page, url, depth): (url, depth)
-                for url, depth in url_list
-            }
-            for future in as_completed(future_to_url):
-                try:
-                    result_links = future.result()
-                    new_links.extend(result_links)
-                except Exception as e:
-                    logger.error(f"Error en tarea de scraping: {str(e)}")
-                    total_non_scraped_links += 1  
-        return new_links
 
     try:
-        # while urls_to_scrape:
-        #     logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
-        #     urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
-        #     time.sleep(random.uniform(1, 3)) 
-        
-        res = scrape_page_agriculture(url,sobrenombre) 
-        file_path = os.path.join(main_folder, "scraped.txt")
-        ##CREACION Y ESCRITURA DE ARCHIVO
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(res)
+        logger.info("Extrayendo enlaces del nivel 1")
+        nivel_1_links = extract_links(url)
+        logger.info(f"Enlaces nivel 1: {len(nivel_1_links)} encontrados.")
 
-        print("despues de las funciones")
+        for link in nivel_1_links:
+            logger.info(f"Procesando enlaces del nivel 2 desde {link}")
+            nivel_2_links.extend(extract_links(link))
 
-        all_scraper += f"\n\nTotal links found: {total_found_links}\n"
-        all_scraper += f"Total links scraped: {total_scraped_links}\n"
-        all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
-        all_scraper += "\n\nURLs no scrapeadas:\n"
-        all_scraper += "\n".join(non_scraped_urls)  
+        logger.info(f"Enlaces nivel 2: {len(nivel_2_links)} encontrados.")
+
+        for link in nivel_2_links:
+            logger.info(f"Extrayendo texto del nivel 3 desde {link}")
+            text = extract_text(link)
+            if text:
+                all_scraper += f"URL: {link}\n{text}\n\n"
+
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 

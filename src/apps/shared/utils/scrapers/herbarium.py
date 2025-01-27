@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import time
 import os
 import random
+from selenium.common.exceptions import StaleElementReferenceException
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -27,7 +28,6 @@ def load_keywords(file_path="../txt/family.txt"):
             keywords = [
                 line.strip() for line in f if isinstance(line, str) and line.strip()
             ]
-        # logger.info(f"Palabras clave cargadas: {keywords}")
         return keywords
     except Exception as e:
         logger.info(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
@@ -38,130 +38,116 @@ def scraper_herbarium(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
-    processed_links = set()
 
     try:
         driver.get(url)
 
-        link_list = driver.find_elements(
-            By.CSS_SELECTOR, "#nav ul li a"
-        )
-
-        print("cantidad de links ",len(link_list))
+        link_list = driver.find_elements(By.CSS_SELECTOR, "#nav ul li a")
+        logger.info(f"Cantidad de links encontrados: {len(link_list)}")
 
         main_folder = generate_directory(url)
         index = 1
-    
-        while True:
-            for link in link_list:
-                try:
-                    print(f"pagina # :",index)
-                    href = link.get_attribute("href")
-                    secondary_window = driver.current_window_handle
 
-                    sub_path = urljoin(main_folder, href)
-                    sub_folder = generate_directory(sub_path)
+        for link in link_list:
+            try:
+                if index == 3:
+                    break
 
-                    #abriendo enlaces principales(son 2)
-                    driver.get(href)
+                logger.info(f"Procesando página # {index}")
+                href = link.get_attribute("href")
+                secondary_window = driver.current_window_handle
 
-                    keywords = load_keywords()
-                    cont = 1
+                sub_folder = os.path.join(main_folder, str(href.split("/")[-1]))
+                os.makedirs(sub_folder, exist_ok=True)
 
-                    if(index == 1):
+                driver.get(href)
 
-                        for keyword in keywords:
-                            if(keyword):
-                                print(f"Buscando con la palabra clave {cont}: {keyword}")
-                                try:
-                                    search_input =  WebDriverWait(driver, 10).until(
-                                        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='family']"))
-                                        )
-                                    search_input.clear()
-                                    search_input.send_keys(keyword)
-                                    time.sleep(random.uniform(2, 4))
+                keywords = load_keywords()
+                cont = 1
 
-                                    search_input.submit()
+                if index == 1:
+                    for keyword in keywords:
+                        if keyword:
+                            logger.info(f"Buscando con la palabra clave {cont}: {keyword}")
+                            try:
+                                search_input = WebDriverWait(driver, 10).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='family']"))
+                                )
+                                search_input.clear()
+                                search_input.send_keys(keyword)
+                                time.sleep(random.uniform(2, 4))
 
-                                    #######################PAGINA A SCRAPEAR#######################
+                                search_input.submit()
 
-                                    driver.execute_script("window.open(arguments[0]);", href)
-                                    new_window = driver.window_handles[1]
-                                    driver.switch_to.window(new_window)
-                                    time.sleep(random.uniform(2, 4))
-                                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                                    items = page_soup.select("tbody tr")
-                                    print("pintando items ",len(items))
-                                
+                                driver.execute_script("window.open(arguments[0]);", href)
+                                new_window = driver.window_handles[1]
+                                driver.switch_to.window(new_window)
+                                time.sleep(random.uniform(2, 4))
 
-                                    for item in items:
-                                        tds = item.find_all("td")
-                                        # print("pintando tds ",len(tds))
-                                        for td in tds:
-                                            all_scraper += f"{td.get_text(strip=True)};"
-                                        all_scraper += "\n"
-                                        # logger.info("fila escrapeada por adrian ",all_scraper)
+                                page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                                items = page_soup.select("tbody tr")
+                                logger.info(f"Items encontrados: {len(items)}")
 
-                                    file_path = get_next_versioned_filename(
-                                        sub_folder, keyword
-                                    )
+                                for item in items:
+                                    tds = item.find_all("td")
+                                    for td in tds:
+                                        all_scraper += f"{td.get_text(strip=True)};"
+                                    all_scraper += "\n"
 
-                                    ##CREACION Y ESCRITURA DE ARCHIVO
-                                    with open(file_path, "w", encoding="utf-8") as file:
-                                        file.write(all_scraper)
-                                    
-                                    cont += 1
-                                    driver.close()
-                                    driver.switch_to.window(secondary_window)
-                                    time.sleep(random.uniform(2, 4))
+                                file_path = get_next_versioned_filename(sub_folder, keyword)
+                                with open(file_path, "w", encoding="utf-8") as file:
+                                    file.write(all_scraper)
 
-                                except Exception as e:
-                                    logger.info(f"Error al realizar la búsqueda: {e}")      
-                                    scraping_failed = True
-                                    continue
+                                cont += 1
+                                driver.close()
+                                driver.switch_to.window(secondary_window)
+                                time.sleep(random.uniform(2, 4))
 
-                        driver.back()
-                        time.sleep(random.uniform(2, 4))
-                    elif(index == 2):
-                        print("segundo link")
-                        subDirectory = "islands"
-                        search_input =  WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='B1']"))
-                            )
-                        search_input.click()
+                            except Exception as e:
+                                logger.info(f"Error al realizar la búsqueda: {e}")
+                                continue
 
-                        items = page_soup.select("tbody tr")
-                        print("pintando items ",len(items))
-                        for item in items:
-                            tds = item.find_all("td")
-                            # print("pintando tds ",len(tds))
-                            for td in tds:
-                                all_scraper += f"{td.get_text(strip=True)};"
-                            all_scraper += "\n"
-                            # logger.info("fila escrapeada por adrian ",all_scraper)
+                    driver.back()
+                    time.sleep(random.uniform(2, 4))
 
-                        file_path = get_next_versioned_filename(
-                            sub_folder, subDirectory
-                        )
+                elif index == 2:
+                    logger.info("Procesando el segundo enlace")
+                    sub_directory = "islands"
 
-                        ##CREACION Y ESCRITURA DE ARCHIVO
-                        with open(file_path, "w", encoding="utf-8") as file:
-                            file.write(all_scraper)
-                        
-                        time.sleep(random.uniform(2, 4))
-                        driver.quit()
-                    
-                    index += 1
+                    search_input = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='B1']"))
+                    )
+                    search_input.click()
 
-                except:
-                    print("Error en el contenido")
+                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                    items = page_soup.select("tbody tr")
+                    logger.info(f"Items encontrados: {len(items)}")
+
+                    for item in items:
+                        tds = item.find_all("td")
+                        for td in tds:
+                            all_scraper += f"{td.get_text(strip=True)};"
+                        all_scraper += "\n"
+
+                    file_path = get_next_versioned_filename(sub_folder, sub_directory)
+
+                    with open(file_path, "w", encoding="utf-8") as file:
+                        file.write(all_scraper)
+
+                    time.sleep(random.uniform(2, 4))
+                    driver.quit()
+
+                index += 1
+
+            except Exception as e:
+                logger.error(f"Error al procesar el contenido: {e}")
 
     except Exception as e:
-        print(f"Error general en el proceso de scraping: {str(e)}")
+        logger.error(f"Error general en el proceso de scraping: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         try:
             driver.quit()
         except Exception as e:
-            print(f"Error al cerrar el navegador: {e}")
+            logger.error(f"Error al cerrar el navegador: {e}")
