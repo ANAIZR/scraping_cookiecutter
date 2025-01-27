@@ -1,4 +1,3 @@
-import os
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -13,17 +12,15 @@ from ..functions import (
 
 
 def scraper_flora_habitas(url, sobrenombre):
-  
     headers = {"User-Agent": get_random_user_agent()}
-    logger = get_logger("scraper")
+    logger = get_logger("FLORA_HABITAS")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
 
-    visited_urls = set()
-    urls_not_scraped = []
-    all_scraper = ""
+    visited_urls = set()  
+    urls_not_scraped = []  
+    all_scraper = "" 
 
     def get_page_content(current_url):
-     
         try:
             response = requests.get(current_url, headers=headers)
             response.raise_for_status()
@@ -33,35 +30,31 @@ def scraper_flora_habitas(url, sobrenombre):
             urls_not_scraped.append(current_url)
             return None
 
-    def extract_hrefs_from_table(html_content, base_url):
-       
+    def extract_hrefs_from_div(html_content, base_url):
+        """Extrae todos los enlaces del div#contents, excluyendo los que contienen 'family'."""
         soup = BeautifulSoup(html_content, "html.parser")
-        hrefs = []
-        contents = soup.find("div",id="contents")  
+        hrefs = set()  
+        contents = soup.find("div", id="contents")
         if contents:
-            rows = contents.find_all("tr")  
-            logger.info(f"Filas encontradas en tbody: {len(rows)}")
-            for row in rows:
-                first_td = row.find("td")  
-                if first_td:
-                    link = first_td.find("a", href=True) 
-                    if link:
-                        href = link["href"]
-                        if not href.startswith("http"):
-                            href = urljoin(base_url, href)
-                        hrefs.append(href)
+            links = contents.find_all("a", href=True)  
+            for link in links:
+                href = link["href"]
+                if "family" not in href.lower():  # Excluir enlaces que contienen 'family'
+                    full_url = urljoin(base_url, href) if not href.startswith("http") else href
+                    hrefs.add(full_url)
+                else:
+                    logger.info(f"Enlace excluido (contiene 'family'): {href}")
         else:
-            logger.warning("No se encontró tbody en el HTML proporcionado.")
+            logger.warning("No se encontró el div#contents en el HTML proporcionado.")
         return hrefs
 
     def scrape_page(link):
-      
         nonlocal all_scraper
         if link in visited_urls:
             logger.info(f"URL ya procesada: {link}")
             return None
 
-        visited_urls.add(link)
+        visited_urls.add(link)  
         logger.info(f"Procesando URL: {link}")
 
         html_content = get_page_content(link)
@@ -76,7 +69,6 @@ def scraper_flora_habitas(url, sobrenombre):
             logger.error(f"No se pudo obtener el contenido de la URL: {link}")
 
     def process_links_in_parallel(links):
-      
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_url = {executor.submit(scrape_page, link): link for link in links}
             for future in as_completed(future_to_url):
@@ -90,8 +82,8 @@ def scraper_flora_habitas(url, sobrenombre):
         if not main_html:
             raise ValueError("No se pudo obtener el contenido de la página principal.")
 
-        links = extract_hrefs_from_table(main_html, "https://www.habitas.org.uk/flora/")
-        logger.info(f"Total de enlaces encontrados: {len(links)}")
+        links = extract_hrefs_from_div(main_html, url)
+        logger.info(f"Total de enlaces encontrados en la página principal: {len(links)}")
 
         process_links_in_parallel(links)
 
@@ -106,7 +98,6 @@ def scraper_flora_habitas(url, sobrenombre):
             all_scraper += "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-
 
         return response
 
