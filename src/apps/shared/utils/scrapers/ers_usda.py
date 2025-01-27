@@ -13,8 +13,8 @@ from ..functions import (
     get_random_user_agent,
 )
 
-def scraper_aphis_usda(url, sobrenombre):
-    logger = get_logger("APHIS")
+def scraper_ers_usda(url, sobrenombre):
+    logger = get_logger("ERS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
@@ -45,10 +45,9 @@ def scraper_aphis_usda(url, sobrenombre):
             soup = BeautifulSoup(response.content, "html.parser")
 
             if depth >= 2:
-                main_content = soup.find("main", id="main")
+                main_content = soup.find("main", id="main-content")
                 if main_content:
                     nonlocal all_scraper
-                    # page_text = main_content.get_text(strip=True)
                     page_text = main_content.get_text(separator=" ", strip=True)
                     all_scraper += f"URL: {url}\n{page_text}\n\n" 
 
@@ -67,7 +66,7 @@ def scraper_aphis_usda(url, sobrenombre):
                     continue
 
                 if (
-                    urlparse(full_url).netloc == "www.aphis.usda.gov"
+                    urlparse(full_url).netloc == "www.ers.usda.gov"
                     and full_url not in processed_links
                 ):
                     total_found_links += 1  

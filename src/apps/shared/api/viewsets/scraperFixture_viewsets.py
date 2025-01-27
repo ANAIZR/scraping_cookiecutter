@@ -53,7 +53,9 @@ from ...utils.scrapers import (
     scraper_agriculture,
     scraper_flora_habitas,
     scraper_cdfa,
-    scraper_nal_usda
+    scraper_nal_usda,
+    scraper_ers_usda,
+    scraper_ars_usda
 )
 
 SCRAPER_FUNCTIONS = {
@@ -106,7 +108,9 @@ SCRAPER_FUNCTIONS = {
     47: scraper_agriculture,
     48:scraper_flora_habitas,
     49: scraper_cdfa,
-    51: scraper_nal_usda
+    51: scraper_nal_usda,
+    52: scraper_ers_usda,
+    53: scraper_ars_usda
 
 }
 

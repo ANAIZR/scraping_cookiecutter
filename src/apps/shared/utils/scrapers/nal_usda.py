@@ -48,7 +48,7 @@ def scraper_nal_usda(url, sobrenombre):
                 main_content = soup.find("main", id="main-content")
                 if main_content:
                     nonlocal all_scraper
-                    page_text = main_content.get_text(strip=True)
+                    page_text = main_content.get_text(separator=" ", strip=True)
                     all_scraper += f"URL: {url}\n{page_text}\n\n" 
 
             for link in soup.find_all("a", href=True):
