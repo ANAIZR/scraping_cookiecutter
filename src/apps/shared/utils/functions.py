@@ -35,7 +35,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
 
-def load_keywords(file_name, base_dir=LOAD_KEYWORDS):
+def load_keywords(file_name ="all.txt", base_dir=LOAD_KEYWORDS):
     logger = get_logger("CARGAR PALABRAS CLAVE")
     try:
         file_path = os.path.join(base_dir, file_name)

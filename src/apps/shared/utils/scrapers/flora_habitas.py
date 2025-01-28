@@ -2,23 +2,24 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from django.http import JsonResponse
 from ..functions import (
     process_scraper_data,
+    connect_to_mongo,
     get_logger,
     get_random_user_agent,
-    connect_to_mongo,
 )
+from rest_framework.response import Response
+from rest_framework import status
 
 
 def scraper_flora_habitas(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
-    logger = get_logger("FLORA_HABITAS")
+    logger = get_logger("scraper")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
-
-    visited_urls = set()  
-    urls_not_scraped = []  
-    all_scraper = "" 
+    all_scraper = ""
+    visited_urls = set()
+    urls_not_scraped = []
+    hrefs = set() 
 
     def get_page_content(current_url):
         try:
@@ -26,37 +27,28 @@ def scraper_flora_habitas(url, sobrenombre):
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
-            logger.error(f"Error al obtener contenido de {current_url}: {str(e)}")
+            logger.error(f"Error al obtener la URL {current_url}: {e}")
             urls_not_scraped.append(current_url)
             return None
 
     def extract_hrefs_from_div(html_content, base_url):
-        """Extrae todos los enlaces del div#contents, excluyendo los que contienen 'family'."""
         soup = BeautifulSoup(html_content, "html.parser")
-        hrefs = set()  
-        contents = soup.find("div", id="contents")
-        if contents:
-            links = contents.find_all("a", href=True)  
-            for link in links:
-                href = link["href"]
-                if "family" not in href.lower():  # Excluir enlaces que contienen 'family'
-                    full_url = urljoin(base_url, href) if not href.startswith("http") else href
+        contents_div = soup.find("div", id="contents")
+        if contents_div:
+            for link in contents_div.find_all("a", href=True):
+                full_url = urljoin(base_url, link["href"])
+                if "Family" not in full_url and full_url not in visited_urls:
                     hrefs.add(full_url)
                 else:
-                    logger.info(f"Enlace excluido (contiene 'family'): {href}")
+                    logger.info(f"URL ignorada (duplicada o contiene 'Familia'): {full_url}")
         else:
-            logger.warning("No se encontró el div#contents en el HTML proporcionado.")
-        return hrefs
+            logger.info("No se encontró el div#contents en la página principal.")
+        print(f"Enlaces encontrados: {list(hrefs)}")
 
     def scrape_page(link):
         nonlocal all_scraper
-        if link in visited_urls:
-            logger.info(f"URL ya procesada: {link}")
-            return None
-
-        visited_urls.add(link)  
-        logger.info(f"Procesando URL: {link}")
-
+        print(f"Procesando URL: {link}") 
+        visited_urls.add(link) 
         html_content = get_page_content(link)
         if html_content:
             soup = BeautifulSoup(html_content, "html.parser")
@@ -64,28 +56,23 @@ def scraper_flora_habitas(url, sobrenombre):
             if contents_div:
                 all_scraper += f"URL: {link}\n\n{contents_div.get_text(strip=True)}\n{'-' * 80}\n\n"
             else:
-                logger.warning(f"No se encontró el div#contents en {link}")
-        else:
-            logger.error(f"No se pudo obtener el contenido de la URL: {link}")
-
-    def process_links_in_parallel(links):
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_url = {executor.submit(scrape_page, link): link for link in links}
-            for future in as_completed(future_to_url):
-                try:
-                    future.result()
-                except Exception as e:
-                    logger.error(f"Error en tarea de scraping: {str(e)}")
+                logger.info(f"No se encontró el div#contents en {link}")
 
     try:
         main_html = get_page_content(url)
         if not main_html:
             raise ValueError("No se pudo obtener el contenido de la página principal.")
 
-        links = extract_hrefs_from_div(main_html, url)
-        logger.info(f"Total de enlaces encontrados en la página principal: {len(links)}")
+        extract_hrefs_from_div(main_html, url)
+        logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
 
-        process_links_in_parallel(links)
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_url = {executor.submit(scrape_page, link): link for link in hrefs}
+            for future in as_completed(future_to_url):
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(f"Error procesando {future_to_url[future]}: {str(e)}")
 
         all_scraper = (
             f"Resumen del scraping:\n"
@@ -95,14 +82,14 @@ def scraper_flora_habitas(url, sobrenombre):
         ) + all_scraper
 
         if urls_not_scraped:
-            all_scraper += "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
+            all_scraper += (
+                "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
+            )
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
 
         return response
 
     except Exception as e:
-        logger.error(f"Error inesperado durante el scraping: {str(e)}")
-        return JsonResponse(
-            {"error": f"Error durante el scraping: {str(e)}"}, status=500
-        )
+        logger.error(f"Error general en el proceso de scraping: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

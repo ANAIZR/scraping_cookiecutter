@@ -20,17 +20,22 @@ from rest_framework.response import Response
 from rest_framework import status
 
 logger = get_logger("scraper")
+
+
 def load_keywords(file_path="../txt/plants.txt"):
     try:
         base_path = os.path.dirname(os.path.abspath(__file__))
         absolute_path = os.path.join(base_path, file_path)
         with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [line.strip() for line in f if isinstance(line, str) and line.strip()]
+            keywords = [
+                line.strip() for line in f if isinstance(line, str) and line.strip()
+            ]
         logger.info(f"Palabras clave cargadas: {keywords}")
         return keywords
     except Exception as e:
         logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
         raise
+
 
 def scraper_cabi_digital(url, sobrenombre):
     try:
@@ -184,7 +189,7 @@ def scraper_cabi_digital(url, sobrenombre):
                             "No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave."
                         )
                         driver.get(url)
-                        break  # Salir del bucle interno
+                        break  
                 except Exception as e:
                     logger.error(f"Error al procesar resultados: {e}")
                     scraping_failed = True
@@ -218,8 +223,6 @@ def scraper_cabi_digital(url, sobrenombre):
 
             return Response(
                 {
-                    "status": "success",
-                    "message": "Los datos han sido scrapeados correctamente.",
                     "data": response_data,
                 },
                 status=status.HTTP_200_OK,
@@ -230,7 +233,6 @@ def scraper_cabi_digital(url, sobrenombre):
             {"status": "error", "message": f"Error durante el scraping: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
 
     finally:
         driver.quit()
