@@ -56,7 +56,8 @@ from ...utils.scrapers import (
     scraper_nal_usda,
     scraper_ers_usda,
     scraper_ars_usda,
-    scraper_hort_purdue
+    scraper_hort_purdue,
+    scraper_cdfa
 )
 
 SCRAPER_FUNCTIONS = {

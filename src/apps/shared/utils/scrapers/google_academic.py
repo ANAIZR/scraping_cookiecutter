@@ -8,7 +8,8 @@ from ..functions import (
     initialize_driver,
     generate_directory,
     get_next_versioned_filename,
-    process_scraper_data_without_file
+    process_scraper_data_without_file,
+    load_keywords
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -21,19 +22,6 @@ import requests
 import re
 
 logger = get_logger("scraper")
-
-def load_keywords(file_path="../txt/plants.txt"):
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        absolute_path = os.path.join(base_path, file_path)
-        with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [line.strip() for line in f if isinstance(line, str) and line.strip()]
-        logger.info(f"Palabras clave cargadas: {keywords}")
-        return keywords
-    except Exception as e:
-        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
-        raise
-
 
 def random_wait(min_wait=2, max_wait=6):
     wait_time = random.uniform(min_wait, max_wait)
@@ -96,7 +84,7 @@ def scraper_google_academic(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
 
-    keywords = load_keywords()
+    keywords = load_keywords("plants.txt")
     
 
     base_folder_path = generate_directory(url)
@@ -145,10 +133,20 @@ def scraper_google_academic(url, sobrenombre):
 
                     if result not in visited_urls:
                         try:
+                            try:
+                                captcha_element = driver.find_element(By.CSS_SELECTOR, "div.captcha")
+                                if captcha_element:
+                                    print(f"*****CAPTCHA detectado en {result}. Saltando este enlace...")
+                                    continue
+                            except Exception as e:
+                                print(f"**No se detectó CAPTCHA en {result}. Continuando...")
+                                pass
+                            
                             response = requests.head(result, allow_redirects=True, timeout=10)
                             if response.status_code == 420:
                                 print(f"El enlace {result} devolvió un código HTTP 420. Ignorando.")
                                 continue
+                            
 
                             href_name = re.sub(r'[^\w\-_]', '_', result.split("/")[-1])[:50]
 
@@ -204,12 +202,18 @@ def scraper_google_academic(url, sobrenombre):
                                 cleaned_body_content = ' '.join(body_content.split())
                                 print(f"Contenido capturado:\n{cleaned_body_content[:500]}")
 
-                                file_path = get_next_versioned_filename(link_folder, sobrenombre)
-                                if not os.path.exists(file_path):
-                                    with open(file_path, "w", encoding="utf-8") as f:
-                                        f.write(f"URL: {result}\n{cleaned_body_content}\n")
-                                    print(f"Archivo guardado en: {file_path}")
+                                # Usa el nombre del link_folder como base para los archivos
+                                link_folder_name = os.path.basename(link_folder)
 
+                                # Genera el nombre del archivo basado en el nombre del link_folder
+                                file_path = get_next_versioned_filename(link_folder, link_folder_name)
+
+                                # Guarda el contenido en el archivo
+                                with open(file_path, "w", encoding="utf-8") as f:
+                                    f.write(f"URL: {result}\n{cleaned_body_content}\n")
+                                print(f"Archivo guardado en: {file_path}")
+
+                                # Añade el contenido a la lista de resultados
                                 all_links.append({"url": result, "content": cleaned_body_content})
                                 visited_urls.add(result)
                                 driver.get(current_page_url)
@@ -217,12 +221,13 @@ def scraper_google_academic(url, sobrenombre):
                             else:
                                 print(f"No se pudo capturar el contenido del body para el link: {result}")
 
+
                         except Exception as e:
                             print(f"No se pudo acceder al link {result}: {e}")
                             driver.get(current_page_url)
                             time.sleep(3)
 
-                if "start=20" in current_page_url:
+                if "start=10" in current_page_url:
                     print(f"Se alcanzó la página 10 para '{keyword}'. Fin del scraping para esta palabra.")
                     break
 
