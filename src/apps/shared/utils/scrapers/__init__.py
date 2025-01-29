@@ -51,3 +51,5 @@ from .nal_usda import scraper_nal_usda
 from .ers_usda import scraper_ers_usda
 from .ars_usda import scraper_ars_usda
 from .ippc_int import scraper_ippc_int
+from .hort_purdue import scraper_hort_purdue
+from .cdfa_ca import scraper_cdfa

@@ -27,11 +27,8 @@ logger = get_logger("scraper")
 
 
 def scraper_biota_nz(url, sobrenombre):
-    content_found = False
-    object_id = None
     driver = initialize_driver()
     base_domain = "https://biotanz.landcareresearch.co.nz"
-    all_links = []
 
     try:
         driver.get(url)
@@ -56,7 +53,6 @@ def scraper_biota_nz(url, sobrenombre):
             logger.info(f"Buscando la palabra clave: {keyword}")
 
             try:
-                # Volver al URL inicial antes de cada búsqueda
                 driver.get(url)
                 time.sleep(random.uniform(6, 10))
 
@@ -70,6 +66,11 @@ def scraper_biota_nz(url, sobrenombre):
             except Exception as e:
                 logger.error(f"Error al buscar la palabra clave '{keyword}': {e}")
                 continue
+
+            keyword_folder = generate_directory(keyword, main_folder)
+            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
+
+            content_accumulated = ""
 
             while True:
                 try:
@@ -92,8 +93,26 @@ def scraper_biota_nz(url, sobrenombre):
                         if link_element:
                             href = link_element["href"]
                             full_url = f"{base_domain}{href}"
-                            all_links.append(full_url)
-                            logger.info(f"Enlace recolectado: {full_url}")
+                            logger.info(f"Procesando enlace: {full_url}")
+                            response = requests.get(
+                                full_url,
+                                headers={"User-Agent": get_random_user_agent()},
+                            )
+
+                            if response.status_code == 200:
+                                link_soup = BeautifulSoup(
+                                    response.content, "html.parser"
+                                )
+                                body = link_soup.select_one(
+                                    "div#detail-page>div.page-content-wrapper>div.details-page-content"
+                                )
+                                body_text = body.get_text(strip=True) if body else ""
+                                content_accumulated += (
+                                    f"URL: {full_url}\nTexto: {body_text}\n\n"
+                                )
+                                content_accumulated += "-" * 100 + "\n\n"
+                            else:
+                                logger.warning(f"Error al acceder a la URL: {full_url}")
 
                     try:
                         next_page = WebDriverWait(driver, 10).until(
@@ -115,94 +134,45 @@ def scraper_biota_nz(url, sobrenombre):
                     )
                     break
 
-        driver.quit()
+            if content_accumulated:
+                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
+                    keyword_file.write(content_accumulated)
 
-        def process_link(link):
-            nonlocal object_id
-            headers = {"User-Agent": get_random_user_agent()}
-            try:
-                response = requests.get(link, timeout=10, headers=headers)
-                if response.status_code == 200:
-                    soup = BeautifulSoup(response.content, "html.parser")
-                    body = soup.select_one(
-                        "div#detail-page>div.page-content-wrapper>div.details-page-content"
+                with open(keyword_file_path, "rb") as file_data:
+                    object_id = fs.put(
+                        file_data,
+                        filename=os.path.basename(keyword_file_path),
+                        metadata={
+                            "keyword": keyword,
+                            "scraping_date": datetime.now(),
+                        },
                     )
-                    body_text = body.get_text(strip=True) if body else None
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                    if body_text:
-                        keyword_folder = generate_directory(link, main_folder)
-                        file_path = get_next_versioned_filename(
-                            keyword_folder, sobrenombre
-                        )
-                        contenido = f"URL: {link}\n\n{body_text}"
+        data = {
+            "Objeto": object_id,
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+        }
+        response_data = {
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": data["Fecha_scraper"],
+            "Etiquetas": data["Etiquetas"],
+            "Mensaje": "Los datos han sido scrapeados correctamente.",
+        }
 
-                        with open(file_path, "w", encoding="utf-8") as file:
-                            file.write(contenido)
+        collection.insert_one(data)
+        delete_old_documents(url, collection, fs)
 
-                        with open(file_path, "rb") as file_data:
-                            object_id = fs.put(
-                                file_data,
-                                filename=os.path.basename(file_path),
-                            )
-
-                        logger.info(f"Contenido guardado para {link}")
-                        return True
-                    else:
-                        logger.warning(f"No se encontró contenido en {link}")
-                        return False
-                else:
-                    logger.warning(
-                        f"Solicitud fallida para {link} con código {response.status_code}"
-                    )
-                    return False
-            except Exception as e:
-                logger.error(f"Error al procesar el enlace {link}: {e}")
-                return False
-
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = {executor.submit(process_link, link): link for link in all_links}
-            for future in as_completed(futures):
-                link = futures[future]
-                try:
-                    if future.result():
-                        content_found = True
-                except Exception as e:
-                    logger.error(f"Error procesando el enlace {link}: {e}")
-
-        if content_found:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-
-            return Response(
-                {
-                    "status": "success",
-                    "message": "Los datos han sido scrapeados correctamente.",
-                    "data": response_data,
-                },
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(
-                {
-                    "status": "success",
-                    "message": "El scraping se completó, pero no se encontró contenido para guardar.",
-                },
-                status=status.HTTP_200_OK,
-            )
+        return Response(
+            {
+                "data": response_data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     except Exception as e:
         logger.error(f"Error durante el scraping: {e}")

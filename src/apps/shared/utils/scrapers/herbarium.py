@@ -4,7 +4,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 import time
 import os
 import random

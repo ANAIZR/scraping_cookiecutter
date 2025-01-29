@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urljoin
 import random
 from ..functions import get_logger, connect_to_mongo, process_scraper_data
 

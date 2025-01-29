@@ -9,7 +9,8 @@ from ..functions import (
     get_logger,
     get_random_user_agent,
 )
-
+from rest_framework.response import Response
+from rest_framework import status
 
 def scraper_flora_harvard(url, sobrenombre):
     """
@@ -73,9 +74,7 @@ def scraper_flora_harvard(url, sobrenombre):
             urls_not_scraped.append(pdf_url)
 
     def process_link(current_url):
-        """
-        Procesa cada enlace: descarga PDFs o extrae contenido del panelTaxonTreatment.
-        """
+        
         nonlocal all_scraper
 
         if current_url in visited_urls:
@@ -88,7 +87,6 @@ def scraper_flora_harvard(url, sobrenombre):
             html_content = get_page_content(current_url)
             soup = BeautifulSoup(html_content, "html.parser")
 
-            # Extraer contenido del panelTaxonTreatment
             panel_treatment = soup.find("div", id="panelTaxonTreatment")
             if panel_treatment:
                 content = panel_treatment.get_text(strip=True)
@@ -104,7 +102,6 @@ def scraper_flora_harvard(url, sobrenombre):
             urls_not_scraped.append(current_url)
 
     try:
-        # Obtener enlaces desde la URL principal
         main_html = get_page_content(url)
         links = extract_hrefs_from_ul(main_html, url)
         logger.info(f"Total de enlaces encontrados: {len(links)}")
@@ -113,7 +110,6 @@ def scraper_flora_harvard(url, sobrenombre):
         for link in links:
             process_link(link)
 
-        # Agregar resumen al final de all_scraper
         all_scraper = (
             f"Resumen del scraping:\n"
             f"Total de URLs procesadas: {len(visited_urls)}\n"
@@ -125,12 +121,10 @@ def scraper_flora_harvard(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
 
-        # Guardar datos en MongoDB y archivo
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
-    except requests.RequestException as e:
-        logger.error(f"Error en la solicitud principal: {str(e)}")
-        return JsonResponse(
-            {"error": f"Error al realizar la solicitud: {str(e)}"}, status=400
-        )
+    except Exception as e:
+        logger.error(f"Error general en el proceso de scraping: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
