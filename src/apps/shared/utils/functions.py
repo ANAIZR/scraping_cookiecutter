@@ -175,11 +175,8 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 def generate_directory(url, output_dir=OUTPUT_DIR):
     logger = get_logger("GENERANDO DIRECTORIO")
     try:
-        url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
             url.split("//")[-1].replace("/", "_").replace("?", "_").replace("=", "_")
-            + "_"
-            + url_hash[:8]
         )
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
