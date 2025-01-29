@@ -18,6 +18,8 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
+from selenium.common.exceptions import TimeoutException
+from requests.exceptions import ConnectionError
 
 
 def scraper_padil(url, sobrenombre):
@@ -201,10 +203,34 @@ def scraper_padil(url, sobrenombre):
                 },
                 status=status.HTTP_200_OK,
             )
-    except Exception as e:
-        logger.error(f"Error durante el scraping: {str(e)}")
+    except TimeoutException:
+        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(
-            {"status": "error", "message": f"Error durante el scraping: {str(e)}"},
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+            },
+            status=status.HTTP_408_REQUEST_TIMEOUT,
+        )
+    except ConnectionError:
+        logger.error("Error de conexión a la URL.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "No se pudo conectar a la página web.",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
     finally:
