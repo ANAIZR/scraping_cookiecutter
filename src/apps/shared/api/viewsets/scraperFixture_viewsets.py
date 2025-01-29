@@ -55,7 +55,8 @@ from ...utils.scrapers import (
     scraper_cdfa,
     scraper_nal_usda,
     scraper_ers_usda,
-    scraper_ars_usda
+    scraper_ars_usda,
+    scraper_ippc_int
 )
 
 SCRAPER_FUNCTIONS = {
@@ -110,8 +111,8 @@ SCRAPER_FUNCTIONS = {
     49: scraper_cdfa,
     51: scraper_nal_usda,
     52: scraper_ers_usda,
-    53: scraper_ars_usda
-
+    53: scraper_ars_usda,
+    54: scraper_ippc_int
 }
 
 class ScraperAPIView(APIView):
