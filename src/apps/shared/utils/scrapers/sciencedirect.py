@@ -1,79 +1,74 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 import time
 import random
-import os
-from ..functions import (
-    process_scraper_data,
-    connect_to_mongo,
-    get_logger,
-    initialize_driver,
-    generate_directory,
-    get_next_versioned_filename,
-    load_keywords
-)
+from ..functions import process_scraper_data, initialize_driver, get_logger, load_keywords
 
-def recursive_scraper(driver, keywords, index, all_scraper):
-    if index >= len(keywords):
-        return all_scraper  # Caso base: cuando se procesan todas las palabras clave
+logger = get_logger("scraper")
+
+def scrape_pages(driver, keywords):
+    all_scraper = ""
     
-    keyword = keywords[index]
-    print(f"Buscando con la palabra clave {index + 1}: {keyword}")
-    try:
-        search_input = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "qs"))
-        )
-        search_input.clear()
-        search_input.send_keys(keyword)
-        search_input.submit()
-        time.sleep(random.uniform(3, 5))
-        
-        # Esperar a que aparezcan los resultados
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "srp-results-list"))
-        )
-        
-        # Obtener los enlaces de los resultados
-        page_soup = BeautifulSoup(driver.page_source, "html.parser")
-        results = page_soup.select("#srp-results-list a")
-        hrefs = [a["href"] for a in results if a.get("href")]
-        
-        print(f"Resultados encontrados: {len(hrefs)}")
-        
-        for href in hrefs:
-            driver.get(href)
-            time.sleep(random.uniform(3, 5))
+    for keyword in keywords:
+        try:
+            # Ingresar la palabra clave en el input con id 'qs'
+            search_input = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "qs"))
+            )
+            search_input.clear()
+            search_input.send_keys(keyword)
+            search_input.submit()
+            time.sleep(random.uniform(2, 4))
             
-            # Extraer el abstract
-            page_soup = BeautifulSoup(driver.page_source, "html.parser")
-            abstract_div = page_soup.find("div", id="abstracts")
-            if abstract_div:
-                all_scraper += abstract_div.get_text(strip=True) + "\n"
+            # Esperar a que aparezcan los resultados y obtener los hrefs
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "srp-results-list"))
+            )
+            results_list = driver.find_elements(By.CSS_SELECTOR, "#srp-results-list a")
+            urls = [result.get_attribute("href") for result in results_list]
             
+            for url in urls:
+                driver.get(url)
+                time.sleep(random.uniform(2, 4))
+                
+                # Extraer el texto del div con id 'abstracts'
+                try:
+                    abstract_text = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "abstracts"))
+                    ).text
+                    
+                    all_scraper += f"{abstract_text}\n"
+                except Exception as e:
+                    logger.error(f"Error extrayendo abstracts de {url}: {e}")
+                    continue
+                
+                # Volver a la segunda página
+                driver.back()
+                time.sleep(random.uniform(2, 4))
+            
+            # Volver a la primera página
             driver.back()
             time.sleep(random.uniform(2, 4))
         
-    except Exception as e:
-        print(f"Error con la palabra clave {keyword}: {e}")
+        except Exception as e:
+            logger.error(f"Error procesando la palabra clave {keyword}: {e}")
+            continue
     
-    return recursive_scraper(driver, keywords, index + 1, all_scraper)  # Llamado recursivo
+    # Procesar los datos extraídos
+    process_scraper_data(all_scraper)
 
-# Uso de la función
 def scraper_sciencedirect(url, sobrenombre):
+    logger.info(f"Iniciando scraping en {url} con sobrenombre {sobrenombre}")
+    
     driver = initialize_driver()
-    all_scraper = ""
+    keywords = load_keywords()  # Función para cargar palabras clave desde un archivo
+
     try:
         driver.get(url)
-        time.sleep(random.uniform(3, 5))
-        
-        keywords = load_keywords()
-        all_scraper = recursive_scraper(driver, keywords, 0, all_scraper)
-        
-        # Guardar los resultados
-        file_path = get_next_versioned_filename("ruta_guardado", "resultado")
-        process_scraper_data(file_path, all_scraper)
-        
+        time.sleep(random.uniform(2, 4))
+        scrape_pages(driver, keywords)
+    except Exception as e:
+        logger.error(f"Error en la ejecución principal: {e}")
     finally:
         driver.quit()

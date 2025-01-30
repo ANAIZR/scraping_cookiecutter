@@ -126,7 +126,7 @@ def initialize_driver(retries=3):
             )
             options = uc.ChromeOptions()
             # options.binary_location = "/usr/bin/google-chrome"
-            options.add_argument("--headless")
+            # options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
