@@ -14,7 +14,8 @@ from rest_framework import status
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
-
+from dotenv import load_dotenv
+load_dotenv()
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36",
@@ -35,6 +36,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
 
+
 def load_keywords(file_name ="all.txt", base_dir=LOAD_KEYWORDS):
     logger = get_logger("CARGAR PALABRAS CLAVE")
     try:
@@ -44,7 +46,7 @@ def load_keywords(file_name ="all.txt", base_dir=LOAD_KEYWORDS):
             raise FileNotFoundError(f"El archivo '{file_path}' no existe.")
         
         with open(file_path, "r", encoding="utf-8") as file:
-            content = [line.strip() for line in file if line.strip()]  # Strip whitespace and skip empty lines
+            content = [line.strip() for line in file if line.strip()]  
         return content
     except FileNotFoundError as e:
         logger.error(e)
@@ -157,18 +159,25 @@ def initialize_driver(retries=3):
                 raise
 
 
-def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
+def connect_to_mongo(db_name=None, collection_name=None):
 
-    logger = get_logger("MONGO_CONECCTION")
+    logger = get_logger("MONGO_CONNECTION")
     try:
-        logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
-        client = MongoClient("mongodb://localhost:27017/")
+        mongo_uri = os.getenv("MONGO_URI")
+        db_name = db_name or os.getenv("MONGO_DB_NAME")
+        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME")
+
+        logger.info(f"Conectando a MongoDB: {mongo_uri} - Base de datos: {db_name}")
+
+        client = MongoClient(mongo_uri)
         db = client[db_name]
         fs = gridfs.GridFS(db)
-        logger.info(f"Conexión a MongoDB establecida con éxito: {db_name}")
+
+        logger.info(f"✅ Conexión a MongoDB establecida correctamente: {db_name}")
         return db[collection_name], fs
+
     except Exception as e:
-        logger.error(f"Error al conectar a MongoDB: {str(e)}")
+        logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
         raise
 
 
