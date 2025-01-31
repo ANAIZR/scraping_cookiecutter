@@ -21,15 +21,49 @@ from rest_framework.response import Response
 from rest_framework import status
 
 logger = get_logger("scraper")
-
+credenciales = {
+    "email": "admin@comunidadandina.org",
+    "password": "Bpgei2MxfFKyWE5"
+}
 
 def scraper_cabi_digital(url, sobrenombre):
+    driver = initialize_driver()
+    
     try:
-        driver = initialize_driver()
+        driver.get("https://cabi.scienceconnect.io/login")
+        time.sleep(random.uniform(3, 6))
+        email_input = WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, "#email-input"))
+        )
+    
+        if email_input:
+            print("Encontramos el email")
+            email_input.send_keys(credenciales["email"])
+            time.sleep(random.uniform(1, 3))
+            email_input.submit()
+            time.sleep(random.uniform(1, 3))
+            print("Se envio el email")
+            print("Buscaremos el input")
+            password_input = WebDriverWait(driver, 30).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "#pass-input"))
+            )
+            time.sleep(random.uniform(1, 3))
+        
+            if password_input:
+                password_input.send_keys(credenciales["password"])
+
+                password_input.submit()
+                time.sleep(random.uniform(1, 3))
+            else:
+                print("No se encontro campo de password")
+
+    except:
+        logger.error("No se encontro el login")
+    try:
+        driver.get(url)
+        time.sleep(random.uniform(6, 10))
         object_id = None
         try:
-            driver.get(url)
-            time.sleep(random.uniform(6, 10))
 
             collection, fs = connect_to_mongo("scrapping-can", "collection")
 
