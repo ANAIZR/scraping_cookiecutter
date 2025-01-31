@@ -21,10 +21,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
 logger = get_logger("scraper")
-credenciales = {
-    "email": "admin@comunidadandina.org",
-    "password": "Bpgei2MxfFKyWE5"
-}
 
 def scraper_cabi_digital(url, sobrenombre):
     driver = initialize_driver()
