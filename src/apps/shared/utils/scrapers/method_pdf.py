@@ -54,7 +54,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        response = save_scraper_data_pdf(
+        response_data = save_scraper_data_pdf(
             all_scraper, 
             url,
             sobrenombre,
@@ -62,7 +62,16 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
             fs
         )
 
-        return response
+        if not isinstance(response_data, dict):
+            return Response(
+                {"error": f"Respuesta no serializable en save_scraper_data_pdf: {type(response_data)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {"data": response_data},
+            status=status.HTTP_200_OK,
+        )
     except requests.Timeout:
         return Response(
             {"error": "El servidor tardó demasiado en responder."},
