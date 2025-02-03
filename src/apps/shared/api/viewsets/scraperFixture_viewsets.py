@@ -60,6 +60,7 @@ from ...utils.scrapers import (
     scraper_cdfa,
     scraper_ippc_int,
     scraper_sciencedirect,
+    scraper_agriculture_gov,
     scraper_cabi_library
 )
 
@@ -118,6 +119,7 @@ SCRAPER_FUNCTIONS = {
     52: scraper_ers_usda,
     53: scraper_ars_usda,
     54: scraper_ippc_int,
+    55: scraper_agriculture_gov,
     56: scraper_sciencedirect,
     57: scraper_cabi_library
 }
