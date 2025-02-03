@@ -197,7 +197,21 @@ def get_next_versioned_filename(folder_path, base_name="archivo"):
         logger.error(f"Error al generar el nombre del archivo: {str(e)}")
         raise
 
-
+def get_next_versioned_pdf_filename(folder_path, base_name="archivo"):
+    logger = get_logger("generar siguiente versión de archivo PDF")
+    try:
+        if len(base_name) > 50:
+            base_name = hashlib.md5(base_name.encode()).hexdigest()[:10]  
+        version = 0
+        while True:
+            file_name = f"{base_name}_v{version}.pdf"
+            file_path = os.path.join(folder_path, file_name)
+            if not os.path.exists(file_path): 
+                return file_path 
+            version += 1
+    except Exception as e:
+        logger.error(f"Error al generar el nombre del archivo PDF: {str(e)}")
+        raise
 def delete_old_documents(url, collection, fs, limit=2):
 
     logger = get_logger("ELIMINAR DE LA BD DOCUMENTOS ANTIGUOS")
