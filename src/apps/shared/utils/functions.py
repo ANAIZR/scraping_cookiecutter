@@ -328,7 +328,6 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
-            logger.info(f"Datos procesados correctamente para la URL: {url}")
             return {
                 "data": response_data,
             }
