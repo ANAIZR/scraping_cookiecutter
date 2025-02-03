@@ -44,7 +44,6 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
 
 def scraper_iucngisd(url, sobrenombre):
     logger = get_logger("scraper")
-    logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo()
     all_scraper = f"Iniciando scraping para URL: {url}\n"
     scraped_count = [0]
