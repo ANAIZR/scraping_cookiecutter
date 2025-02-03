@@ -1,17 +1,19 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from django.http import JsonResponse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from PyPDF2 import PdfReader
+from io import BytesIO
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
 )
-
-
-def scraper_cal_ipc(url, sobrenombre, max_depth=3):
+import time
+from rest_framework.response import Response
+from rest_framework import status
+def scraper_cal_ipc(url, sobrenombre, max_depth=2):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
@@ -24,98 +26,99 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=3):
 
     base_domain = "https://www.cal-ipc.org/"
 
+    def extract_text_from_pdf(pdf_url):
+ 
+        try:
+            response = requests.get(pdf_url, headers=headers, timeout=20)
+            response.raise_for_status()
+            pdf_file = BytesIO(response.content)
+            reader = PdfReader(pdf_file)
+            extracted_text = ""
+            for page in reader.pages:
+                extracted_text += page.extract_text() + "\n"
+            return extracted_text.strip()
+        except Exception as e:
+            logger.error(f"Error al extraer texto del PDF {pdf_url}: {str(e)}")
+            return None
+
+    def scrape_initial_page(current_url):
+
+        logger.info(f"Scraping la página inicial: {current_url}")
+        try:
+            response = requests.get(current_url, headers=headers, timeout=50)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            td_with_links = soup.select("tbody td.it-latin:has(a[href])")
+            logger.info(f"Se encontraron {len(td_with_links)} celdas con la clase 'it-latin'.")
+
+            links = [a['href'] for td in td_with_links for a in td.find_all("a", href=True)]
+            valid_links = [
+                (urljoin(base_domain, link), 1)
+                for link in links
+                if urljoin(base_domain, link).startswith(base_domain)
+                and not any(link.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".gif"])
+                and "upload" not in link.lower()
+            ]
+            return valid_links
+
+        except requests.RequestException as e:
+            logger.error(f"Error al procesar la página inicial {current_url}: {str(e)}")
+            return []
+
     def scrape_page(current_url, current_depth):
+ 
         nonlocal total_urls_found, total_urls_scraped, all_scraper
 
         if current_url in visited_urls or current_depth > max_depth:
             return []
 
-        if not current_url.startswith(base_domain):
-            print(f"URL fuera del dominio permitido: {current_url}")
-            return []
-        if any(
-            exclude in current_url
-            for exclude in [
-                "solutions",
-                "support",
-                "join",
-                "about",
-                "discrimination",
-                "resources",
-                "mailto",
-                "pdf"
-            ]
-        ):
-            print(f"URL filtrada por parámetros no válidos: {current_url}")
-            return []
-
-        print(f"Procesando URL: {current_url} (Nivel: {current_depth})")
+        logger.info(f"Procesando URL: {current_url} (Nivel: {current_depth})")
         visited_urls.add(current_url)
 
         try:
-            response = requests.get(current_url, headers=headers)
+            response = requests.get(current_url, headers=headers, timeout=20)
             response.raise_for_status()
-
+            time.sleep(1)
             soup = BeautifulSoup(response.text, "html.parser")
 
-            links = soup.find_all("a", href=True)
-            base_url = base_domain
+            container_div = soup.find("div", id="container")
             extracted_links = []
 
-            for link in links:
-                href = link["href"]
-                if href == "#" or not href or href.startswith("#"):
-                    continue
-                if href.startswith("/"):
-                    href = urljoin(base_url, href)
-
-                if not href.startswith(base_domain):
-                    continue
-                if any(
-                    exclude in href
-                    for exclude in [
-                        "solutions",
-                        "support",
-                        "join",
-                        "about",
-                        "discrimination",
-                        "resources",
-                        "mailto",
-                        "pdf"
-                    ]
-                ):
-                    continue
-                if (
-                    href.endswith(".pdf")
-                    or href.endswith(".jpg")
-                    or href.endswith(".jpeg")
-                    or href.endswith(".png")
-                    or href.endswith(".gif")
-                    or "images.bugwood.org" in href
-                ):
-                    continue
-
-                print(f"URL válida encontrada ---> : {href}")
-                extracted_links.append((href, current_depth + 1))
-
-            total_urls_found += len(extracted_links)
-
-            container_div = soup.find("div", id="container")
             if container_div:
-                content = container_div.get_text()
+                content = container_div.get_text(strip=True)
                 all_scraper += f"URL: {current_url}\n\n"
                 all_scraper += f"{content}\n"
                 all_scraper += "-" * 80 + "\n\n"
                 total_urls_scraped += 1
 
+                links = container_div.find_all("a", href=True)
+                for link in links:
+                    href = link["href"]
+                    full_url = urljoin(base_domain, href)
+
+                    if full_url.startswith(base_domain) and "upload" not in href.lower():
+                        if href.lower().endswith(".pdf"):
+                            pdf_text = extract_text_from_pdf(full_url)
+                            if pdf_text:
+                                all_scraper += f"Texto extraído del PDF: {full_url}\n\n"
+                                all_scraper += f"{pdf_text}\n"
+                                all_scraper += "-" * 80 + "\n\n"
+                            else:
+                                all_scraper += f"Enlace PDF (no se pudo extraer texto): {full_url}\n"
+                        elif not any(href.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".gif"]):
+                            extracted_links.append((full_url, current_depth + 1))
+
+            total_urls_found += len(extracted_links)
             return extracted_links
 
         except requests.RequestException as e:
-            print(f"Error al procesar la URL: {current_url}, error: {str(e)}")
+            logger.error(f"Error al procesar la URL: {current_url}, error: {str(e)}")
             urls_not_scraped.append(current_url)
             return []
 
     def scrape_pages_in_parallel(url_list):
+        
         with ThreadPoolExecutor(max_workers=6) as executor:
             future_to_url = {
                 executor.submit(scrape_page, url, depth): (url, depth)
@@ -126,10 +129,12 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=3):
                     new_links = future.result()
                     urls_to_scrape.extend(new_links)
                 except Exception as e:
-                    print(f"Error en tarea de scraping: {str(e)}")
+                    logger.error(f"Error en tarea de scraping: {str(e)}")
 
     try:
-        urls_to_scrape.append((url, 0))
+        initial_links = scrape_initial_page(url)
+        urls_to_scrape.extend(initial_links)
+
         while urls_to_scrape:
             current_batch = [
                 (url, depth)
@@ -153,7 +158,11 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=3):
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
-    except requests.RequestException as e:
-        return JsonResponse(
-            {"error": f"Error al realizar la solicitud: {str(e)}"}, status=400
+
+    except Exception as e:
+        print(f"Ocurrió un error: {e}")
+        return Response(
+            {"error": "Ocurrió un error durante el scraping."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+

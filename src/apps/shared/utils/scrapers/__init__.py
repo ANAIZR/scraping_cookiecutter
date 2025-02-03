@@ -45,6 +45,12 @@ from .cal_ipc import scraper_cal_ipc
 from .method_books import scraper_method_books
 from .herbarium import scraper_herbarium
 from .agriculture import scraper_agriculture
+from .flora_habitas import scraper_flora_habitas
+from .cdfa_ca import scraper_cdfa
+from .nal_usda import scraper_nal_usda
+from .hort_purdue import scraper_hort_purdue
+from .ers_usda import scraper_ers_usda
+from .ars_usda import scraper_ars_usda
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
@@ -94,4 +100,10 @@ SCRAPER_FUNCTIONS = {
     45: scraper_method_books,
     46: scraper_herbarium,
     47: scraper_agriculture,
+    48: scraper_flora_habitas,
+    49: scraper_cdfa,
+    50: scraper_hort_purdue,
+    51: scraper_nal_usda,
+    52: scraper_ers_usda,
+    53: scraper_ars_usda
 }

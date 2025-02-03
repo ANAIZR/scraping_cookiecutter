@@ -15,35 +15,40 @@ from ..functions import (
     initialize_driver,
     get_logger,
     connect_to_mongo,
+    load_keywords
 )
 from rest_framework.response import Response
 from rest_framework import status
-
+from ..credentials import login_cabi_scienceconnect
 logger = get_logger("scraper")
-def load_keywords(file_path="../txt/plants.txt"):
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        absolute_path = os.path.join(base_path, file_path)
-        with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [line.strip() for line in f if isinstance(line, str) and line.strip()]
-        logger.info(f"Palabras clave cargadas: {keywords}")
-        return keywords
-    except Exception as e:
-        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
-        raise
 
 def scraper_cabi_digital(url, sobrenombre):
+    driver = initialize_driver()
+    
     try:
-        driver = initialize_driver()
+        if login_cabi_scienceconnect(driver):
+            print("Login completado, continuando con el scraping...")
+    except:
+        logger.error("No se encontro el login")
+    try:
+        driver.get(url)
+        time.sleep(random.uniform(6, 10))
+        object_id = None
         try:
-            driver.get(url)
-            time.sleep(random.uniform(6, 10))
 
-            collection, fs = connect_to_mongo("scrapping-can", "collection")
+            collection, fs = connect_to_mongo()
 
-            main_folder = generate_directory(url)
+            main_folder = generate_directory(sobrenombre)
 
-            keywords = load_keywords()
+            keywords = load_keywords("plants.txt")
+            if not keywords:
+                return Response(
+                    {
+                        "status": "error",
+                        "message": "El archivo de palabras clave está vacío o no se pudo cargar.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             visited_urls = set()
             scraping_failed = False
             base_domain = "https://www.cabidigitallibrary.org"
@@ -82,7 +87,6 @@ def scraper_cabi_digital(url, sobrenombre):
 
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
-            keyword_folder = generate_directory(keyword, main_folder)
             try:
                 search_input = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(
@@ -102,7 +106,10 @@ def scraper_cabi_digital(url, sobrenombre):
                 logger.info(f"Error al realizar la búsqueda: {e}")
                 scraping_failed = True
                 continue
+            keyword_folder = generate_directory(keyword, main_folder)
+            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
 
+            content_accumulated = ""
             while True:
                 try:
                     WebDriverWait(driver, 60).until(
@@ -112,6 +119,11 @@ def scraper_cabi_digital(url, sobrenombre):
 
                     soup = BeautifulSoup(driver.page_source, "html.parser")
                     items = soup.select("ul.rlist li")
+                    if not items:
+                        logger.warning(
+                            f"No se encontraron resultados para la palabra clave: {keyword}"
+                        )
+                        break
                     logger.info(f"Encontrados {len(items)} resultados.")
                     for item in items:
                         href = item.find("a")["href"]
@@ -137,19 +149,9 @@ def scraper_cabi_digital(url, sobrenombre):
                             body_text = (
                                 body.get_text(strip=True) if body else "No body found"
                             )
-                            if abstract_text and body_text:
-                                contenido = f"{abstract_text}\n\n\n{body_text}"
-                                link_folder = generate_directory(href, keyword_folder)
-                                file_path = get_next_versioned_filename(
-                                    link_folder, keyword
-                                )
-                                with open(file_path, "w", encoding="utf-8") as file:
-                                    file.write(contenido)
-
-                                with open(file_path, "rb") as file_data:
-                                    object_id = fs.put(
-                                        file_data, filename=os.path.basename(file_path)
-                                    )
+                            if abstract_text or body_text:
+                                content_accumulated += f"URL:{absolut_href} \nTexto: {abstract_text}\n\n\n{body_text}"
+                                content_accumulated += "-" * 100 + "\n\n"
 
                                 print(f"Página procesada y guardada: {absolut_href}")
                             else:
@@ -184,11 +186,27 @@ def scraper_cabi_digital(url, sobrenombre):
                             "No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave."
                         )
                         driver.get(url)
-                        break  # Salir del bucle interno
-                except Exception as e:
-                    logger.error(f"Error al procesar resultados: {e}")
-                    scraping_failed = True
+                        break  
+                except TimeoutException:
+                    logger.warning(
+                        f"No se encontraron resultados para '{keyword}' después de esperar."
+                    )
                     break
+                    
+            if content_accumulated:
+                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
+                    keyword_file.write(content_accumulated)
+
+                with open(keyword_file_path, "rb") as file_data:
+                    object_id = fs.put(
+                        file_data,
+                        filename=os.path.basename(keyword_file_path),
+                        metadata={
+                            "keyword": keyword,
+                            "scraping_date": datetime.now(),
+                        },
+                    )
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
         if scraping_failed:
             return Response(
@@ -218,19 +236,40 @@ def scraper_cabi_digital(url, sobrenombre):
 
             return Response(
                 {
-                    "status": "success",
-                    "message": "Los datos han sido scrapeados correctamente.",
                     "data": response_data,
                 },
                 status=status.HTTP_200_OK,
             )
-    except Exception as e:
-        logger.error(f"Error durante el scraping: {str(e)}")
+    except TimeoutException:
+        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(
-            {"status": "error", "message": f"Error durante el scraping: {str(e)}"},
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+            },
+            status=status.HTTP_408_REQUEST_TIMEOUT,
+        )
+    except ConnectionError:
+        logger.error("Error de conexión a la URL.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "No se pudo conectar a la página web.",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
 
     finally:
         driver.quit()
