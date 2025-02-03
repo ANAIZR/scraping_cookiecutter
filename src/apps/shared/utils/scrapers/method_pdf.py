@@ -62,12 +62,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
             fs
         )
 
-        return Response(
-                        {
-                            "data": response_data,
-                        },
-                        status=status.HTTP_200_OK,
-                    )
+        return response_data
     except requests.Timeout:
         return Response(
             {"error": "El servidor tardó demasiado en responder."},
