@@ -9,7 +9,7 @@ class ScraperURL(CoreModel):
         (1, "Web"),
         (2, "PDF"),
     ]
-    TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral")]
+    TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral"),(4,"Semanal")]
 
     url = models.URLField(max_length=500)
     sobrenombre = models.CharField(max_length=120)
@@ -53,6 +53,8 @@ class ScraperURL(CoreModel):
             return reference_date + timedelta(days=90)
         elif self.time_choices == 3: 
             return reference_date + timedelta(days=180)
+        elif self.time_choices == 4: 
+            return reference_date + timedelta(days=7)
         return reference_date
 
     def is_time_expired(self):
