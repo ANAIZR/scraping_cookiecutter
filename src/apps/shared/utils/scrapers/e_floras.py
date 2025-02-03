@@ -14,15 +14,12 @@ from rest_framework import status
 logger = get_logger("Iniciando")
 
 def scraper_e_floras(
-    url=None,
-    page_principal=None,
-    wait_time=None,
-    sobrenombre=None,
-    next_page_selector=None,
+    url,
+    sobrenombre
 ):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-
+    page_principal ="http://www.efloras.org/"
     collection, fs = connect_to_mongo("scrapping-can", "collection")
 
     all_scraper = ""
@@ -33,7 +30,7 @@ def scraper_e_floras(
     try:
         driver.get(url)
 
-        submit = WebDriverWait(driver, wait_time).until(
+        submit = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located(
                 (
                     By.CSS_SELECTOR,
@@ -43,7 +40,7 @@ def scraper_e_floras(
         )
         submit.click()
 
-        WebDriverWait(driver, wait_time).until(
+        WebDriverWait(driver, 30).until(
             EC.presence_of_element_located(
                 (
                     By.CSS_SELECTOR,
@@ -76,7 +73,7 @@ def scraper_e_floras(
                                 page = page_principal + href
                                 if href:
                                     driver.get(page)
-                                    WebDriverWait(driver, wait_time).until(
+                                    WebDriverWait(driver, 30).until(
                                         EC.presence_of_element_located(
                                             (
                                                 By.CSS_SELECTOR,
@@ -101,10 +98,17 @@ def scraper_e_floras(
 
         scraper_page()
         is_first_page = False
-
+        next_page_selector = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located(
+                        (
+                            By.CSS_SELECTOR,
+                            "#TableMain #ucFloraTaxonList_panelTaxonList  span a[title='Page 2']"
+                        )
+                    )
+                )
         if next_page_selector:
             try:
-                next_page_button = WebDriverWait(driver, wait_time).until(
+                next_page_button = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(
                         (
                             By.CSS_SELECTOR,
@@ -113,7 +117,7 @@ def scraper_e_floras(
                     )
                 )
                 next_page_button.click()
-                WebDriverWait(driver, wait_time).until(
+                WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(
                         (By.CSS_SELECTOR, "#ucFloraTaxonList_panelTaxonList span table")
                     )
@@ -126,7 +130,6 @@ def scraper_e_floras(
         logger.info(f"Total enlaces scrapeados: {total_td_scraped}")
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
     except Exception as e:
         print(f"Error: {e}")

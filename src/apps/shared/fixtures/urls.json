@@ -128,9 +128,6 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "sobrenombre": "FLORAS",
       "parameters": {
-        "page_principal": "http://www.efloras.org/",
-        "wait_time": 20,
-        "next_page_selector": "#TableMain #ucFloraTaxonList_panelTaxonList  span a[title='Page 2']"
       }
     }
   },

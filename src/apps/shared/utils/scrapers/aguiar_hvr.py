@@ -11,6 +11,8 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 import time
+from selenium.common.exceptions import StaleElementReferenceException
+
 logger = get_logger("INICIANDO EL SCRAPER")
 
 
@@ -33,23 +35,48 @@ def wait_for_element(driver, wait_time, locator):
         raise
 
 
+
 def scrape_table_rows(driver, wait_time, state):
+    try:
+        # Asegúrate de obtener siempre las filas más recientes
+        rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
 
-    rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
-    for row in rows:
-        try:
-            link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
-            if link in state.processed_links:
-                logger.info(f"Enlace ya procesado: {link}")
-                continue
+        for index, row in enumerate(rows):
+            try:
+                # Intentar obtener el enlace dentro de la fila
+                link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
 
-            state.processed_links.add(link)
-            driver.get(link)
-            process_page(driver, wait_time, state)
-        except Exception as e:
-            state.skipped_count += 1
-            logger.error(f"Error procesando fila: {str(e)}")
+                if link in state.processed_links:
+                    logger.info(f"Enlace ya procesado: {link}")
+                    continue
+
+                state.processed_links.add(link)
+                driver.get(link)
+                process_page(driver, wait_time, state)
+
+            except StaleElementReferenceException:
+                logger.warning(f"Referencia a elemento obsoleta en fila {index}. Reintentando...")
+                # Reintenta obtener las filas actualizadas
+                rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
+                row = rows[index]  # Reasigna la fila para reintentar
+                link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
+
+                if link in state.processed_links:
+                    logger.info(f"Enlace ya procesado tras reintento: {link}")
+                    continue
+
+                state.processed_links.add(link)
+                driver.get(link)
+                process_page(driver, wait_time, state)
+
+            except Exception as e:
+                state.skipped_count += 1
+                logger.error(f"Error procesando fila {index}: {str(e)}")
+                
+    except Exception as e:
+        logger.error(f"Error al obtener las filas de la tabla: {str(e)}")
     return state
+
 
 
 def process_page(driver, wait_time, state):
