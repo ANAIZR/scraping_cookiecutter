@@ -34,9 +34,10 @@ class WebScraperService:
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
             kwargs = {"url": url, "sobrenombre": scraper_url.sobrenombre}
-            if mode_scrapeo == 7:  
-                kwargs["start_page"] = scraper_url.start_page
-                kwargs["end_page"] = scraper_url.end_page
+            if mode_scrapeo == 7:
+                parameters = scraper_url.parameters or {} 
+                kwargs["start_page"] = parameters.get("start_page", 1)  
+                kwargs["end_page"] = parameters.get("end_page", None)   
 
             response = scraper_function(**kwargs)
 
