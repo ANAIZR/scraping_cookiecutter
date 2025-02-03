@@ -24,7 +24,6 @@ USER_AGENTS = [
 ]
 
 
-
 OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR", "~/scraping_cookiecutter/files/scrapers"))
 LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR", "~/scraping_cookiecutter/files/logs"))
 LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS", "~/scraping_cookiecutter/apps/shared/utils/txt"))
