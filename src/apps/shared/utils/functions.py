@@ -287,8 +287,6 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             return {
                 "status": "success",
                 "data": response_data,
-                "url": url,
-                "message": "Datos procesados correctamente.",
             }
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")

@@ -1,130 +1,95 @@
 import requests
 import os
-import pdfplumber
+import PyPDF2
 from io import BytesIO
 from rest_framework.response import Response
 from rest_framework import status
-from bs4 import BeautifulSoup
-from pdfminer.high_level import extract_text
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
     connect_to_mongo,
-    get_logger
+    get_logger,
+    save_scraper_data, 
+    get_random_user_agent
 )
 
 
-def extract_text_with_pdfminer(pdf_file):
+def extract_text_with_pypdf2(pdf_file, start_page=1, end_page=None):
     try:
-        return extract_text(pdf_file)
-    except Exception as e:
-        raise Exception(f"Error al extraer texto con pdfminer: {e}")
+        text = ""
+        with PyPDF2.PdfReader(pdf_file) as reader:
+            total_pages = len(reader.pages)
 
+            start = max(0, start_page - 1)  
+            end = min(total_pages, end_page) if end_page else total_pages
+
+            if start >= total_pages:
+                raise ValueError(f"El número de página inicial ({start_page}) excede el total de páginas ({total_pages}).")
+
+            for i in range(start, end):
+                text += reader.pages[i].extract_text() or ""  
+
+        return text.strip()
+    except Exception as e:
+        raise Exception(f"Error al extraer texto con PyPDF2: {e}")
 
 
 def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
     logger = get_logger("Extrayendo texto de PDF")
+
     try:
         collection, fs = connect_to_mongo("scrapping-can", "collection")
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
-        }
-        response = requests.get(url, verify=False, headers=headers)
+
+        headers = {"User-Agent": get_random_user_agent()}
+        response = requests.get(url, verify=False, headers=headers, timeout=10)
         response.raise_for_status()
 
-        folder_path = generate_directory(url)
-        txt_filepath = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-        os.makedirs(os.path.dirname(txt_filepath), exist_ok=True)
-
-        if start_page < 1:
-            return {
-                "success": False,
-                "message": "El número de página inicial debe ser mayor o igual a 1.",
-                "status_code": status.HTTP_400_BAD_REQUEST,
-            }
-
-        if "text/html" in response.headers["Content-Type"]:
-            soup = BeautifulSoup(response.text, "html.parser")
-            pages = soup.find_all("div#viewer div.page")
-            extracted_pages = [
-                int(page["data-page-number"])
-                for page in pages
-                if start_page <= int(page["data-page-number"]) <= (end_page or float("inf"))
-            ]
-            return {
-                "success": True,
-                "data": {"pages": extracted_pages},
-                "message": "Páginas extraídas correctamente del contenido HTML.",
-                "status_code": status.HTTP_200_OK,
-            }
-
-
         pdf_file = BytesIO(response.content)
-        full_text = ""
-        try:
-            with pdfplumber.open(pdf_file) as pdf:
-                total_pages = len(pdf.pages)
-                start = max(0, start_page - 1)
-                end = min(total_pages, end_page) if end_page else total_pages
 
-                if start >= total_pages:
-                    return {
-                        "success": False,
-                        "message": "El número de página inicial excede el total de páginas del PDF.",
-                        "status_code": status.HTTP_400_BAD_REQUEST,
-                    }
+        all_scraper = extract_text_with_pypdf2(pdf_file, start_page, end_page)
 
+        if not all_scraper.strip():
+            return Response(
+                {"error": "No se pudo extraer texto del PDF en el rango especificado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-                for i in range(start, end):
-                    text = pdf.pages[i].extract_text()
-                    if text:
-                        full_text += text + "\n"
+        response_data = save_scraper_data(
+            all_scraper, 
+            url,
+            sobrenombre,
+            collection,
+            fs
+        )
 
-        except Exception as e:
-            print(f"pdfplumber falló: {e}")
-            pdf_file.seek(0)
-            full_text = extract_text_with_pdfminer(pdf_file)
-
-        if not full_text.strip():
-            raise Exception("No se pudo extraer texto del PDF.")
-
-        with open(txt_filepath, "w", encoding="utf-8") as txt_file:
-            txt_file.write(full_text.strip())
-
-        data = {
-            "Objeto": sobrenombre,
-            "Tipo": "PDF",
-            "Url": url,
-            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
-
-        collection.insert_one(data)
-        delete_old_documents(url, collection, fs)
-
-        return {
-            "success": True,
-            "data": {
-                "Tipo": "PDF",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-            },
-            "message": "Los datos han sido scrapeados correctamente y guardados.",
-            "status_code": status.HTTP_200_OK,
-        }
-
-    except requests.exceptions.RequestException as e:
-        return {
-            "success": False,
-            "message": f"Error al descargar el PDF: {e}",
-            "status_code": status.HTTP_400_BAD_REQUEST,
-        }
+        return Response(
+                        {
+                            "data": response_data,
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+    except requests.Timeout:
+        return Response(
+            {"error": "El servidor tardó demasiado en responder."},
+            status=status.HTTP_408_REQUEST_TIMEOUT,
+        )
+    except requests.ConnectionError:
+        return Response(
+            {"error": "No se pudo establecer conexión con el servidor."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except requests.HTTPError as e:
+        return Response(
+            {"error": f"Error HTTP al descargar el PDF: {e}"},
+            status=e.response.status_code if e.response else 500,
+        )
+    except ValueError as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"Error al procesar el PDF o extraer el texto: {e}",
-            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-        }
+        logger.error(f"Error inesperado en el scraping de PDF: {e}")
+        return Response(
+            {"error": f"Error inesperado: {e}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
