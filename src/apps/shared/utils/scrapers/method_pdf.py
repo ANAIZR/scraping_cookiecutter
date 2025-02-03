@@ -70,10 +70,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response(
-            {"data": response_data},
-            status=status.HTTP_200_OK,
-        )
+        return response_data
 
     except Exception as e:
         logger.error(f"Error inesperado en el scraping de PDF: {e}")
