@@ -45,7 +45,6 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
         response.raise_for_status()
 
         pdf_file = BytesIO(response.content)
-
         all_scraper = extract_text_with_pypdf2(pdf_file, start_page, end_page)
 
         if not all_scraper.strip():
@@ -62,6 +61,9 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
             fs
         )
 
+        print("DEBUG - Respuesta de save_scraper_data_pdf:", response_data)
+        logger.info(f"DEBUG - Respuesta de save_scraper_data_pdf: {response_data}")
+
         if not isinstance(response_data, dict):
             return Response(
                 {"error": f"Respuesta no serializable en save_scraper_data_pdf: {type(response_data)}"},
@@ -72,26 +74,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
             {"data": response_data},
             status=status.HTTP_200_OK,
         )
-    except requests.Timeout:
-        return Response(
-            {"error": "El servidor tardó demasiado en responder."},
-            status=status.HTTP_408_REQUEST_TIMEOUT,
-        )
-    except requests.ConnectionError:
-        return Response(
-            {"error": "No se pudo establecer conexión con el servidor."},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
-    except requests.HTTPError as e:
-        return Response(
-            {"error": f"Error HTTP al descargar el PDF: {e}"},
-            status=e.response.status_code if e.response else 500,
-        )
-    except ValueError as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+
     except Exception as e:
         logger.error(f"Error inesperado en el scraping de PDF: {e}")
         return Response(

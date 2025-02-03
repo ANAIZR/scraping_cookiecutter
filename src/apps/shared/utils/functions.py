@@ -310,7 +310,8 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
         return response_data
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
-        raise
+        return {"error": f"Error al guardar datos del scraper: {str(e)}"}
+        
 
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
