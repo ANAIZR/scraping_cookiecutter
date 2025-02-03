@@ -167,8 +167,6 @@ def generate_directory(url, output_dir=OUTPUT_DIR):
         url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
             url.split("//")[-1].replace("/", "_").replace("?", "_").replace("=", "_")
-            + "_"
-            + url_hash[:8]
         )
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
@@ -328,9 +326,7 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
-            return {
-                "data": response_data,
-            }
+            return response_data
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
             return {
