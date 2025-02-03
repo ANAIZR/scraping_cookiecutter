@@ -10,7 +10,7 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-
+import time
 logger = get_logger("INICIANDO EL SCRAPER")
 
 
@@ -91,18 +91,20 @@ def get_current_page_number(driver):
 
 
 def click_next_page(driver, wait_time):
-
     try:
         next_button = wait_for_element(
             driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_next a")
         )
 
         if "disabled" in next_button.get_attribute("class"):
+            logger.info("El botón 'Siguiente' está deshabilitado.")
             return False
 
         current_page = get_current_page_number(driver)
 
         next_button.click()
+
+        time.sleep(2)
 
         WebDriverWait(driver, wait_time).until(
             lambda d: get_current_page_number(d) != current_page
@@ -121,6 +123,8 @@ def click_next_page(driver, wait_time):
         return False
 
 
+
+
 def scraper_aguiar_hvr(url, sobrenombre):
 
     logger.info(f"Iniciando scraping para URL: {url}")
@@ -131,14 +135,19 @@ def scraper_aguiar_hvr(url, sobrenombre):
     try:
         driver.get(url)
         while True:
-            wait_for_element(
-                driver, 30, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
-            )
-            current_page = get_current_page_number(driver)
-            state = scrape_table_rows(driver, 30, state)
+            try:
+                wait_for_element(driver, 30, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
+                current_page = get_current_page_number(driver)
+                state = scrape_table_rows(driver, 30, state)
 
-            if not click_next_page(driver, 20):
+                if not click_next_page(driver, 30):
+                    logger.info("Fin de la paginación alcanzado.")
+                    break
+
+            except Exception as e:
+                logger.error(f"Error durante el scraping: {str(e)}")
                 break
+
 
         response = process_scraper_data(state.all_scraper, url, sobrenombre, collection, fs)
         return response
