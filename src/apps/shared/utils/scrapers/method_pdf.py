@@ -4,30 +4,31 @@ import PyPDF2
 from io import BytesIO
 from rest_framework.response import Response
 from rest_framework import status
-from datetime import datetime
 from ..functions import (
     connect_to_mongo,
     get_logger,
-    save_scraper_data, 
+    save_scraper_data_pdf, 
     get_random_user_agent
 )
 
 
+import PyPDF2
+
 def extract_text_with_pypdf2(pdf_file, start_page=1, end_page=None):
     try:
         text = ""
-        with PyPDF2.PdfReader(pdf_file) as reader:
-            total_pages = len(reader.pages)
+        reader = PyPDF2.PdfReader(pdf_file)  
 
-            start = max(0, start_page - 1)  
-            end = min(total_pages, end_page) if end_page else total_pages
+        total_pages = len(reader.pages)
 
-            if start >= total_pages:
-                raise ValueError(f"El número de página inicial ({start_page}) excede el total de páginas ({total_pages}).")
+        start = max(0, start_page - 1)  
+        end = min(total_pages, end_page) if end_page else total_pages
 
-            for i in range(start, end):
-                text += reader.pages[i].extract_text() or ""  
+        if start >= total_pages:
+            raise ValueError(f"El número de página inicial ({start_page}) excede el total de páginas ({total_pages}).")
 
+        for i in range(start, end):
+            text += reader.pages[i].extract_text() or "" 
         return text.strip()
     except Exception as e:
         raise Exception(f"Error al extraer texto con PyPDF2: {e}")
@@ -53,7 +54,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        response_data = save_scraper_data(
+        response_data = save_scraper_data_pdf(
             all_scraper, 
             url,
             sobrenombre,
