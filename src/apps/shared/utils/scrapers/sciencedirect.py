@@ -126,15 +126,19 @@ def scraper_sciencedirect(url, sobrenombre):
                         time.sleep(random.uniform(3, 6))
 
                     try:
-                        next_page_button = driver.find_element(By.CSS_SELECTOR, ".pagination__btn.pagination__btn--next.icon-arrow_r")
+                        next_page_button = driver.find_element(By.CSS_SELECTOR, "a.anchor[data-aa-name='srp-next-page']")
+
                         next_page_link = next_page_button.get_attribute("href")
 
                         if next_page_link:
                             logger.info(f"Yendo a la siguiente página: {next_page_link}")
                             driver.get(next_page_link)
+                            time.sleep(random.uniform(3, 6))
                         else:
+                            logger.info("No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave.")
                             break
                     except NoSuchElementException:
+                        logger.info("No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave.")
                         break
                 except Exception as e:
                     logger.error(f"Error al procesar resultados: {e}")
