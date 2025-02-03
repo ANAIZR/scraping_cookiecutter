@@ -2,7 +2,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-import time
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -122,7 +121,7 @@ def click_next_page(driver, wait_time):
         return False
 
 
-def scraper_aguiar_hvr(url, wait_time, sobrenombre):
+def scraper_aguiar_hvr(url, sobrenombre):
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
@@ -133,12 +132,12 @@ def scraper_aguiar_hvr(url, wait_time, sobrenombre):
         driver.get(url)
         while True:
             wait_for_element(
-                driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
+                driver, 30, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
             )
             current_page = get_current_page_number(driver)
-            state = scrape_table_rows(driver, wait_time, state)
+            state = scrape_table_rows(driver, 30, state)
 
-            if not click_next_page(driver, wait_time):
+            if not click_next_page(driver, 20):
                 break
 
         response = process_scraper_data(state.all_scraper, url, sobrenombre, collection, fs)
