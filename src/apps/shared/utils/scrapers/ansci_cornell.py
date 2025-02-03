@@ -14,7 +14,6 @@ from rest_framework import status
 
 def scraper_ansci_cornell(
     url,
-    wait_time,
     sobrenombre,
 ):
     logger = get_logger("ANSCI_CORNELL")
@@ -28,7 +27,7 @@ def scraper_ansci_cornell(
     try:
         driver.get(url)
         search_button = (
-            WebDriverWait(driver, wait_time)
+            WebDriverWait(driver, 30)
             .until(
                 EC.presence_of_element_located(
                     (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
@@ -38,7 +37,7 @@ def scraper_ansci_cornell(
         )
         search_button.click()
 
-        target_divs = WebDriverWait(driver, wait_time).until(
+        target_divs = WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
             )
@@ -48,7 +47,7 @@ def scraper_ansci_cornell(
             for link_index, link in enumerate(urls, start=1):
                 link_href = link.get_attribute("href")
                 driver.get(link_href)
-                pageBody = WebDriverWait(driver, wait_time).until(
+                pageBody = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(
                         (By.CSS_SELECTOR, "#mainContent #pagebody #main")
                     )
@@ -62,13 +61,12 @@ def scraper_ansci_cornell(
 
                 driver.back()
                 all_scraper += "**********\n"
-                WebDriverWait(driver, wait_time).until(
+                WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(
                         (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
                     )
                 )
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
     except Exception as e:
         return Response(
