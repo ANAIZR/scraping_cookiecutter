@@ -54,7 +54,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        response_data = save_scraper_data_pdf(
+        response = save_scraper_data_pdf(
             all_scraper, 
             url,
             sobrenombre,
@@ -62,7 +62,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
             fs
         )
 
-        return Response({"data": response_data}, status=status.HTTP_200_OK)
+        return response
     except requests.Timeout:
         return Response(
             {"error": "El servidor tardó demasiado en responder."},
