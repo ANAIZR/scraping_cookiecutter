@@ -286,26 +286,30 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-            data = {
+        if not object_id:
+            raise Exception("Error al guardar el archivo en GridFS, ObjectID no generado.")
+        data = {
                 "Objeto": object_id,
                 "Tipo": "Documento",
                 "Url": url,
                 "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Etiquetas": ["planta", "plaga"],
             }
+            
+        collection.insert_one(data)
+        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
 
-            collection.insert_one(data)
-            logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+        delete_old_documents(url, collection, fs)
 
-            delete_old_documents(url, collection, fs)
-
-            response_data = {
+        response_data = {
                 "Tipo": "Documento",
                 "Url": url,
                 "Fecha_scraper": data["Fecha_scraper"],
                 "Etiquetas": data["Etiquetas"],
                 "Mensaje": "Los datos han sido scrapeados correctamente.",
             }
+        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
+
 
         return response_data
     except Exception as e:
