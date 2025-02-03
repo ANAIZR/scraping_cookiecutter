@@ -23,16 +23,13 @@ lock = Lock()
 def fetch_content(href, logger, scraped_count, failed_hrefs):
     try:
         response = requests.get(href, timeout=10)
-        logger.info(f"Accediendo al enlace: {href}")
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
         inner_content = soup.find(id="inner-content")
         if inner_content:
             content_text = inner_content.get_text(strip=True)
-            logger.info(
-                f"Contenido obtenido del enlace: {href}, Longitud: {len(content_text)} caracteres"
-            )
+            
             with lock:
                 scraped_count[0] += 1
             return f"URL: {href}\n{content_text}"
@@ -45,25 +42,22 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
         failed_hrefs.append(href)
         return None
 
-
 def scraper_iucngisd(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo()
-    all_scraper = ""
+    all_scraper = f"Iniciando scraping para URL: {url}\n"
     scraped_count = [0]
     failed_hrefs = []
 
     try:
         driver = initialize_driver()
         driver.get(url)
-        logger.info(f"Abriendo URL con Selenium: {url}")
 
         search_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "go"))
         )
         search_button.click()
-        logger.info("Botón de búsqueda clicado con Selenium.")
 
         time.sleep(5)
 
@@ -85,7 +79,7 @@ def scraper_iucngisd(url, sobrenombre):
             if a_tag and a_tag.get("href"):
                 hrefs.append(urljoin(url, a_tag["href"]))
 
-        logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
+        all_scraper += f"Total de enlaces encontrados: {len(hrefs)}\n"
 
         with ThreadPoolExecutor(max_workers=4) as executor:
             results = list(
@@ -100,6 +94,12 @@ def scraper_iucngisd(url, sobrenombre):
         for content in results:
             if content:
                 all_scraper += content + "\n\n"
+
+        all_scraper += f"Enlaces encontrados: {len(hrefs)}\n"
+        all_scraper += f"Enlaces scrapeados exitosamente: {scraped_count[0]}\n"
+        all_scraper += f"Enlaces fallidos: {len(failed_hrefs)}\n"
+        all_scraper += f"HREFs fallidos: {', '.join(failed_hrefs) if failed_hrefs else 'Ninguno'}\n"
+
         if not all_scraper.strip():
             logger.error(
                 "No se pudo obtener contenido de los enlaces. Proceso terminado con errores."
@@ -111,10 +111,6 @@ def scraper_iucngisd(url, sobrenombre):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        logger.info(f"Enlaces encontrados: {len(hrefs)}")
-        logger.info(f"Enlaces scrapeados exitosamente: {scraped_count[0]}")
-        logger.info(f"Enlaces fallidos: {len(failed_hrefs)}")
-        logger.info(f"HREFs fallidos: {failed_hrefs}")
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response

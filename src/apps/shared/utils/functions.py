@@ -327,7 +327,6 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             )
             logger.info(f"Datos procesados correctamente para la URL: {url}")
             return {
-                "status": "success",
                 "data": response_data,
             }
         else:
