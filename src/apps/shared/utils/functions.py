@@ -13,7 +13,7 @@ from rest_framework import status
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
-
+from dotenv import load_dotenv
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36",
@@ -28,7 +28,7 @@ USER_AGENTS = [
 OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR", "~/scraping_cookiecutter/files/scrapers"))
 LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR", "~/scraping_cookiecutter/files/logs"))
 LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS", "~/scraping_cookiecutter/apps/shared/utils/txt"))
-
+load_dotenv()
 #BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
 #LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
@@ -140,16 +140,23 @@ def initialize_driver(retries=3):
                 raise
 
 
-def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
+def connect_to_mongo():
+    logger = get_logger("MONGO_CONNECTION")
 
-    logger = get_logger("MONGO_CONECCTION")
     try:
-        logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
-        client = MongoClient("mongodb://localhost:27017/")
+        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+        db_name = os.getenv("MONGO_DB_NAME", "scrapping-can")
+        collection_name = os.getenv("MONGO_COLLECTION_NAME", "collection")
+
+        logger.info(f"Conectando a MongoDB en {mongo_uri}, base de datos: {db_name}")
+        
+        client = MongoClient(mongo_uri)
         db = client[db_name]
         fs = gridfs.GridFS(db)
+
         logger.info(f"Conexión a MongoDB establecida con éxito: {db_name}")
         return db[collection_name], fs
+
     except Exception as e:
         logger.error(f"Error al conectar a MongoDB: {str(e)}")
         raise
