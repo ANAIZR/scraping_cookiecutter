@@ -37,7 +37,6 @@ def wait_for_element(driver, wait_time, locator):
 def scrape_table_rows(driver, wait_time, state):
 
     rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
-    logger.info(f"{len(rows)} filas encontradas en la tabla.")
     for row in rows:
         try:
             link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
@@ -46,7 +45,6 @@ def scrape_table_rows(driver, wait_time, state):
                 continue
 
             state.processed_links.add(link)
-            logger.info(f"Procesando enlace: {link}")
             driver.get(link)
             process_page(driver, wait_time, state)
         except Exception as e:
@@ -87,7 +85,6 @@ def get_current_page_number(driver):
     try:
         page_number_element = driver.find_element(By.CSS_SELECTOR, ".pagination .active a")
         page_number = int(page_number_element.text)
-        logger.info(f"Página actual: {page_number}")
         return page_number
     except Exception as e:
         logger.error(f"No se pudo obtener el número de página actual: {str(e)}")
@@ -102,13 +99,11 @@ def click_next_page(driver, wait_time):
         )
 
         if "disabled" in next_button.get_attribute("class"):
-            logger.info("El botón de siguiente página está deshabilitado. No hay más páginas.")
             return False
 
         current_page = get_current_page_number(driver)
 
         next_button.click()
-        logger.info(f"Haciendo clic en la página siguiente desde la página {current_page}.")
 
         WebDriverWait(driver, wait_time).until(
             lambda d: get_current_page_number(d) != current_page
@@ -117,7 +112,6 @@ def click_next_page(driver, wait_time):
         wait_for_element(
             driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
         )
-        logger.info(f"Cambio exitoso a la página {get_current_page_number(driver)}.")
         return True
 
     except TimeoutException:
@@ -142,7 +136,6 @@ def scraper_aguiar_hvr(url, wait_time, sobrenombre):
                 driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
             )
             current_page = get_current_page_number(driver)
-            logger.info(f"Procesando página {current_page}")
             state = scrape_table_rows(driver, wait_time, state)
 
             if not click_next_page(driver, wait_time):
