@@ -54,3 +54,5 @@ from .ippc_int import scraper_ippc_int
 from .hort_purdue import scraper_hort_purdue
 from .cdfa_ca import scraper_cdfa
 from .sciencedirect import scraper_sciencedirect
+from .cabi_library import scraper_cabi_library
+from .agriculture_gov import scraper_agriculture_gov

@@ -59,7 +59,9 @@ from ...utils.scrapers import (
     scraper_hort_purdue,
     scraper_cdfa,
     scraper_ippc_int,
-    scraper_sciencedirect
+    scraper_sciencedirect,
+    scraper_agriculture_gov,
+    scraper_cabi_library
 )
 
 SCRAPER_FUNCTIONS = {
@@ -117,7 +119,9 @@ SCRAPER_FUNCTIONS = {
     52: scraper_ers_usda,
     53: scraper_ars_usda,
     54: scraper_ippc_int,
-    56: scraper_sciencedirect
+    55: scraper_agriculture_gov,
+    56: scraper_sciencedirect,
+    57: scraper_cabi_library
 }
 
 class ScraperAPIView(APIView):

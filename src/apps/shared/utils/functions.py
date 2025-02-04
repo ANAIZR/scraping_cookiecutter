@@ -14,7 +14,8 @@ from rest_framework import status
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
-
+from dotenv import load_dotenv
+load_dotenv()
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36",
@@ -35,6 +36,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
 
+
 def load_keywords(file_name ="all.txt", base_dir=LOAD_KEYWORDS):
     logger = get_logger("CARGAR PALABRAS CLAVE")
     try:
@@ -44,7 +46,7 @@ def load_keywords(file_name ="all.txt", base_dir=LOAD_KEYWORDS):
             raise FileNotFoundError(f"El archivo '{file_path}' no existe.")
         
         with open(file_path, "r", encoding="utf-8") as file:
-            content = [line.strip() for line in file if line.strip()]  # Strip whitespace and skip empty lines
+            content = [line.strip() for line in file if line.strip()]  
         return content
     except FileNotFoundError as e:
         logger.error(e)
@@ -157,29 +159,33 @@ def initialize_driver(retries=3):
                 raise
 
 
-def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
+def connect_to_mongo(db_name=None, collection_name=None):
 
-    logger = get_logger("MONGO_CONECCTION")
+    logger = get_logger("MONGO_CONNECTION")
     try:
-        logger.info(f"Conectando a la base de datos MongoDB: {db_name}")
-        client = MongoClient("mongodb://localhost:27017/")
+        mongo_uri = os.getenv("MONGO_URI")
+        db_name = db_name or os.getenv("MONGO_DB_NAME")
+        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME")
+
+        logger.info(f"Conectando a MongoDB: {mongo_uri} - Base de datos: {db_name}")
+
+        client = MongoClient(mongo_uri)
         db = client[db_name]
         fs = gridfs.GridFS(db)
-        logger.info(f"Conexión a MongoDB establecida con éxito: {db_name}")
+
+        logger.info(f"✅ Conexión a MongoDB establecida correctamente: {db_name}")
         return db[collection_name], fs
+
     except Exception as e:
-        logger.error(f"Error al conectar a MongoDB: {str(e)}")
+        logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
         raise
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):
     logger = get_logger("GENERANDO DIRECTORIO")
     try:
-        url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
             url.split("//")[-1].replace("/", "_").replace("?", "_").replace("=", "_")
-            + "_"
-            + url_hash[:8]
         )
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
@@ -258,7 +264,7 @@ def delete_old_documents(url, collection, fs, limit=2):
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
-        folder_path = generate_directory(url, OUTPUT_DIR)
+        folder_path = generate_directory(sobrenombre, OUTPUT_DIR)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
         with open(file_path, "w", encoding="utf-8") as file:
@@ -293,6 +299,43 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
 
+def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
+    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
+    try:
+        folder_path = generate_directory(sobrenombre, OUTPUT_DIR)
+        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(all_scraper)
+
+        with open(file_path, "rb") as file_data:
+            object_id = fs.put(file_data, filename=os.path.basename(file_path))
+
+            data = {
+                "Objeto": object_id,
+                "Tipo": "Documento",
+                "Url": url,
+                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Etiquetas": ["planta", "plaga"],
+            }
+
+            collection.insert_one(data)
+            logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+
+            delete_old_documents(url, collection, fs)
+
+            response_data = {
+                "Tipo": "Documento",
+                "Url": url,
+                "Fecha_scraper": data["Fecha_scraper"],
+                "Etiquetas": data["Etiquetas"],
+                "Mensaje": "Los datos han sido scrapeados correctamente.",
+            }
+
+        return response_data
+    except Exception as e:
+        logger.error(f"Error al guardar datos del scraper: {str(e)}")
+        raise
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
@@ -301,47 +344,41 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
-            return Response({"data": response_data}, status=status.HTTP_200_OK)
+            logger.info(f"Datos procesados correctamente para la URL: {url}")
+            return {
+                "status": "success",
+                "data": response_data,
+            }
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+            return {
+                "status": "no_content",
+                "url": url,
+                "message": "No se encontraron datos para scrapear.",
+            }
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
-            },
-            status=status.HTTP_408_REQUEST_TIMEOUT,
-        )
+        return {
+            "status": "timeout",
+            "url": url,
+            "message": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+        }
     except ConnectionError:
         logger.error("Error de conexión a la URL.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "No se pudo conectar a la página web.",
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        return {
+            "status": "connection_error",
+            "url": url,
+            "message": "No se pudo conectar a la página web.",
+        }
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "Ocurrió un error al procesar los datos.",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return {
+            "status": "error",
+            "url": url,
+            "message": "Ocurrió un error al procesar los datos.",
+            "error": str(e),
+        }
+
 
 
 def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):

@@ -11,7 +11,8 @@ from ..functions import (
     get_random_user_agent,
 )
 import time
-
+from rest_framework.response import Response
+from rest_framework import status
 def scraper_cal_ipc(url, sobrenombre, max_depth=2):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
@@ -169,7 +170,10 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
-    except requests.RequestException as e:
-        return JsonResponse(
-            {"error": f"Error al realizar la solicitud: {str(e)}"}, status=400
+    except Exception as e:
+        print(f"Ocurrió un error: {e}")
+        return Response(
+            {"error": "Ocurrió un error durante el scraping."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+

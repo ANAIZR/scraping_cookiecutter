@@ -22,7 +22,7 @@ from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
 logger = get_logger("scraper")
 
-def scraper_cabi_digital(url, sobrenombre):
+def scraper_cabi_library(url, sobrenombre):
     driver = initialize_driver()
     
     try:
@@ -92,7 +92,7 @@ def scraper_cabi_digital(url, sobrenombre):
                     EC.presence_of_element_located(
                         (
                             By.CSS_SELECTOR,
-                            "#AllFieldb117445f-c250-4d14-a8d9-7c66d5b6a4800",
+                            "#AllField335496fc-e07b-4ed7-a0a7-733c50b3f9bd0",
                         )
                     )
                 )
@@ -127,7 +127,7 @@ def scraper_cabi_digital(url, sobrenombre):
                     logger.info(f"Encontrados {len(items)} resultados.")
                     for item in items:
                         href = item.find("a")["href"]
-                        if href.startswith("/doi/10.1079/cabicompendium"):
+                        if href.startswith("/doi/10.5555"):
                             absolut_href = f"{base_domain}{href}"
                             driver.get(absolut_href)
                             visited_urls.add(absolut_href)
@@ -140,17 +140,14 @@ def scraper_cabi_digital(url, sobrenombre):
                             time.sleep(random.uniform(6, 10))
                             soup = BeautifulSoup(driver.page_source, "html.parser")
                             abstracts = soup.select_one("#abstracts")
-                            body = soup.select_one("#bodymatter>.core-container")
                             abstract_text = (
                                 abstracts.get_text(strip=True)
                                 if abstracts
                                 else "No abstract found"
                             )
-                            body_text = (
-                                body.get_text(strip=True) if body else "No body found"
-                            )
-                            if abstract_text or body_text:
-                                content_accumulated += f"URL:{absolut_href} \nTexto: {abstract_text}\n\n\n{body_text}"
+                            
+                            if abstract_text :
+                                content_accumulated += f"URL:{absolut_href} \nTexto: {abstract_text}\n"
                                 content_accumulated += "-" * 100 + "\n\n"
 
                                 print(f"Página procesada y guardada: {absolut_href}")
