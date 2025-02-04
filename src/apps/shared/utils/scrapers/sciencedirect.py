@@ -104,13 +104,36 @@ def scraper_sciencedirect(url, sobrenombre):
                         time.sleep(random.uniform(6, 10))
 
                         soup = BeautifulSoup(driver.page_source, "html.parser")
+                        title_text = soup.select_one("#screen-reader-main-title").get_text(strip=True) if soup.select_one("#screen-reader-main-title") else ""
                         abstract_text = soup.select_one("#abstracts").get_text(strip=True) if soup.select_one("#abstracts") else "No abstract found"
-                        body_text = soup.select_one("#screen-reader-main-title").get_text(strip=True) if soup.select_one("#screen-reader-main-title") else ""
+                        introductin_text = soup.select_one("#preview-section-introduction").get_text(strip=True) if soup.select_one("#preview-section-introduction") else "No preview-section-introduction found"
+                        snippets_text = soup.select_one("#preview-section-snippets").get_text(strip=True) if soup.select_one("#preview-section-snippets") else "No abstract found"
 
-                        if abstract_text and body_text:
-                            contenido = f"{abstract_text}\n\n\n{body_text}"
+                        print('variables booleanas de title_text', title_text)
+                        print('variables booleanas de abstract_text', abstract_text)
+                        print('variables booleanas de introductin_text', introductin_text)
+                        print('variables booleanas de snippets_text', snippets_text)
+                        contenido = ""
+                        if (title_text or abstract_text or introductin_text or snippets_text):
+                            print('creando el archivo INICIO')
+                            if title_text: contenido += f"{title_text}\n\n\n"
+                            if abstract_text: contenido += f"{abstract_text}\n\n\n"
+                            if introductin_text: contenido += f"{introductin_text}\n\n\n"
+                            if snippets_text: contenido += f"{snippets_text}\n\n\n"
+                            # contenido = f"{title_text}\n\n\n{abstract_text}\n\n\n{introductin_text}\n\n\n{snippets_text}"
+
                             link_folder = generate_directory(absolut_href, keyword_folder)
                             file_path = get_next_versioned_filename(link_folder, keyword)
+
+                            # Normalizar la ruta eliminando los '../'
+                            file_path = os.path.abspath(file_path)
+
+                            # Crear directorios si no existen
+                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+                            print(f"Ruta final del archivo: {file_path}")
+
+                            # Intentar abrir el archivo
                             with open(file_path, "w", encoding="utf-8") as file:
                                 file.write(contenido)
 
@@ -118,6 +141,7 @@ def scraper_sciencedirect(url, sobrenombre):
                                 object_id = fs.put(
                                     file_data, filename=os.path.basename(file_path)
                                 )
+                            print('termiando de crear el archivo FINAL')
 
                             logger.info(f"Página procesada y guardada: {absolut_href}")
                         else:
