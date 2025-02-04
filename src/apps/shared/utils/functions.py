@@ -26,7 +26,7 @@ USER_AGENTS = [
 
 OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR", "~/scraping_cookiecutter/files/scrapers"))
 LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR", "~/scraping_cookiecutter/files/logs"))
-LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS", "~/scraping_cookiecutter/apps/shared/utils/txt"))
+LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS", "~/scraping_cookiecutter/src/apps/shared/utils/txt"))
 load_dotenv()
 #BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
