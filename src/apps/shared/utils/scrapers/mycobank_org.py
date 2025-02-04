@@ -97,14 +97,12 @@ def scraper_mycobank_org(url, sobrenombre):
                 time.sleep(5)
 
             except Exception as e:
-                print("Error al intentar avanzar al siguiente paginador", e)
+                logger.error("Error al intentar avanzar al siguiente paginador", e)
                 break
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
-        print(f"Ocurrió un error: {e}")
         return Response(
             {"error": "Ocurrió un error durante el scraping."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,

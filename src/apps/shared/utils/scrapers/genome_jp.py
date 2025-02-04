@@ -66,7 +66,7 @@ def extract_data(driver, wait_time):
         print(f"Error al extraer datos: {e}")
         return all_scraper
 
-def scraper_genome_jp(url, wait_time, sobrenombre):
+def scraper_genome_jp(url, sobrenombre):
 
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
@@ -77,10 +77,10 @@ def scraper_genome_jp(url, wait_time, sobrenombre):
         driver.get(url)
 
         while True:
-            data = extract_data(driver, wait_time)
+            data = extract_data(driver, 30)
             all_scraper += data
 
-            if not navigate_to_next_page(driver, wait_time):
+            if not navigate_to_next_page(driver, 30):
                 break
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)

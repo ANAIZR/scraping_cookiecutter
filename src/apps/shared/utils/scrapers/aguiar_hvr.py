@@ -2,6 +2,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from selenium import webdriver
+import requests
+from bs4 import BeautifulSoup
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -10,22 +13,19 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-import time
-from selenium.common.exceptions import StaleElementReferenceException
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger("INICIANDO EL SCRAPER")
-
 
 class ScraperState:
     def __init__(self):
         self.all_scraper = ""
         self.processed_links = set()
-        self.extracted_count = 0
+        self.extracted_hrefs = []  
         self.skipped_count = 0
-
+        self.extracted_count = 0
 
 def wait_for_element(driver, wait_time, locator):
-
     try:
         return WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located(locator)
@@ -34,114 +34,64 @@ def wait_for_element(driver, wait_time, locator):
         logger.error(f"Elemento no encontrado: {locator} - {str(e)}")
         raise
 
-
-
-def scrape_table_rows(driver, wait_time, state):
+def extract_internal_hrefs(driver, state):
     try:
-        # Asegúrate de obtener siempre las filas más recientes
-        rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
-
-        for index, row in enumerate(rows):
+        divs = driver.find_elements(By.CSS_SELECTOR, "div.col-md-2.col-sm-4.col-xs-6")
+        logger.info(f"{len(divs)} divs encontrados con enlaces internos.")
+        for div in divs:
             try:
-                # Intentar obtener el enlace dentro de la fila
-                link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
-
-                if link in state.processed_links:
-                    logger.info(f"Enlace ya procesado: {link}")
-                    continue
-
-                state.processed_links.add(link)
-                driver.get(link)
-                process_page(driver, wait_time, state)
-
-            except StaleElementReferenceException:
-                logger.warning(f"Referencia a elemento obsoleta en fila {index}. Reintentando...")
-                # Reintenta obtener las filas actualizadas
-                rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
-                row = rows[index]  # Reasigna la fila para reintentar
-                link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
-
-                if link in state.processed_links:
-                    logger.info(f"Enlace ya procesado tras reintento: {link}")
-                    continue
-
-                state.processed_links.add(link)
-                driver.get(link)
-                process_page(driver, wait_time, state)
-
+                href = div.find_element(By.CSS_SELECTOR, "a").get_attribute("href")
+                state.extracted_hrefs.append(href)
+                logger.info(f"Href extraído: {href}")
             except Exception as e:
-                state.skipped_count += 1
-                logger.error(f"Error procesando fila {index}: {str(e)}")
-                
+                logger.warning(f"No se pudo extraer el href del div: {str(e)}")
     except Exception as e:
-        logger.error(f"Error al obtener las filas de la tabla: {str(e)}")
-    return state
+        logger.error(f"Error al extraer los hrefs internos: {str(e)}")
 
-
-
-def process_page(driver, wait_time, state):
-
-    try:
-        wait_for_element(driver, wait_time, (By.CSS_SELECTOR, "section.container div.rfInv"))
-        cards = driver.find_elements(By.CSS_SELECTOR, "div.col-md-2")
-        for card in cards:
-            link_in_card = card.find_element(By.CSS_SELECTOR, "a")
-            link_in_card.click()
-            process_card_page(driver, wait_time, state)
-    except Exception as e:
-        logger.error(f"Error procesando página: {str(e)}")
-
-
-def process_card_page(driver, wait_time, state):
-
-    original_window = driver.current_window_handle
-    new_window = [w for w in driver.window_handles if w != original_window][0]
-    driver.switch_to.window(new_window)
-    try:
-        content = wait_for_element(driver, wait_time, (By.CSS_SELECTOR, "main.container div.parteesq")).text
-        state.all_scraper += f"Datos extraídos: {content}\n\n"
-        state.extracted_count += 1
-    finally:
-        driver.close()
-        driver.switch_to.window(original_window)
-
-
+def process_table_rows(driver, state):
+    rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
+    logger.info(f"{len(rows)} filas encontradas en la tabla.")
+    for row in rows:
+        try:
+            link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
+            if link not in state.processed_links:
+                state.processed_links.add(link)
+                logger.info(f"Ingresando al href de la tabla: {link}")
+                driver.get(link)  
+                extract_internal_hrefs(driver, state)  
+                driver.back()  
+                wait_for_element(driver, 10, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
+        except Exception as e:
+            logger.error(f"Error procesando fila de la tabla: {str(e)}")
 def get_current_page_number(driver):
-
     try:
         page_number_element = driver.find_element(By.CSS_SELECTOR, ".pagination .active a")
         page_number = int(page_number_element.text)
+        logger.info(f"Página actual: {page_number}")
         return page_number
     except Exception as e:
         logger.error(f"No se pudo obtener el número de página actual: {str(e)}")
         return None
-
 
 def click_next_page(driver, wait_time):
     try:
         next_button = wait_for_element(
             driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_next a")
         )
+        logger.info(f"Estado del botón 'Siguiente': {next_button.get_attribute('class')}")
 
-        if "disabled" in next_button.get_attribute("class"):
-            logger.info("El botón 'Siguiente' está deshabilitado.")
+        if "disabled" in next_button.get_attribute("class") or not next_button.is_enabled():
+            logger.info("Botón de siguiente página deshabilitado. Fin de la paginación.")
             return False
 
         current_page = get_current_page_number(driver)
-
         next_button.click()
-
-        time.sleep(2)
+        logger.info(f"Haciendo clic en la página siguiente desde la página {current_page}.")
 
         WebDriverWait(driver, wait_time).until(
             lambda d: get_current_page_number(d) != current_page
         )
-
-        wait_for_element(
-            driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody")
-        )
         return True
-
     except TimeoutException:
         logger.error("Tiempo de espera agotado al intentar cambiar de página.")
         return False
@@ -149,11 +99,46 @@ def click_next_page(driver, wait_time):
         logger.error(f"Error al intentar ir a la siguiente página: {str(e)}")
         return False
 
+def scrape_content_from_links(state):
+    def process_link(link):
+        try:
+            response = requests.get(link, timeout=10)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, "html.parser")
+                content = soup.find("div", class_="parteesq")
+                if content:
+                    text = content.get_text(strip=True)
+                    logger.info(f"Contenido extraído de: {link}")
+                    return link, text, None  # Devuelve el enlace y el contenido
+                else:
+                    logger.warning(f"No se encontró contenido en: {link}")
+                    return link, None, "No se encontró contenido"
+            else:
+                logger.warning(f"Error al solicitar {link}: Status {response.status_code}")
+                return link, None, f"Status {response.status_code}"
+        except Exception as e:
+            logger.error(f"Error al procesar {link}: {str(e)}")
+            return link, None, str(e)
 
+    results = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_link = {executor.submit(process_link, link): link for link in state.extracted_hrefs}
 
+        for future in as_completed(future_to_link):
+            link = future_to_link[future]
+            try:
+                link, text, error = future.result()
+                if text:
+                    state.all_scraper += f"URL: {link}\nContenido: {text}\n\n"
+                    state.extracted_count += 1
+                elif error:
+                    logger.warning(f"Error procesando {link}: {error}")
+                    state.skipped_count += 1
+            except Exception as e:
+                logger.error(f"Error desconocido al procesar {link}: {str(e)}")
+                state.skipped_count += 1
 
 def scraper_aguiar_hvr(url, sobrenombre):
-
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     state = ScraperState()
@@ -162,24 +147,17 @@ def scraper_aguiar_hvr(url, sobrenombre):
     try:
         driver.get(url)
         while True:
-            try:
-                wait_for_element(driver, 30, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
-                current_page = get_current_page_number(driver)
-                state = scrape_table_rows(driver, 30, state)
-
-                if not click_next_page(driver, 30):
-                    logger.info("Fin de la paginación alcanzado.")
-                    break
-
-            except Exception as e:
-                logger.error(f"Error durante el scraping: {str(e)}")
+            wait_for_element(driver, 30, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
+            process_table_rows(driver, state) 
+            if not click_next_page(driver, 30): 
                 break
 
+        logger.info(f"Se recolectaron {len(state.extracted_hrefs)} enlaces. Procesando contenido...")
+        scrape_content_from_links(state) 
 
         response = process_scraper_data(state.all_scraper, url, sobrenombre, collection, fs)
         return response
     except Exception as e:
-        logger.error(f"Error durante el scraping: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     finally:
         driver.quit()

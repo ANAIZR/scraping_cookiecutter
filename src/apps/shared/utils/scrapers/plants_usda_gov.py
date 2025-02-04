@@ -109,7 +109,6 @@ def scraper_plants_usda_gov(
                 break
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:

@@ -43,11 +43,9 @@ def scraper_flora_habitas(url, sobrenombre):
                     logger.info(f"URL ignorada (duplicada o contiene 'Familia'): {full_url}")
         else:
             logger.info("No se encontró el div#contents en la página principal.")
-        print(f"Enlaces encontrados: {list(hrefs)}")
 
     def scrape_page(link):
         nonlocal all_scraper
-        print(f"Procesando URL: {link}") 
         visited_urls.add(link) 
         html_content = get_page_content(link)
         if html_content:
