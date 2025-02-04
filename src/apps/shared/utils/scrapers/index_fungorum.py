@@ -14,8 +14,6 @@ from ..functions import (
 )
 
 
-
-
 def scraper_index_fungorum(url, sobrenombre):
     logger = get_logger("scraper")
 
@@ -38,13 +36,11 @@ def scraper_index_fungorum(url, sobrenombre):
 
         for term in search_terms:
             try:
-
                 input_field = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((By.NAME, "SearchTerm"))
                 )
 
                 input_field.clear()
-
                 input_field.send_keys(term)
 
                 btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit']")
@@ -74,29 +70,30 @@ def scraper_index_fungorum(url, sobrenombre):
 
                     try:
                         content = main.text
-                        all_scraper += content
+                        # Concatenar el contenido junto con la URL
+                        all_scraper += f"URL: {href}\nContenido:\n{content}\n\n"
                     except Exception as e:
-                        pass
+                        logger.error(f"Error al procesar contenido de {href}: {str(e)}")
 
                     driver.back()
                     WebDriverWait(driver, 30).until(
                         EC.presence_of_element_located(
                             (By.CSS_SELECTOR, "table.mainbody")
                         )
-                    )  
+                    )
 
                 input_field = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((By.NAME, "SearchTerm"))
                 )
-                input_field.clear()  
+                input_field.clear()
 
             except Exception as selee:
-                pass
+                logger.error(f"Error al procesar el término '{term}': {str(selee)}")
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
-
     except Exception as e:
+        logger.error(f"Error general en el scraping: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:

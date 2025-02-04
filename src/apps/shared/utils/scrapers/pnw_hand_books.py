@@ -80,7 +80,6 @@ def scraper_pnw_hand_books(
         except Exception as e:
             print(f"Error durante el proceso de scraping: {e}")
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
