@@ -10,6 +10,8 @@ from ..functions import (
     get_logger,
     initialize_driver,
 )
+import random
+
 
 def scraper_iucnredlist(url, sobrenombre):
     logger = get_logger("scraper")
@@ -21,12 +23,12 @@ def scraper_iucnredlist(url, sobrenombre):
     try:
         driver.get(url)
         WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "#redlist-js"))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#page"))
         )
-        btn = WebDriverWait(driver, 30).until(
+        button = WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search--site__button"))
         )
-        btn.click()
+        driver.execute_script("arguments[0].click();", button)
 
         WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located(
@@ -81,12 +83,12 @@ def scraper_iucnredlist(url, sobrenombre):
                         print(f"Error al obtener el hábitat: {e}")
 
                     text_content = title + taxonomy + habitat
-                    if title:
+                    if text_content:
                         all_scrapped += text_content
                 except Exception as e:
                     print(f"Error procesando el artículo: {e}")
                 visited_urls.add(href)
-                time.sleep(5)
+                time.sleep(random.randint(1, 3))
                 driver.back()
 
             try:

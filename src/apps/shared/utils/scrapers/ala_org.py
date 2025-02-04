@@ -1,7 +1,6 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import gridfs
 import time
 from ..functions import (
     process_scraper_data,
@@ -9,6 +8,7 @@ from ..functions import (
     get_logger,
     initialize_driver,
 )
+import random
 
 def scraper_ala_org(
     url,
@@ -24,11 +24,11 @@ def scraper_ala_org(
     all_scraper = ""
     try:
         driver.get(url)
-        btn = WebDriverWait(driver, 30).until(
+        button = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "button[type='submit']"))
         )
-        btn.click()
-        time.sleep(2)
+        driver.execute_script("arguments[0].click();", button)
+        time.sleep(random.randint(1, 3))
 
         while True:
             WebDriverWait(driver, 30).until(
@@ -60,7 +60,7 @@ def scraper_ala_org(
 
                         driver.back()
 
-                        time.sleep(2)
+                        time.sleep(random.randint(1, 3))
 
                 except Exception as e:
                     print(

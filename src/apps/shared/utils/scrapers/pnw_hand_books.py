@@ -11,11 +11,10 @@ from ..functions import (
     get_logger,
     initialize_driver,
 )
+import random
 
-def scraper_pnw_hand_books(
-    url,
-    sobrenombre
-):
+
+def scraper_pnw_hand_books(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
@@ -28,7 +27,7 @@ def scraper_pnw_hand_books(
             try:
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_all_elements_located(
-                        (By.CSS_SELECTOR, "div.view-content div.views-row")
+                        (By.CSS_SELECTOR, "div.view-content")
                     )
                 )
                 containers = driver.find_elements(
@@ -40,13 +39,14 @@ def scraper_pnw_hand_books(
                         By.CSS_SELECTOR, "div.views-field-title a"
                     )
                     href = link.get_attribute("href")
-
+                    logger.info(f"Procesando página: {href}")
                     driver.get(href)
-                    time.sleep(2)
+                    time.sleep(random.randint(1, 3))
                     soup = BeautifulSoup(driver.page_source, "html.parser")
 
                     title = soup.find("h1")
-
+                    content = soup.find("div", class_="region-content")
+                    all_scraper += f"URL:{href}\n\n{title.text}\n{content.text}\n"
                     driver.back()
                     time.sleep(2)
 
@@ -56,7 +56,8 @@ def scraper_pnw_hand_books(
         def go_to_next_page():
             try:
                 next_button = driver.find_element(By.CSS_SELECTOR, "li.next a")
-                next_button.click()
+                driver.execute_script("arguments[0].click();", next_button)
+
                 time.sleep(3)
                 return True
             except Exception as e:
@@ -65,11 +66,11 @@ def scraper_pnw_hand_books(
 
         try:
             time.sleep(5)
-            boton = driver.find_element(
+            button = driver.find_element(
                 By.CSS_SELECTOR, "#edit-submit-plant-subarticles-autocomplete"
             )
-            boton.click()
-            time.sleep(3)
+            driver.execute_script("arguments[0].click();", button)
+            time.sleep(random.randint(1, 3))
 
             while True:
                 scrape_current_page()
