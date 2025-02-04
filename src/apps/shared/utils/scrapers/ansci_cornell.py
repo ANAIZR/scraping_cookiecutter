@@ -58,7 +58,6 @@ def scraper_ansci_cornell(
 
                     all_scraper += p.text + "\n"
                     
-
                 driver.back()
                 all_scraper += "**********\n"
                 WebDriverWait(driver, 30).until(
