@@ -61,7 +61,8 @@ from ...utils.scrapers import (
     scraper_ippc_int,
     scraper_sciencedirect,
     scraper_agriculture_gov,
-    scraper_cabi_library
+    scraper_cabi_library,
+    scraper_ecoport
 )
 
 SCRAPER_FUNCTIONS = {
@@ -121,7 +122,8 @@ SCRAPER_FUNCTIONS = {
     54: scraper_ippc_int,
     55: scraper_agriculture_gov,
     56: scraper_sciencedirect,
-    57: scraper_cabi_library
+    57: scraper_cabi_library,
+    58: scraper_ecoport
 }
 
 class ScraperAPIView(APIView):
