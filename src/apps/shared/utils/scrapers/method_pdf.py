@@ -1,5 +1,4 @@
 import requests
-import os
 import PyPDF2
 from io import BytesIO
 from rest_framework.response import Response
