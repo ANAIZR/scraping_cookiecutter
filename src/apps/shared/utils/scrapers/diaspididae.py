@@ -11,6 +11,7 @@ from ..functions import (
     initialize_driver,
 )
 
+
 def clean_text(text):
     return " ".join(text.split()).strip()
 
@@ -49,6 +50,7 @@ def scraper_species(driver, lookupid):
     scraped_data["text"] = format_scraper_data_with_headers(html_content)
 
     return {
+        "url": full_url,  
         "text": scraped_data["text"],
     }
 
@@ -71,10 +73,11 @@ def scraper_diaspididae(url, sobrenombre):
         for lookupid in lookup_ids:
             scraped_data = scraper_species(driver, lookupid)
             if scraped_data:
-                all_scraper += f"{scraped_data['text']}\n\n"
-                all_scraper += "\n\n"
+                all_scraper += f"URL: {scraped_data['url']}\n\n"
+                all_scraper += f"{scraped_data['text']}\n"
+                all_scraper += "\n" + "-" * 80 + "\n\n"  
+
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:

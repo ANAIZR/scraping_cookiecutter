@@ -23,6 +23,7 @@ def scraper_nematode(
 
     try:
         driver.get(url)
+        all_scraper+=f"{url}\n\n"
         while True:
             content = WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div.view"))

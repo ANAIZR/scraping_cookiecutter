@@ -10,6 +10,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    load_keywords,
 )
 
 
@@ -18,14 +19,11 @@ def load_search_terms(file_path):
         with open(file_path, "r") as file:
             return [line.strip() for line in file.readlines() if line.strip()]
     except Exception as e:
-        print(f"Error al cargar términos: {e}")
         return []
 
 
 def scraper_index_fungorum(url, sobrenombre):
-    search_terms = load_search_terms(
-        os.path.join(os.path.dirname(__file__), "../txt/fungi.txt")
-    )
+    search_terms = load_keywords("fungi.txt")
 
     if not search_terms:
         return Response(
@@ -95,10 +93,9 @@ def scraper_index_fungorum(url, sobrenombre):
                 )
                 input_field.clear()  
 
-            except Exception as e:
+            except Exception as selee:
                 pass
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
 
