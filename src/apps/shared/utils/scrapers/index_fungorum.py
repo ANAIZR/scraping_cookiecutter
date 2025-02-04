@@ -14,25 +14,22 @@ from ..functions import (
 )
 
 
-def load_search_terms(file_path):
-    try:
-        with open(file_path, "r") as file:
-            return [line.strip() for line in file.readlines() if line.strip()]
-    except Exception as e:
-        return []
 
 
 def scraper_index_fungorum(url, sobrenombre):
+    logger = get_logger("scraper")
+
     search_terms = load_keywords("fungi.txt")
+    logger.info(f"Iniciando scraping para URL: {url}")
 
     if not search_terms:
+        logger.error("No se encontraron palabras")
+
         return Response(
             {"error": "No se encontraron términos para buscar."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    logger = get_logger("scraper")
-    logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""

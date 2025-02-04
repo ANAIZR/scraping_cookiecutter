@@ -12,12 +12,12 @@ from ..functions import (
     initialize_driver,
 )
 
-def scraper_nemaplex_plant_host(url,sobrenombre):
+def scraper_nemaplex_plant_host(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
-    all_scraper = ""
+    all_scraper = "" 
 
     try:
         driver.get(url)
@@ -28,11 +28,10 @@ def scraper_nemaplex_plant_host(url,sobrenombre):
         dropdown = Select(driver.find_element(By.ID, "DropDownList1"))
 
         for index in range(len(dropdown.options)):
-
             dropdown.select_by_index(index)
-
             submit_button = driver.find_element(By.XPATH, "//input[@type='submit']")
             submit_button.click()
+
             try:
                 WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((By.ID, "GridView1"))
@@ -41,17 +40,14 @@ def scraper_nemaplex_plant_host(url,sobrenombre):
                 page_soup = BeautifulSoup(driver.page_source, "html.parser")
                 table = page_soup.find("table", {"id": "GridView1"})
                 if table:
-                    
                     rows = table.find_all("tr")
                     for row in rows:
                         columns = row.find_all("td")
                         row_data = [col.get_text(strip=True) for col in columns]
-                        all_scraper += (
-                            " ".join(row_data) + "\n"
-                        ) 
+                        all_scraper += f"{url} | {' '.join(row_data)}\n"
                 
-            except:
-                print(f"Error inesperado para la opción {index + 1}. Excepción: {str(e)}")
+            except Exception as e:
+                logger.error(f"Error inesperado para la opción {index + 1}. Excepción: {str(e)}")
 
             driver.back()
 
@@ -59,11 +55,11 @@ def scraper_nemaplex_plant_host(url,sobrenombre):
                 EC.presence_of_element_located((By.ID, "DropDownList1"))
             )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper.strip(), url, sobrenombre, collection, fs)
         return response
 
-
     except Exception as e:
+        logger.error(f"Error general en el scraper: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
