@@ -84,7 +84,7 @@ def scraper_iucnredlist(url, sobrenombre):
 
                     text_content = title + taxonomy + habitat
                     if text_content:
-                        all_scrapped += text_content
+                        all_scraper += text_content
                 except Exception as e:
                     print(f"Error procesando el artículo: {e}")
                 visited_urls.add(href)

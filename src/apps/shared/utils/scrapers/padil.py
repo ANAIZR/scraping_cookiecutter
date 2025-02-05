@@ -208,7 +208,8 @@ def scraper_padil(url, sobrenombre):
         return Response(
             {
                 "Tipo": "Web",
-                "Url": url,
+                "Url": url,            
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
             },
             status=status.HTTP_408_REQUEST_TIMEOUT,
@@ -219,6 +220,7 @@ def scraper_padil(url, sobrenombre):
             {
                 "Tipo": "Web",
                 "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Mensaje": "No se pudo conectar a la página web.",
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -229,6 +231,8 @@ def scraper_padil(url, sobrenombre):
             {
                 "Tipo": "Web",
                 "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+
                 "Mensaje": "Ocurrió un error al procesar los datos.",
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,

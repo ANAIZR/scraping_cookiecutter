@@ -17,7 +17,6 @@ def scraper_fws_gov(
     url,
     sobrenombre,
 ):
-
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
@@ -80,7 +79,6 @@ def scraper_fws_gov(
                 break
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:

@@ -43,7 +43,6 @@ def scraper_pnw_hand_books(url, sobrenombre):
                     try:
                         link = container.find_element(By.CSS_SELECTOR, "div.views-field-title a")
                         href = link.get_attribute("href")
-                        logger.info(f"Procesando página: {href}")
                         
                         driver.get(href)
                         WebDriverWait(driver, 10).until(
