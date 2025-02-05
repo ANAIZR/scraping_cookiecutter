@@ -25,7 +25,8 @@ def scraper_ansci_cornell(
 
     try:
         driver.get(url)
-
+        logger.info(f"Ingresamos a la URL {url}")
+        logger.info("Buscaremos el boton")
         search_button = (
             WebDriverWait(driver, 30)
             .until(
@@ -35,7 +36,8 @@ def scraper_ansci_cornell(
             )
             .find_elements(By.TAG_NAME, "a")[1]
         )
-        search_button.click()
+        driver.execute_script("arguments[0].click();", search_button)
+        print("Dimos click ")
 
         target_divs = WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located(
