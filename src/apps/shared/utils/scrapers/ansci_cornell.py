@@ -36,6 +36,7 @@ def scraper_ansci_cornell(
             )
             .find_elements(By.TAG_NAME, "a")[1]
         )
+
         driver.execute_script("arguments[0].click();", search_button)
         print("Dimos click ")
 
