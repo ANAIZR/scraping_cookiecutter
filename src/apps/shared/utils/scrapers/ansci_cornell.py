@@ -83,7 +83,7 @@ def scraper_ansci_cornell(url, sobrenombre):
                             logger.info(f"Accediendo al enlace anidado: {nested_href}")
 
                             nested_page_body = WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "#pagebody "))
                             )
                             nested_p_tags = nested_page_body.find_elements(By.TAG_NAME, "p")[:5]
                             all_scraper += f"URL: {nested_href}\n" + "\n".join([p.text for p in nested_p_tags]) + "\n"
