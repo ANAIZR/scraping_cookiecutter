@@ -13,6 +13,8 @@ from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
+    initialize_driver,
+    connect_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -21,15 +23,8 @@ from selenium.webdriver.support.ui import Select
 
 
 def scraper_ndrs_org(url, sobrenombre):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
+    driver =  initialize_driver()
+    collection,fs = connect_to_mongo()
 
     base_url = "https://www.ndrs.org.uk/"
 
