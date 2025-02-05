@@ -23,6 +23,21 @@ def scraper_ansci_cornell(url, sobrenombre):
         driver.get(url)
         logger.info(f"Ingresamos a la URL {url}")
 
+        search_li = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
+            )
+        )
+
+        links = search_li.find_elements(By.TAG_NAME, "a")
+        if len(links) < 2:
+            logger.error("No hay suficientes enlaces dentro del li[3].")
+            return Response({"message": "No hay suficientes enlaces en el menú"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        driver.execute_script("arguments[0].click();", links[0])
+        logger.info("Click realizado en el primer enlace del menú")
+
         target_divs = WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
@@ -42,17 +57,16 @@ def scraper_ansci_cornell(url, sobrenombre):
             links = target_div.find_elements(By.TAG_NAME, "a")
             logger.info(f"Div {div_index + 1}/{num_divs}: Encontrados {len(links)} enlaces")
 
-            # Recorrer todos los enlaces dentro del div
             for link_index, link in enumerate(links, start=1):
                 link_href = link.get_attribute("href")
                 if not link_href:
-                    continue  
+                    continue 
 
                 logger.info(f"Accediendo al enlace {link_index} en el div {div_index + 1}: {link_href}")
                 driver.get(link_href)
 
                 page_body = WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR,  "#pagebody"))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, " #pagebody "))
                 )
 
                 p_tags = page_body.find_elements(By.TAG_NAME, "p")[:5]
