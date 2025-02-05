@@ -53,54 +53,55 @@ def scraper_ansci_cornell(url, sobrenombre):
                     )
                 )
 
-                if div_index >= len(target_divs):
-                    break  
+                for div_index, target_div in enumerate(target_divs, start=1):
+                    links = target_div.find_elements(By.TAG_NAME, "a")
+                    
+                    logger.info(f"Encontrados {len(links)} enlaces en el div {div_index}")
 
-                target_div = target_divs[div_index]
-                links = target_div.find_elements(By.TAG_NAME, "a")
-                
-                for link_index in range(len(links)):
-                    link = links[link_index]
-                    link_href = link.get_attribute("href")
-                    if not link_href:
-                        continue
+                    for link_index, link in enumerate(links, start=1):
+                        link_href = link.get_attribute("href")
+                        if not link_href:
+                            continue  
+                        
+                        logger.info(f"Accediendo al enlace {link_index} en el div {div_index}: {link_href}")
+                        driver.get(link_href) 
 
-                    driver.get(link_href)
-                    logger.info(f"Accediendo a: {link_href}")
-
-                    page_body = WebDriverWait(driver, 30).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
-                    )
-
-                    p_tags = page_body.find_elements(By.TAG_NAME, "p")[:5]
-                    all_scraper += f"URL: {link_href}\n" + "\n".join([p.text for p in p_tags]) + "\n"
-
-                    nested_links = page_body.find_elements(By.TAG_NAME, "a")
-                    for nested_link in nested_links:
-                        nested_href = nested_link.get_attribute("href")
-                        if nested_href:
-                            driver.get(nested_href)
-                            logger.info(f"Accediendo al enlace anidado: {nested_href}")
-
-                            nested_page_body = WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "#pagebody "))
-                            )
-                            nested_p_tags = nested_page_body.find_elements(By.TAG_NAME, "p")[:5]
-                            all_scraper += f"URL: {nested_href}\n" + "\n".join([p.text for p in nested_p_tags]) + "\n"
-
-                            driver.back() 
-
-                    all_scraper += "**********\n"
-                    driver.back()  
-
-                    target_divs = WebDriverWait(driver, 30).until(
-                        EC.presence_of_all_elements_located(
-                            (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
+                        page_body = WebDriverWait(driver, 30).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
                         )
-                    )
+
+                        p_tags = page_body.find_elements(By.TAG_NAME, "p")[:5]
+                        for p_index, p in enumerate(p_tags, start=1):
+                            all_scraper += f"URL: {link_href}\nPárrafo {p_index}: {p.text}\n"
+
+                        nested_links = page_body.find_elements(By.TAG_NAME, "a")
+                        for nested_link_index, nested_link in enumerate(nested_links, start=1):
+                            nested_href = nested_link.get_attribute("href")
+                            if nested_href:
+                                logger.info(f"Accediendo al enlace anidado {nested_link_index}: {nested_href}")
+                                driver.get(nested_href)
+
+                                nested_page_body = WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
+                                )
+                                nested_p_tags = nested_page_body.find_elements(By.TAG_NAME, "p")[:5]
+                                for nested_p in nested_p_tags:
+                                    all_scraper += f"URL: {nested_href}\n{nested_p.text}\n"
+                                
+                                driver.back()  
+
+                        driver.back()
+
+                        target_divs = WebDriverWait(driver, 30).until(
+                            EC.presence_of_all_elements_located(
+                                (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
+                            )
+                        )
+                        target_div = target_divs[div_index - 1]  
+                        links = target_div.find_elements(By.TAG_NAME, "a")
+
 
             except StaleElementReferenceException:
-                logger.warning("Se encontró un 'stale element'. Intentando refrescar los elementos...")
                 driver.refresh()
                 time.sleep(3) 
                 continue
