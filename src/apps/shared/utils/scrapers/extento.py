@@ -1,21 +1,22 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import WebDriverException
 from rest_framework.response import Response
 from rest_framework import status
 import time
-from selenium.common.exceptions import  WebDriverException
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
 )
+
 def scraper_extento(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
 
     try:
@@ -72,8 +73,8 @@ def scraper_extento(url, sobrenombre):
                                     if body:
                                         body_content = body.text
                                         if body_content.strip():
-                                            all_scraper += body_content
-                                            all_scraper += "\n\n"
+                                            all_scraper += f"URL: {new_href}\n"
+                                            all_scraper += f"{body_content}\n\n"
 
                                     time.sleep(2)
                                 finally:
@@ -85,7 +86,7 @@ def scraper_extento(url, sobrenombre):
                                             )
                                         )
                                     except WebDriverException as e:
-                                        print(
+                                        logger.error(
                                             f"Error al regresar a la página anterior: {e}"
                                         )
                     try:
@@ -94,13 +95,15 @@ def scraper_extento(url, sobrenombre):
                             EC.presence_of_all_elements_located((By.TAG_NAME, "table"))
                         )
                     except WebDriverException as e:
-                        print(f"Error al intentar volver a la página anterior: {e}")
+                        logger.error(
+                            f"Error al intentar volver a la página anterior: {e}"
+                        )
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
+        logger.error(f"Error durante el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:

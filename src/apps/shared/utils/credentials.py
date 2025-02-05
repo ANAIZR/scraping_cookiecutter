@@ -22,7 +22,6 @@ def login_cabi_scienceconnect(driver):
         driver.get("https://cabi.scienceconnect.io/login")
         time.sleep(random.uniform(3, 6))
 
-        # Esperar y encontrar el campo de email
         email_input = WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "#email-input"))
         )

@@ -12,21 +12,22 @@ from ..functions import (
     initialize_driver,
 )
 
-def scraper_eppo(
-    url,
-    sobrenombre,
-):
+def scraper_eppo(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
+    
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
+
     try:
         driver.get(url)
         time.sleep(2)
+        
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "#dttable tbody tr"))
         )
+
         while True:
             rows = driver.find_elements(By.CSS_SELECTOR, "#dttable tbody tr")
 
@@ -46,21 +47,18 @@ def scraper_eppo(
 
                             WebDriverWait(driver, 30).until(
                                 EC.presence_of_element_located(
-                                    (
-                                        By.CSS_SELECTOR,
-                                        "div.row>div.col-md-12>div.row>div.col-md-9",
-                                    )
+                                    (By.CSS_SELECTOR, "div.row>div.col-md-12>div.row>div.col-md-9")
                                 )
                             )
                             time.sleep(5)
+
                             page_source = driver.page_source
                             soup = BeautifulSoup(page_source, "html.parser")
 
-                            content = soup.select_one(
-                                "div.row>div.col-md-12>div.row>div.col-md-9"
-                            )
+                            content = soup.select_one("div.row>div.col-md-12>div.row>div.col-md-9")
                             if content:
-                                all_scraper += content.get_text() + "\n"
+                                text_content = content.get_text().strip()
+                                all_scraper += f"\n\nURL: {href}\n{text_content}\n"
 
                             time.sleep(5)
                             driver.back()
@@ -70,15 +68,17 @@ def scraper_eppo(
                                     (By.CSS_SELECTOR, "#dttable tbody tr")
                                 )
                             )
-                        
+
                 except Exception as e:
-                    print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
+                    logger.error(f"Error al procesar la fila o hacer clic en el enlace: {e}")
+
             break
+
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
+        logger.error(f"Error durante el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:

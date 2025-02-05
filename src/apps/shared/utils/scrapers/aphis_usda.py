@@ -1,6 +1,8 @@
 import requests
 import time
 import random
+import PyPDF2
+from io import BytesIO
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -13,23 +15,40 @@ from ..functions import (
     get_random_user_agent,
 )
 
+def extract_text_from_pdf(pdf_url):
+    """Descarga y extrae el texto de un PDF desde una URL."""
+    try:
+        headers = {"User-Agent": get_random_user_agent()}
+        response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
+        response.raise_for_status()
+
+        pdf_buffer = BytesIO(response.content)
+        reader = PyPDF2.PdfReader(pdf_buffer)
+
+        pdf_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        return pdf_text if pdf_text else "No se pudo extraer texto del PDF."
+
+    except Exception as e:
+        return f"Error al extraer contenido del PDF ({pdf_url}): {e}"
+
+
 def scraper_aphis_usda(url, sobrenombre):
     logger = get_logger("APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     processed_links = set()
-    urls_to_scrape = [(url, 1)]  
-    non_scraped_urls = []  
+    urls_to_scrape = [(url, 1)]
+    non_scraped_urls = []
 
     total_found_links = 0
     total_scraped_links = 0
     total_non_scraped_links = 0
 
     def scrape_page(url, depth):
-        nonlocal total_found_links, total_scraped_links, total_non_scraped_links
+        nonlocal total_found_links, total_scraped_links, total_non_scraped_links, all_scraper
 
-        if url in processed_links or depth > 3: 
+        if url in processed_links or depth > 3:
             return []
         processed_links.add(url)
 
@@ -47,18 +66,20 @@ def scraper_aphis_usda(url, sobrenombre):
             if depth >= 2:
                 main_content = soup.find("main", id="main")
                 if main_content:
-                    nonlocal all_scraper
                     page_text = main_content.get_text(strip=True)
-                    all_scraper += f"URL: {url}\n{page_text}\n\n" 
+                    all_scraper += f"URL: {url}\n{page_text}\n\n"
 
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
                 full_url = urljoin(url, inner_href)
 
                 if full_url.lower().endswith(".pdf"):
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
-                    continue
+                    if full_url not in processed_links:
+                        logger.info(f"Descargando PDF: {full_url}")
+                        pdf_text = extract_text_from_pdf(full_url)
+                        all_scraper += f"\n\nURL: {full_url}\n{pdf_text}\n"
+                        processed_links.add(full_url)
+                    continue  
 
                 if "forms" in full_url or "":  
                     total_non_scraped_links += 1  
@@ -107,6 +128,7 @@ def scraper_aphis_usda(url, sobrenombre):
         all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
         all_scraper += "\n\nURLs no scrapeadas:\n"
         all_scraper += "\n".join(non_scraped_urls)  
+
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
