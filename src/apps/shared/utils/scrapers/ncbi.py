@@ -9,6 +9,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    load_keywords
 )
 
 def scraper_ncbi(url, sobrenombre):
@@ -17,25 +18,12 @@ def scraper_ncbi(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
+    keywords = load_keywords("plants.txt")
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))  
-    txt_file_path = os.path.join(base_dir, "..", "txt", "fungi.txt") 
-    txt_file_path = os.path.normpath(txt_file_path)
-
-    if not os.path.exists(txt_file_path):
-        return Response({"error": f"El archivo {txt_file_path} no existe."}, status=status.HTTP_400_BAD_REQUEST)
-
+    
     try:
         driver.get(url)
-
-        with open(txt_file_path, 'r') as file:
-            search_terms = file.readlines()
-
-        for term in search_terms:
-            term = term.strip() 
-            if not term:
-                continue  
-
+        for term in keywords:
             search_box = driver.find_element(By.ID, "searchtxt")
             search_box.clear()
             search_box.send_keys(term)
@@ -56,7 +44,6 @@ def scraper_ncbi(url, sobrenombre):
                 continue
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
