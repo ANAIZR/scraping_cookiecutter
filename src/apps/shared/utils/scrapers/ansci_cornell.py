@@ -1,7 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException
 from ..functions import (
     initialize_driver,
     connect_to_mongo,
@@ -10,7 +10,6 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-import time
 
 def scraper_ansci_cornell(url, sobrenombre):
     logger = get_logger("ANSCI_CORNELL")
@@ -85,7 +84,6 @@ def scraper_ansci_cornell(url, sobrenombre):
                 all_scraper += "******************************\n"
                 driver.back()
 
-        # Procesamos los datos extraídos
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
