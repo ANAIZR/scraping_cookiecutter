@@ -10,7 +10,6 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-import time
 
 def scraper_ansci_cornell(url, sobrenombre):
     logger = get_logger("ANSCI_CORNELL")
@@ -24,87 +23,69 @@ def scraper_ansci_cornell(url, sobrenombre):
         driver.get(url)
         logger.info(f"Ingresamos a la URL {url}")
 
-        try:
-            logger.info("Buscaremos el botón")
-            search_li = WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
+        target_divs = WebDriverWait(driver, 30).until(
+            EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
+            )
+        )
+        num_divs = len(target_divs)
+        logger.info(f"Encontrados {num_divs} divs para procesar")
+
+        for div_index in range(num_divs):
+            target_divs = WebDriverWait(driver, 30).until(
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
                 )
             )
+            target_div = target_divs[div_index]
 
-            links = search_li.find_elements(By.TAG_NAME, "a")
-            if len(links) < 2:
-                logger.error("No hay suficientes enlaces dentro del li[3].")
-                return Response({"message": "No hay suficientes enlaces en el menú"},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            links = target_div.find_elements(By.TAG_NAME, "a")
+            logger.info(f"Div {div_index + 1}/{num_divs}: Encontrados {len(links)} enlaces")
 
-            driver.execute_script("arguments[0].click();", links[0])
-            logger.info("Click realizado en el primer enlace")
-        except TimeoutException:
-            logger.error("No encontramos el botón")
-            return Response({"message": "No se encontró el botón de navegación"},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Recorrer todos los enlaces dentro del div
+            for link_index, link in enumerate(links, start=1):
+                link_href = link.get_attribute("href")
+                if not link_href:
+                    continue  
 
-        for div_index in range(10):  
-            try:
+                logger.info(f"Accediendo al enlace {link_index} en el div {div_index + 1}: {link_href}")
+                driver.get(link_href)
+
+                page_body = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR,  "#pagebody"))
+                )
+
+                p_tags = page_body.find_elements(By.TAG_NAME, "p")[:5]
+                for p_index, p in enumerate(p_tags, start=1):
+                    all_scraper += f"URL: {link_href}\nPárrafo {p_index}: {p.text}\n"
+
+                nested_links = page_body.find_elements(By.TAG_NAME, "a")
+                for nested_link_index, nested_link in enumerate(nested_links, start=1):
+                    nested_href = nested_link.get_attribute("href")
+                    if nested_href:
+                        logger.info(f"Accediendo al enlace anidado {nested_link_index}: {nested_href}")
+                        driver.get(nested_href)
+
+                        nested_page_body = WebDriverWait(driver, 30).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "#pagebody"))
+                        )
+                        nested_p_tags = nested_page_body.find_elements(By.TAG_NAME, "p")[:5]
+                        for nested_p in nested_p_tags:
+                            all_scraper += f"URL: {nested_href}\n{nested_p.text}\n"
+
+                        driver.back()
+
+                driver.back()
+
                 target_divs = WebDriverWait(driver, 30).until(
                     EC.presence_of_all_elements_located(
                         (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
                     )
                 )
+                target_div = target_divs[div_index]
+                links = target_div.find_elements(By.TAG_NAME, "a")
 
-                for div_index, target_div in enumerate(target_divs, start=1):
-                    links = target_div.find_elements(By.TAG_NAME, "a")
-                    
-                    logger.info(f"Encontrados {len(links)} enlaces en el div {div_index}")
-
-                    for link_index, link in enumerate(links, start=1):
-                        link_href = link.get_attribute("href")
-                        if not link_href:
-                            continue  
-                        
-                        logger.info(f"Accediendo al enlace {link_index} en el div {div_index}: {link_href}")
-                        driver.get(link_href) 
-
-                        page_body = WebDriverWait(driver, 30).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
-                        )
-
-                        p_tags = page_body.find_elements(By.TAG_NAME, "p")[:5]
-                        for p_index, p in enumerate(p_tags, start=1):
-                            all_scraper += f"URL: {link_href}\nPárrafo {p_index}: {p.text}\n"
-
-                        nested_links = page_body.find_elements(By.TAG_NAME, "a")
-                        for nested_link_index, nested_link in enumerate(nested_links, start=1):
-                            nested_href = nested_link.get_attribute("href")
-                            if nested_href:
-                                logger.info(f"Accediendo al enlace anidado {nested_link_index}: {nested_href}")
-                                driver.get(nested_href)
-
-                                nested_page_body = WebDriverWait(driver, 30).until(
-                                    EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
-                                )
-                                nested_p_tags = nested_page_body.find_elements(By.TAG_NAME, "p")[:5]
-                                for nested_p in nested_p_tags:
-                                    all_scraper += f"URL: {nested_href}\n{nested_p.text}\n"
-                                
-                                driver.back()  
-
-                        driver.back()
-
-                        target_divs = WebDriverWait(driver, 30).until(
-                            EC.presence_of_all_elements_located(
-                                (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
-                            )
-                        )
-                        target_div = target_divs[div_index - 1]  
-                        links = target_div.find_elements(By.TAG_NAME, "a")
-
-
-            except StaleElementReferenceException:
-                driver.refresh()
-                time.sleep(3) 
-                continue
+            logger.info(f"Finalizado div {div_index + 1}/{num_divs}")
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
