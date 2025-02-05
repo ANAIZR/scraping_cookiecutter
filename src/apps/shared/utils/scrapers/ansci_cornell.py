@@ -9,8 +9,8 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-
-
+import random
+import time
 def scraper_ansci_cornell(
     url,
     sobrenombre,
@@ -27,6 +27,7 @@ def scraper_ansci_cornell(
         driver.get(url)
         logger.info(f"Ingresamos a la URL {url}")
         logger.info("Buscaremos el boton")
+        time.sleep(random.randint(1, 3))
         search_button = (
             WebDriverWait(driver, 30)
             .until(
@@ -36,9 +37,8 @@ def scraper_ansci_cornell(
             )
             .find_elements(By.TAG_NAME, "a")[1]
         )
-
         driver.execute_script("arguments[0].click();", search_button)
-        print("Dimos click ")
+        print("Dimos click")
 
         target_divs = WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located(
