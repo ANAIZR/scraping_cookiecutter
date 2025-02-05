@@ -11,31 +11,45 @@ from ..functions import (
     initialize_driver,
 )
 from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
 def scraper_ippc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo("")
     all_scraper = ""
 
     try:
         driver.get(url)
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "select[name='publications_length']")
+        logger.info("Ingresando a la URL principal")
+        try:
+            select_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.NAME, "publications_length"))
             )
-        )
+            select = Select(select_element)
 
-        select_element = driver.find_element(By.NAME, "publications_length")
-        select = Select(select_element)
-        select.select_by_value("-1")
+            options = select.options
+            if options:
+                last_value = options[-1].get_attribute("value") 
+                select.select_by_value(last_value)  
+            
 
-        WebDriverWait(driver, 60).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "#publications tr"))
-        )
+            WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "#publications tr"))
+            )
 
+            print("Datos cargados correctamente en la tabla.")
+
+        except TimeoutException:
+            logger.error("Error: El elemento no se cargó en el tiempo esperado.")
+
+        except NoSuchElementException:
+            logger.error("Error: No se encontró el elemento <select>.")
+
+        except Exception as e:
+            logger.error(f"Error inesperado: {e}")
         soup = BeautifulSoup(driver.page_source, "html.parser")
         rows = soup.select("#publications tr")
         if rows:
@@ -72,7 +86,6 @@ def scraper_ippc(url, sobrenombre):
                         )
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
