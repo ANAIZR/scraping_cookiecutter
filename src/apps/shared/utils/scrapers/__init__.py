@@ -56,4 +56,6 @@ from .cdfa_ca import scraper_cdfa
 from .sciencedirect import scraper_sciencedirect
 from .cabi_library import scraper_cabi_library
 from .agriculture_gov import scraper_agriculture_gov
+from .ecoport import scraper_ecoport
+from .pestnet import scraper_pestnet
 from .fao_org_home import scraper_fao_org_home

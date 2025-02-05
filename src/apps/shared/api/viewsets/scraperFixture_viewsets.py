@@ -62,6 +62,8 @@ from ...utils.scrapers import (
     scraper_sciencedirect,
     scraper_agriculture_gov,
     scraper_cabi_library,
+    scraper_ecoport,
+    scraper_pestnet,
     scraper_fao_org_home
 )
 
@@ -123,6 +125,8 @@ SCRAPER_FUNCTIONS = {
     55: scraper_agriculture_gov,
     56: scraper_sciencedirect,
     57: scraper_cabi_library,
+    58: scraper_ecoport,
+    59: scraper_pestnet,
     60: scraper_fao_org_home
 }
 
