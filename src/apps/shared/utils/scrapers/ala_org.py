@@ -1,110 +1,128 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import requests
+from selenium.webdriver.common.action_chains import ActionChains
 import time
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
-    get_random_user_agent
 )
-from bs4 import BeautifulSoup
+import random
 
 def scraper_ala_org(url, sobrenombre):
     logger = get_logger("ALA_ORG")
     logger.info(f"Iniciando scraping para URL: {url}")
-
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
-
-    all_hrefs = []  
-    try:
-        driver.get(url)
-        
-        btn = WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "button[type='submit']"))
-        )
-        btn.click()
-        time.sleep(2)
-
-        while True:
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "ol"))
-            )
-
-            lis = driver.find_elements(By.CSS_SELECTOR, "ol li.search-result")
-            
-            for li in lis:
-                try:
-                    a_tag = li.find_element(By.CSS_SELECTOR, "a")
-                    href = a_tag.get_attribute("href")
-                    if href:
-                        if href.startswith("/"):
-                            href = url + href[1:] 
-                        all_hrefs.append(href)  
-                except Exception as e:
-                    logger.warning(f"Error obteniendo href: {e}")
-
-            try:
-                next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
-                next_page_url = next_page_btn.get_attribute("href")
-                if next_page_url:
-                    driver.get(next_page_url)
-                    time.sleep(3)
-                else:
-                    break
-            except Exception:
-                break  
-
-    finally:
-        driver.quit() 
-
-    total_encontrados = len(all_hrefs)
-    total_scrapeados = 0
-    total_fallidos = 0
-    fallidos = [] 
+    collection, fs = connect_to_mongo()
 
     all_scraper = ""
-    headers = {"User-Agent": get_random_user_agent()}
 
-    for href in all_hrefs:
+    try:
+        driver.get(url)
+        logger.info("Página cargada correctamente.")
+
+        # Intentar hacer clic en el botón de búsqueda
         try:
-            response = requests.get(href, headers=headers, timeout=40)  
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, "html.parser")
-                main_content = soup.select_one("#main")  
-                
-                if main_content:
-                    extracted_text = main_content.get_text(separator=" ", strip=True) 
-                    all_scraper += extracted_text  
-                    all_scraper += "\n\n"
-                    total_scrapeados += 1 
-                else:
-                    logger.warning(f"No se encontró el ID 'main' en {href}")
-                    fallidos.append(href)
-                    total_fallidos += 1
-            else:
-                logger.warning(f"No se pudo obtener {href}, código {response.status_code}")
-                fallidos.append(href)
-                total_fallidos += 1
-        except requests.RequestException as e:
-            logger.error(f"Error en la solicitud a {href}: {e}")
-            fallidos.append(href)
-            total_fallidos += 1
+            button = WebDriverWait(driver, 30).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']"))
+            )
+            driver.execute_script("arguments[0].click();", button)
+            time.sleep(random.randint(1, 3))
+            logger.info("Clic en el botón de búsqueda exitoso.")
+        except Exception as e:
+            logger.error(f"No se pudo hacer clic en el botón de búsqueda: {e}")
+            return {"error": "No se encontró el botón de búsqueda"}
 
-    resumen_scraping = f"""
-    === RESUMEN DEL SCRAPING ===
-    Total de enlaces encontrados: {total_encontrados}
-    Total de enlaces scrapeados con éxito: {total_scrapeados}
-    Total de enlaces fallidos: {total_fallidos}
-    
-    Enlaces no scrapeados:
-    {', '.join(fallidos) if fallidos else 'Ninguno'}
-    ============================
-    """
+        while True:
+            try:
+                # Esperar hasta que se carguen los resultados
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "ol li.search-result"))
+                )
 
-    all_scraper += resumen_scraping
+                lis = driver.find_elements(By.CSS_SELECTOR, "ol li.search-result")
 
-    return process_scraper_data(all_scraper, sobrenombre, sobrenombre, collection, fs)
+                if not lis:
+                    logger.warning("No se encontraron resultados en la búsqueda.")
+                    break  # Termina si no hay resultados
+
+                for li in lis:
+                    try:
+                        a_tag = li.find_element(By.CSS_SELECTOR, "a")
+                        href = a_tag.get_attribute("href")
+                        if href:
+                            if href.startswith("/"):
+                                href = url + href[1:]
+
+                            logger.info(f"Accediendo a {href}")
+
+                            # Intentar hacer clic en el enlace
+                            try:
+                                ActionChains(driver).move_to_element(a_tag).click().perform()
+                                WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "section.container-fluid"))
+                                )
+                            except Exception as e:
+                                logger.warning(f"No se pudo hacer clic en {href}: {e}")
+                                continue  # Pasar al siguiente enlace
+
+                            # Extraer contenido de la página
+                            try:
+                                content = driver.find_element(By.CSS_SELECTOR, "section.container-fluid")
+                                all_scraper += f"URL: {href}\n{content.text}\n\n"
+                                logger.info(f"Contenido extraído de {href}.")
+                            except Exception as e:
+                                logger.warning(f"No se pudo extraer contenido de {href}: {e}")
+
+                            # Intentar volver a la página de búsqueda
+                            try:
+                                driver.back()
+                                time.sleep(random.randint(2, 4))
+                            except Exception as e:
+                                logger.warning(f"No se pudo regresar a la página de resultados, recargando URL: {url}")
+                                driver.get(url)
+                                time.sleep(random.randint(2, 4))
+
+                    except Exception as e:
+                        logger.warning(f"Error al procesar un resultado de búsqueda: {e}")
+                        continue
+
+                # Intentar encontrar el botón de siguiente página
+                try:
+                    next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
+                    next_page_url = next_page_btn.get_attribute("href")
+                    if next_page_url:
+                        logger.info(f"Navegando a la siguiente página: {next_page_url}")
+                        driver.get(next_page_url)
+                        time.sleep(3)
+                    else:
+                        logger.info("No hay más páginas de resultados.")
+                        break
+                except Exception as e:
+                    logger.warning("No se encontró el botón de siguiente página, terminando el scraping.")
+                    break
+
+            except Exception as e:
+                logger.error(f"Error al cargar los resultados: {e}")
+                # Capturar el HTML de la página para depuración
+                with open("error_page.html", "w", encoding="utf-8") as f:
+                    f.write(driver.page_source)
+                logger.info("Se guardó el HTML de la página con error como 'error_page.html'.")
+                break
+
+        if not all_scraper.strip():
+            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
+            return {"status": "no_content", "url": url, "message": "No se encontraron datos para scrapear."}
+
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        return response
+
+    except Exception as e:
+        logger.error(f"Error general durante el scraping: {str(e)}")
+        return {"error": str(e)}
+
+    finally:
+        driver.quit()
+        logger.info("Navegador cerrado.")
