@@ -13,31 +13,13 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 
-def extract_text_from_pdf(pdf_url):
-    """Extrae texto del PDF directamente sin descargarlo."""
-    try:
-        headers = {"User-Agent": get_random_user_agent()}
-        response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
-        response.raise_for_status()  # Asegura que la petición fue exitosa
 
-        # Leer el contenido del PDF en memoria
-        pdf_buffer = BytesIO(response.content)
-        reader = PyPDF2.PdfReader(pdf_buffer)
-
-        # Extraer texto de cada página
-        pdf_text = "\n".join(
-            [page.extract_text() for page in reader.pages if page.extract_text()]
-        )
-        return pdf_text if pdf_text else "No se pudo extraer texto del PDF."
-
-    except Exception as e:
-        return f"Error al extraer contenido del PDF ({pdf_url}): {e}"
 
 
 def scraper_aphis_usda(url, sobrenombre):
-    """Scraping de la página APHIS de USDA, extrayendo información y texto de PDFs sin descargarlos."""
     logger = get_logger("APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")

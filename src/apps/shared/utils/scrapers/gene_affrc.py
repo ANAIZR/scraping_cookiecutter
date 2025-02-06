@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urljoin
 import random
 from ..functions import get_logger, connect_to_mongo, process_scraper_data
 
@@ -9,7 +8,7 @@ from ..functions import get_logger, connect_to_mongo, process_scraper_data
 def scraper_gene_affrc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
 
     def fetch_url(record_id):
@@ -22,7 +21,6 @@ def scraper_gene_affrc(url, sobrenombre):
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             if soup.find("div", class_="container"):
-                logger.info(f"URL válida encontrada: {detail_url}")
                 return detail_url
             else:
                 logger.info(f"Página {detail_url} no contiene datos relevantes.")
@@ -58,7 +56,6 @@ def scraper_gene_affrc(url, sobrenombre):
     try:
         start_id = 1
         max_attempts = 15000
-        logger.info(f"Generando URLs desde {start_id} hasta {start_id + max_attempts - 1}.")
 
         all_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
@@ -79,11 +76,9 @@ def scraper_gene_affrc(url, sobrenombre):
                 
 
         summary = f"Total URLs procesadas: {len(all_links)}\n"
-        logger.info(summary)
         all_scraper += summary
         
 
-        # Almacenar datos en MongoDB
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 

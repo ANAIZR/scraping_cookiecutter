@@ -7,6 +7,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    load_keywords
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -18,26 +19,15 @@ from bs4 import BeautifulSoup
 logger = get_logger("scraper")
 
 
-# Cargar palabras clave desde utils/txt/all.txt
-def load_keywords(file_path="../txt/all.txt"):
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        absolute_path = os.path.join(base_path, file_path)
-        with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [line.strip() for line in f if line.strip()]
-        # logger.info(f"Palabras clave cargadas: {keywords}")
-        return keywords
-    except Exception as e:
-        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
-        raise
+
 
 
 def scraper_catalogue_of_life(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
-    keywords = load_keywords()
+    keywords = load_keywords("plants.txt")
     all_scraper = ""
 
     try:
@@ -47,10 +37,8 @@ def scraper_catalogue_of_life(url, sobrenombre):
         search_box = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "search_string"))
         )
-        logger.info("Barra de búsqueda localizada.")
 
         for index, keyword in enumerate(keywords):
-            logger.info(f"Buscando la palabra clave: {keyword}")
             all_scraper += f"Palabra clave {index + 1}: {keyword}\n"
             random_wait()
 
@@ -61,7 +49,6 @@ def scraper_catalogue_of_life(url, sobrenombre):
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
             )
-            logger.info(f"Resultados cargados para: {keyword}")
 
             rows = driver.find_elements(By.XPATH, "//tr[starts-with(@id, 'record_')]")
             for index in range(len(rows)):
@@ -109,7 +96,6 @@ def scraper_catalogue_of_life(url, sobrenombre):
                         f"Error procesando el enlace en la fila con id {record_id}: {str(e)}"
                     )
 
-            # Regresar a la página principal después de procesar todas las filas
             driver.get(url)
             search_box = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.NAME, "search_string"))
@@ -121,7 +107,6 @@ def scraper_catalogue_of_life(url, sobrenombre):
             )
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
@@ -132,7 +117,6 @@ def scraper_catalogue_of_life(url, sobrenombre):
         driver.quit()
 
 
-# Función auxiliar para introducir un tiempo de espera aleatorio
 def random_wait(min_wait=2, max_wait=6):
     wait_time = random.uniform(min_wait, max_wait)
     logger.info(f"Esperando {wait_time:.2f} segundos...")

@@ -11,12 +11,13 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 
 def scraper_ers_usda(url, sobrenombre):
-    logger = get_logger("ERS")
+    logger = get_logger("SCRAPER_ERS_USDA")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]  
@@ -56,9 +57,11 @@ def scraper_ers_usda(url, sobrenombre):
                 full_url = urljoin(url, inner_href)
 
                 if full_url.lower().endswith(".pdf"):
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
-                    continue
+                    if full_url not in processed_links:
+                        pdf_text = extract_text_from_pdf(full_url)
+                        all_scraper += f"\n\nURL: {full_url}\n{pdf_text}\n"
+                        processed_links.add(full_url)
+                    continue  
 
                 if "forms" in full_url or "":  
                     total_non_scraped_links += 1  

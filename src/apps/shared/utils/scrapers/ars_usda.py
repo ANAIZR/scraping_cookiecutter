@@ -11,6 +11,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 
 def scraper_ars_usda(url, sobrenombre):
@@ -56,9 +57,12 @@ def scraper_ars_usda(url, sobrenombre):
                 full_url = urljoin(url, inner_href)
 
                 if full_url.lower().endswith(".pdf"):
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
-                    continue
+                    if full_url not in processed_links:
+                        logger.info(f"Extrayendo texto de PDF: {full_url}")
+                        pdf_text = extract_text_from_pdf(full_url)
+                        all_scraper += f"\n\nURL: {full_url}\n{pdf_text}\n"
+                        processed_links.add(full_url)
+                    continue  
 
                 if "forms" in full_url or "":  
                     total_non_scraped_links += 1  
