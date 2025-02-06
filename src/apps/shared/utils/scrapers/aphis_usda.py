@@ -16,16 +16,20 @@ from ..functions import (
 )
 
 def extract_text_from_pdf(pdf_url):
-    """Descarga y extrae el texto de un PDF desde una URL."""
+    """Extrae texto del PDF directamente sin descargarlo."""
     try:
         headers = {"User-Agent": get_random_user_agent()}
         response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
-        response.raise_for_status()
+        response.raise_for_status()  # Asegura que la petición fue exitosa
 
+        # Leer el contenido del PDF en memoria
         pdf_buffer = BytesIO(response.content)
         reader = PyPDF2.PdfReader(pdf_buffer)
 
-        pdf_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        # Extraer texto de cada página
+        pdf_text = "\n".join(
+            [page.extract_text() for page in reader.pages if page.extract_text()]
+        )
         return pdf_text if pdf_text else "No se pudo extraer texto del PDF."
 
     except Exception as e:
@@ -33,6 +37,7 @@ def extract_text_from_pdf(pdf_url):
 
 
 def scraper_aphis_usda(url, sobrenombre):
+    """Scraping de la página APHIS de USDA, extrayendo información y texto de PDFs sin descargarlos."""
     logger = get_logger("APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
@@ -75,7 +80,7 @@ def scraper_aphis_usda(url, sobrenombre):
 
                 if full_url.lower().endswith(".pdf"):
                     if full_url not in processed_links:
-                        logger.info(f"Descargando PDF: {full_url}")
+                        logger.info(f"Extrayendo texto de PDF: {full_url}")
                         pdf_text = extract_text_from_pdf(full_url)
                         all_scraper += f"\n\nURL: {full_url}\n{pdf_text}\n"
                         processed_links.add(full_url)
@@ -123,9 +128,9 @@ def scraper_aphis_usda(url, sobrenombre):
             urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
             time.sleep(random.uniform(1, 3))  
 
-        all_scraper += f"\n\nTotal links found: {total_found_links}\n"
-        all_scraper += f"Total links scraped: {total_scraped_links}\n"
-        all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
+        all_scraper += f"\n\nTotal links encontrados: {total_found_links}\n"
+        all_scraper += f"Total links scrapeados: {total_scraped_links}\n"
+        all_scraper += f"Total links no scrapeados: {total_non_scraped_links}\n"
         all_scraper += "\n\nURLs no scrapeadas:\n"
         all_scraper += "\n".join(non_scraped_urls)  
 

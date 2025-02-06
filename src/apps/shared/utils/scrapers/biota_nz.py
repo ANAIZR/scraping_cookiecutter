@@ -162,16 +162,12 @@ def scraper_biota_nz(url, sobrenombre):
             "Etiquetas": data["Etiquetas"],
             "Mensaje": "Los datos han sido scrapeados correctamente.",
         }
+        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
 
         collection.insert_one(data)
         delete_old_documents(url, collection, fs)
 
-        return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return response_data
 
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")

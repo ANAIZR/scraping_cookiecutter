@@ -234,12 +234,7 @@ def scraper_cabi_digital(url, sobrenombre):
             collection.insert_one(data)
             delete_old_documents(url, collection, fs)
 
-            return Response(
-                {
-                    "data": response_data,
-                },
-                status=status.HTTP_200_OK,
-            )
+            return response_data
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(

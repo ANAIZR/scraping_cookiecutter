@@ -40,7 +40,7 @@ def scraper_fao_org(
                 logger.info(f"Navegando al siguiente enlace: {url}")
             else:
                 logger.info("No se encontró el enlace 'Siguiente'. Finalizando scraping.")
-                url = None 
+                break
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response

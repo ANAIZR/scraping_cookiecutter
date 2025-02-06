@@ -20,7 +20,7 @@ def scraper_bonap(
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     all_scraper = ""
 
@@ -32,21 +32,21 @@ def scraper_bonap(
         for family in family_list:
             family_name = family.text.strip()
 
-            family.click()
+            driver.execute_script("arguments[0].click();", family)
             time.sleep(2)
 
             genus_list = driver.find_elements(By.CSS_SELECTOR, "#genus-list li")
             for genus in genus_list:
                 genus_name = genus.text.strip()
 
-                genus.click()
+                driver.execute_script("arguments[0].click();", genus)
                 time.sleep(2)
 
                 species_list = driver.find_elements(By.CSS_SELECTOR, "#species-list li")
                 for species in species_list:
                     species_name = species.text.strip()
 
-                    species.click()
+                    driver.execute_script("arguments[0].click();", species)
                     time.sleep(2)
 
                     try:
