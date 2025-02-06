@@ -2,7 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import os
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from rest_framework.response import Response
 from rest_framework import status
 from ..functions import (
@@ -54,14 +54,29 @@ def scraper_ncbi(url, sobrenombre):
                 keyword_folder = generate_directory(keyword, main_folder)
                 keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
 
-                ul_compact = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, "//ul[@compact]"))
-                )
-                links = ul_compact.find_elements(By.TAG_NAME, "a")
+                try:
+                    ul_compact = WebDriverWait(driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, "//ul[@compact]"))
+                    )
+                    links = ul_compact.find_elements(By.TAG_NAME, "a")
+                except (TimeoutException, NoSuchElementException):
+                    logger.warning(f"No se encontró `<ul compact>` para la palabra clave: {keyword}")
+                    
+                    # Captura un screenshot y guarda el HTML para depuración
+                    screenshot_path = os.path.join(keyword_folder, f"{keyword}_error.png")
+                    html_path = os.path.join(keyword_folder, f"{keyword}_error.html")
+                    driver.save_screenshot(screenshot_path)
+                    with open(html_path, "w", encoding="utf-8") as file:
+                        file.write(driver.page_source)
+
+                    logger.info(f"Captura de pantalla guardada en {screenshot_path}")
+                    logger.info(f"HTML guardado en {html_path}")
+
+                    continue  # Pasar a la siguiente palabra clave
 
                 for link in links:
                     detail_url = link.get_attribute("href")
-                    
+
                     if detail_url and detail_url.startswith("https://www.ncbi.nlm.nih.gov/"):
                         logger.info(f"Accediendo al enlace de detalle: {detail_url}")
                         driver.get(detail_url)
@@ -75,7 +90,7 @@ def scraper_ncbi(url, sobrenombre):
 
                         if form:
                             tables = form.find_all("table")
-                            if len(tables) >= 4:  
+                            if len(tables) >= 4:
                                 fourth_table = tables[3]
                                 table_text = fourth_table.get_text(separator="\n", strip=True)
 
@@ -87,9 +102,9 @@ def scraper_ncbi(url, sobrenombre):
                                 all_scraper += f"URL: {detail_url}\n{table_text}{ref_text}\n\n"
 
             except Exception as e:
-                logger.warning(f"No se encontró <ul compact>, saltando al siguiente término. Error: {e}")
+                logger.warning(f"Error al procesar la palabra clave {keyword}. Detalles: {e}")
                 continue  
-            
+
             if all_scraper:
                 with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
                     keyword_file.write(all_scraper)

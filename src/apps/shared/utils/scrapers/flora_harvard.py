@@ -27,7 +27,13 @@ def scraper_flora_harvard(url, sobrenombre):
         try:
             response = requests.get(current_url, headers=headers)
             response.raise_for_status()
-            return response.text
+
+            if current_url.lower().endswith(".pdf"):
+                logger.info(f"Descargando PDF: {current_url}")
+                pdf_text = extract_text_from_pdf(current_url)
+                return pdf_text if pdf_text else ""
+
+            return response.text  # Si no es PDF, devuelve el HTML
         except requests.RequestException as e:
             logger.error(f"Error al obtener {current_url}: {e}")
             urls_not_scraped.append(current_url)
@@ -39,10 +45,13 @@ def scraper_flora_harvard(url, sobrenombre):
         for ul in soup.find_all("ul"):
             for link in ul.find_all("a", href=True):
                 href = link["href"]
+
                 if href.startswith("/"):
                     href = urljoin(base_url, href)
                 elif href.endswith(".pdf"):
                     href = urljoin(PDF_BASE_URL, href)
+                else:
+                    href = urljoin(base_url, href)
 
                 parsed_url = urlparse(href)
                 if parsed_url.netloc in ALLOWED_DOMAINS or href.startswith(PDF_BASE_URL):
@@ -61,25 +70,24 @@ def scraper_flora_harvard(url, sobrenombre):
         logger.info(f"Procesando URL: {current_url}")
 
         try:
-            html_content = get_page_content(current_url)
-            if not html_content:
+            content = get_page_content(current_url)
+            if not content:
                 return  
 
-            soup = BeautifulSoup(html_content, "html.parser")
+            if current_url.lower().endswith(".pdf"):
+                all_scraper += f"URL: {current_url}\n\n{content}\n{'-' * 80}\n\n"
+                return
+
+            soup = BeautifulSoup(content, "html.parser")
 
             panel_treatment = soup.find("div", id="panelTaxonTreatment")
             if panel_treatment:
-                content = panel_treatment.get_text(separator="\n", strip=True)
-                all_scraper += f"URL: {current_url}\n\n{content}\n{'-' * 80}\n\n"
+                page_text = panel_treatment.get_text(separator="\n", strip=True)
+                all_scraper += f"URL: {current_url}\n\n{page_text}\n{'-' * 80}\n\n"
 
-            links = extract_hrefs_from_ul(html_content, url)
+            links = extract_hrefs_from_ul(content, current_url)
             for link in links:
-                if link.endswith(".pdf"):
-                    pdf_text = extract_text_from_pdf(link)
-                    if pdf_text:
-                        all_scraper += f"URL: {link}\n\n{pdf_text}\n{'-' * 80}\n\n"
-                else:
-                    process_link(link)  
+                process_link(link)
 
         except Exception as e:
             logger.error(f"Error al procesar la URL {current_url}: {e}")
