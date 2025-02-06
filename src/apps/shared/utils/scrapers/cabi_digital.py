@@ -268,3 +268,4 @@ def scraper_cabi_digital(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")

@@ -49,3 +49,4 @@ def scraper_nemaplex(url, sobrenombre):
     
     finally:
         driver.quit()
+        logger.info("Navegador cerrado.")

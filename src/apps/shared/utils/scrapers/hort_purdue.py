@@ -91,7 +91,7 @@ def scraper_hort_purdue(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
 
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
+        collection, fs = connect_to_mongo()
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
 
         return response

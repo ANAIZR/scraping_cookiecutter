@@ -16,12 +16,11 @@ def scraper_delta(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     processed_links = set()
     base_url = "https://www.delta-intkey.com/"
 
-    # Contadores
     total_enlaces_encontrados = 0
     total_enlaces_scrapeados = 0
 
@@ -138,5 +137,7 @@ def scraper_delta(url, sobrenombre):
     finally:
         try:
             driver.quit()
+            logger.info("Navegador cerrado")
+
         except Exception as e:
             print(f"Error al cerrar el navegador: {e}")

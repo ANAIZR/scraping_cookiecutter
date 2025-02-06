@@ -64,3 +64,4 @@ def scraper_nemaplex_plant_host(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado.")

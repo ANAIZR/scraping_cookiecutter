@@ -11,7 +11,6 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-import os
 import random
 import time
 from bs4 import BeautifulSoup
@@ -27,12 +26,11 @@ def scraper_catalogue_of_life(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
 
-    keywords = load_keywords("plants.txt")
+    keywords = load_keywords()
     all_scraper = ""
 
     try:
         driver.get(url)
-        logger.info("Página cargada exitosamente.")
 
         search_box = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "search_string"))
@@ -57,7 +55,6 @@ def scraper_catalogue_of_life(url, sobrenombre):
                 )
                 row = rows[index]
                 record_id = row.get_attribute("id")
-                logger.info(f"Procesando fila con id: {record_id}")
 
                 try:
                     next_row = row.find_element(By.XPATH, "following-sibling::tr")
@@ -100,11 +97,8 @@ def scraper_catalogue_of_life(url, sobrenombre):
             search_box = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.NAME, "search_string"))
             )
-            logger.info("Barra de búsqueda localizada.")
 
-            logger.info(
-                f"Palabra clave {keyword} procesada. Regresando a la página principal."
-            )
+            
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
@@ -115,9 +109,9 @@ def scraper_catalogue_of_life(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
 
 
 def random_wait(min_wait=2, max_wait=6):
     wait_time = random.uniform(min_wait, max_wait)
-    logger.info(f"Esperando {wait_time:.2f} segundos...")
     time.sleep(wait_time)

@@ -17,7 +17,7 @@ from ..functions import (
 def scraper_nal_usda(url, sobrenombre):
     logger = get_logger("NAL")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]  

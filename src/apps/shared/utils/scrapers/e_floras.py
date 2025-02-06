@@ -20,7 +20,7 @@ def scraper_e_floras(
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     page_principal ="http://www.efloras.org/"
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     all_scraper = ""
     is_first_page = True
@@ -137,3 +137,5 @@ def scraper_e_floras(
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

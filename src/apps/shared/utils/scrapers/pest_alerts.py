@@ -19,7 +19,7 @@ def scraper_pest_alerts(
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
 
     try:
@@ -71,7 +71,6 @@ def scraper_pest_alerts(
             except Exception as e:
                 print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

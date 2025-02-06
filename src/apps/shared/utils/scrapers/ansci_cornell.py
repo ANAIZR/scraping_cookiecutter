@@ -17,9 +17,9 @@ def scraper_ansci_cornell(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
 
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
-    visited_urls = set()  # Almacena URLs visitadas para evitar duplicados
+    visited_urls = set()  
 
     try:
         driver.get(url)
@@ -132,3 +132,5 @@ def scraper_ansci_cornell(url, sobrenombre):
         )
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

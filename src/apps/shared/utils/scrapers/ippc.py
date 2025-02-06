@@ -18,7 +18,7 @@ def scraper_ippc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
 
     try:

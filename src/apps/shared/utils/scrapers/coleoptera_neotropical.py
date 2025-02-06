@@ -48,3 +48,5 @@ def scraper_coleoptera_neotropical(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

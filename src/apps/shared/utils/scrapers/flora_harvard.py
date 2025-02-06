@@ -1,13 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from PyPDF2 import PdfReader
-from io import BytesIO
+
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -16,7 +16,7 @@ from rest_framework import status
 def scraper_flora_harvard(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     visited_urls = set()
     urls_not_scraped = []
@@ -33,7 +33,6 @@ def scraper_flora_harvard(url, sobrenombre):
             links = ul.find_all("a", href=True)
             for link in links:
                 href = link["href"]
-                # Convertir enlaces relativos a absolutos
                 if href.startswith("/"):
                     href = urljoin(base_url, href)
                 elif href.endswith(".pdf"):
@@ -41,22 +40,6 @@ def scraper_flora_harvard(url, sobrenombre):
                 hrefs.append(href)
         return hrefs
 
-    def extract_text_from_pdf(pdf_url):
-        try:
-            response = requests.get(pdf_url, headers=headers, stream=True)
-            response.raise_for_status()
-
-            pdf_reader = PdfReader(BytesIO(response.content))
-            pdf_text = ""
-            for page in pdf_reader.pages:
-                pdf_text += page.extract_text() + "\n"
-
-            logger.info(f"Texto extraído del PDF: {pdf_url}")
-            return pdf_text
-        except Exception as e:
-            logger.error(f"Error al extraer texto del PDF {pdf_url}: {str(e)}")
-            urls_not_scraped.append(pdf_url)
-            return None
 
     def process_link(current_url):
         nonlocal all_scraper
@@ -83,7 +66,7 @@ def scraper_flora_harvard(url, sobrenombre):
                     if pdf_text:
                         all_scraper += f"URL: {link}\n\n{pdf_text}\n{'-' * 80}\n\n"
                 else:
-                    process_link(link)  # Procesa enlaces internos no PDF
+                    process_link(link)  
 
         except Exception as e:
             logger.error(f"Error al procesar la URL {current_url}: {str(e)}")

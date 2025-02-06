@@ -12,23 +12,25 @@ from ..functions import (
     initialize_driver,
 )
 
-def scraper_flmnh_ufl(
-    url,
-    sobrenombre,
-):
+
+def scraper_flmnh_ufl(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    
+
     try:
         collection, fs = connect_to_mongo()
     except Exception as e:
         logger.error(f"Error al conectar a MongoDB: {str(e)}")
-        return Response({"error": f"Error al conectar a MongoDB: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": f"Error al conectar a MongoDB: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    all_scraper = ""
-    all_scraper +={f"{url}\n\n"} 
+    all_scraper = f"{url}\n\n"
+
     def scrape_page():
+        nonlocal all_scraper
         try:
             WebDriverWait(driver, 20).until(
                 EC.presence_of_all_elements_located(
@@ -38,11 +40,10 @@ def scraper_flmnh_ufl(
             soup = BeautifulSoup(driver.page_source, "html.parser")
             rows = soup.select("table.x-grid-table tbody tr:not(.x-grid-header-row)")
 
-            all_scraper_data = []
             for row in rows:
                 cols = row.find_all("td")
                 data = [col.text.strip() for col in cols]
-                all_scraper_data.append(data)
+                all_scraper += " | ".join(data) + "\n"  
         except Exception as e:
             logger.error(f"Error durante el scraping de la página: {str(e)}")
             raise e
@@ -56,7 +57,9 @@ def scraper_flmnh_ufl(
             driver.execute_script("arguments[0].click();", next_button)
             return True
         except Exception as e:
-            logger.warning(f"No se pudo hacer clic en el botón de siguiente página: {str(e)}")
+            logger.warning(
+                f"No se pudo hacer clic en el botón de siguiente página: {str(e)}"
+            )
             return False
 
     try:
@@ -84,3 +87,5 @@ def scraper_flmnh_ufl(
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

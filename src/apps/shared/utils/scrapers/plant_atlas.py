@@ -131,3 +131,4 @@ def scraper_plant_atlas(url, sobrenombre):
     finally:
         if driver:
             driver.quit()
+            logger.info("Navegador cerrado.")

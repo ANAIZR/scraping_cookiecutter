@@ -71,7 +71,7 @@ def scraper_genome_jp(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     try:
         driver.get(url)
@@ -84,7 +84,6 @@ def scraper_genome_jp(url, sobrenombre):
                 break
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
@@ -93,3 +92,5 @@ def scraper_genome_jp(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

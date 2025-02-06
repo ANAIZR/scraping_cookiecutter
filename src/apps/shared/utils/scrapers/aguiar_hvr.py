@@ -78,7 +78,6 @@ def click_next_page(driver, wait_time):
         next_button = wait_for_element(
             driver, wait_time, (By.CSS_SELECTOR, "#DataTables_Table_0_next a")
         )
-        logger.info(f"Estado del botón 'Siguiente': {next_button.get_attribute('class')}")
 
         if "disabled" in next_button.get_attribute("class") or not next_button.is_enabled():
             logger.info("Botón de siguiente página deshabilitado. Fin de la paginación.")
@@ -109,7 +108,7 @@ def scrape_content_from_links(state):
                 if content:
                     text = content.get_text(strip=True)
                     logger.info(f"Contenido extraído de: {link}")
-                    return link, text, None  # Devuelve el enlace y el contenido
+                    return link, text, None  
                 else:
                     logger.warning(f"No se encontró contenido en: {link}")
                     return link, None, "No se encontró contenido"
@@ -142,7 +141,7 @@ def scraper_aguiar_hvr(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     state = ScraperState()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     try:
         driver.get(url)
@@ -161,3 +160,5 @@ def scraper_aguiar_hvr(url, sobrenombre):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

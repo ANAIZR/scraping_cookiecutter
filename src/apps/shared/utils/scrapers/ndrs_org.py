@@ -14,7 +14,8 @@ from ..functions import (
     get_next_versioned_filename,
     delete_old_documents,
     initialize_driver,
-    connect_to_mongo
+    connect_to_mongo,
+    get_logger
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -25,7 +26,7 @@ from selenium.webdriver.support.ui import Select
 def scraper_ndrs_org(url, sobrenombre):
     driver =  initialize_driver()
     collection,fs = connect_to_mongo()
-
+    logger = get_logger("scraper")
     base_url = "https://www.ndrs.org.uk/"
 
     base_folder_path = generate_directory(base_url)
@@ -34,6 +35,7 @@ def scraper_ndrs_org(url, sobrenombre):
 
     try:
         driver.get(url)
+        logger.info("Página de NDRS cargada exitosamente")
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent"))
         )
@@ -43,6 +45,7 @@ def scraper_ndrs_org(url, sobrenombre):
 
         if not containers:
             driver.quit()
+            logger.info("Navegador cerrado")
 
         for index, container in enumerate(containers):
             title = (
@@ -110,7 +113,6 @@ def scraper_ndrs_org(url, sobrenombre):
                                 ),
                                 "Etiquetas": ["planta", "plaga"],
                             }
-                            collection = db["collection"]
                             collection.insert_one(data)
                             delete_old_documents(article_full_url, collection, fs)
 
@@ -140,6 +142,7 @@ def scraper_ndrs_org(url, sobrenombre):
         print(f"Ocurrió un error: {e}")
 
     driver.quit()
+    logger.info("Navegador cerrado")
     if data_collected:
         return Response(
             {

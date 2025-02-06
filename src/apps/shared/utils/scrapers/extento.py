@@ -108,3 +108,5 @@ def scraper_extento(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

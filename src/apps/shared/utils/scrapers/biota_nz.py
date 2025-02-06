@@ -33,7 +33,7 @@ def scraper_biota_nz(url, sobrenombre):
         driver.get(url)
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
+        collection, fs = connect_to_mongo()
         main_folder = generate_directory(sobrenombre)
 
         keywords = load_keywords("plants.txt")
@@ -203,3 +203,5 @@ def scraper_biota_nz(url, sobrenombre):
     finally:
         if driver:
             driver.quit()
+            logger.info("Navegador cerrado")
+

@@ -2,7 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import os
-from selenium.common.exceptions import  TimeoutException
+from selenium.common.exceptions import TimeoutException
 from rest_framework.response import Response
 from rest_framework import status
 from ..functions import (
@@ -26,6 +26,7 @@ def scraper_ncbi(url, sobrenombre):
     keywords = load_keywords("plants.txt")
     main_folder = generate_directory(sobrenombre)
     scraping_failed = False
+    all_scraper = ""
 
     if not keywords:
         return Response(
@@ -52,42 +53,57 @@ def scraper_ncbi(url, sobrenombre):
             try:
                 keyword_folder = generate_directory(keyword, main_folder)
                 keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
-                ul_compact = driver.find_element(By.XPATH, "//ul[@compact]")
-                first_li = ul_compact.find_element(By.TAG_NAME, "li")
-                first_a = first_li.find_element(By.TAG_NAME, "a")
-                detail_url = first_a.get_attribute("href")
-                if detail_url:
-                    logger.info(f"Accediendo al enlace de detalle: {detail_url}")
-                    driver.get(detail_url)
 
-                    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                ul_compact = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//ul[@compact]"))
+                )
+                links = ul_compact.find_elements(By.TAG_NAME, "a")
 
-                    # Extraer datos a partir del tercer <table>
-                    soup = BeautifulSoup(driver.page_source, "html.parser")
-                    tables = soup.find_all("table")
+                for link in links:
+                    detail_url = link.get_attribute("href")
+                    
+                    if detail_url and detail_url.startswith("https://www.ncbi.nlm.nih.gov/"):
+                        logger.info(f"Accediendo al enlace de detalle: {detail_url}")
+                        driver.get(detail_url)
 
-                    if len(tables) >= 3:
-                        third_table = tables[2]
-                        table_text = third_table.get_text(separator="\n", strip=True)
-                        content_accumulated += f"{detail_url}\n{table_text}\n\n"
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.TAG_NAME, "body"))
+                        )
+
+                        soup = BeautifulSoup(driver.page_source, "html.parser")
+                        form = soup.find("form")
+
+                        if form:
+                            tables = form.find_all("table")
+                            if len(tables) >= 4:  
+                                fourth_table = tables[3]
+                                table_text = fourth_table.get_text(separator="\n", strip=True)
+
+                                references = [
+                                    a.get("href") for a in fourth_table.find_all("a", href=True)
+                                ]
+                                ref_text = "\nReferencias:\n" + "\n".join(references) if references else ""
+
+                                all_scraper += f"URL: {detail_url}\n{table_text}{ref_text}\n\n"
 
             except Exception as e:
                 logger.warning(f"No se encontró <ul compact>, saltando al siguiente término. Error: {e}")
                 continue  
-            if content_accumulated:
-                    with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                        keyword_file.write(content_accumulated)
+            
+            if all_scraper:
+                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
+                    keyword_file.write(all_scraper)
 
-                    with open(keyword_file_path, "rb") as file_data:
-                        object_id = fs.put(
-                            file_data,
-                            filename=os.path.basename(keyword_file_path),
-                            metadata={
-                                "keyword": keyword,
-                                "scraping_date": datetime.now(),
-                            },
-                        )
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                with open(keyword_file_path, "rb") as file_data:
+                    object_id = fs.put(
+                        file_data,
+                        filename=os.path.basename(keyword_file_path),
+                        metadata={
+                            "keyword": keyword,
+                            "scraping_date": datetime.now(),
+                        },
+                    )
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
         if scraping_failed:
             return Response(
@@ -154,4 +170,4 @@ def scraper_ncbi(url, sobrenombre):
 
     finally:
         driver.quit()
-
+        logger.info("Navegador cerrado")

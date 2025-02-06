@@ -53,3 +53,5 @@ def scraper_fao_org(
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

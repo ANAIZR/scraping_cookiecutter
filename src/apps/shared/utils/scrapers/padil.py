@@ -234,3 +234,4 @@ def scraper_padil(url, sobrenombre):
         )
     finally:
         driver.quit()
+        logger.info("Navegador cerrado.")

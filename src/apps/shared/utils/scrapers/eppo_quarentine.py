@@ -73,3 +73,5 @@ def scraper_eppo_quarentine(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
+

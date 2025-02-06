@@ -18,7 +18,7 @@ def scraper_nematode(
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
 
     try:
@@ -79,3 +79,4 @@ def scraper_nematode(
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado.")

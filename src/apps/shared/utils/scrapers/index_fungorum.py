@@ -29,7 +29,7 @@ def scraper_index_fungorum(url, sobrenombre):
         )
 
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     try:
         driver.get(url)
@@ -70,7 +70,6 @@ def scraper_index_fungorum(url, sobrenombre):
 
                     try:
                         content = main.text
-                        # Concatenar el contenido junto con la URL
                         all_scraper += f"URL: {href}\nContenido:\n{content}\n\n"
                     except Exception as e:
                         logger.error(f"Error al procesar contenido de {href}: {str(e)}")
@@ -98,3 +97,4 @@ def scraper_index_fungorum(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
