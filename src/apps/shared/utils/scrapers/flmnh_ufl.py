@@ -55,6 +55,7 @@ def scraper_flmnh_ufl(url, sobrenombre):
             )
             next_button = driver.find_element(By.ID, "button-1065-btnEl")
             driver.execute_script("arguments[0].click();", next_button)
+            logger.info("Clic en el botón de siguiente página")
             return True
         except Exception as e:
             logger.warning(
