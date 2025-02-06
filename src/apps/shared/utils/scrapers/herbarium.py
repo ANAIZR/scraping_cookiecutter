@@ -26,7 +26,7 @@ def scraper_herbarium(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
     all_scraper = ""
-    keywords = load_keywords("plants.txt")
+    keywords = load_keywords("family.txt")
 
     try:
         driver.get(url)
