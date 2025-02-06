@@ -340,15 +340,11 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
-        if all_scraper.strip():
+        if all_scraper:
             response_data = save_scraper_data(
                 all_scraper, url, sobrenombre, collection, fs
             )
-            logger.info(f"Datos procesados correctamente para la URL: {url}")
-            return {
-                "status": "success",
-                "data": response_data,
-            }
+            return Response(response_data, status=status.HTTP_200_OK)
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
             return {
