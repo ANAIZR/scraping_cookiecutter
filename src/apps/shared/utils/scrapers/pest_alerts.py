@@ -9,8 +9,9 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
-    get_random_user_agent
+    get_random_user_agent,
 )
+
 
 def scraper_pest_alerts(url, sobrenombre):
     logger = get_logger("scraper")
@@ -22,9 +23,11 @@ def scraper_pest_alerts(url, sobrenombre):
 
     try:
         driver.get(url)
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "table")))
+        WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
+        )
 
-        all_links = set()  # Usamos un set para evitar duplicados
+        all_links = set()
 
         while True:
             rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
@@ -36,12 +39,11 @@ def scraper_pest_alerts(url, sobrenombre):
                     href = a_tag.get_attribute("href")
                     if href:
                         if href.startswith("/"):
-                            href = url + href[1:]  # Convertir en URL absoluta
+                            href = url + href[1:]
                         all_links.add(href)
                 except Exception as e:
                     logger.warning(f"Error al extraer enlace de la fila: {e}")
 
-            # Intentar ir a la siguiente página si existe
             try:
                 next_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
@@ -49,12 +51,10 @@ def scraper_pest_alerts(url, sobrenombre):
                 next_button.click()
                 time.sleep(3)
             except Exception:
-                logger.info("No se encontró el botón de siguiente página. Finalizando extracción de enlaces.")
                 break
 
-        logger.info(f"Total de enlaces extraídos: {len(all_links)}")
+        all_scraper += f"Total de enlaces extraídos: {len(all_links)}"
 
-        # Ahora recorremos los enlaces con requests + BeautifulSoup
         for link in all_links:
             try:
                 logger.info(f"Procesando URL: {link}")
@@ -65,7 +65,11 @@ def scraper_pest_alerts(url, sobrenombre):
 
                 content_elements = soup.select("div.bg-content-custom")
                 if len(content_elements) == 2:
-                    content = content_elements[0].get_text(separator="\n", strip=True) + "\n" + content_elements[1].get_text(separator="\n", strip=True)
+                    content = (
+                        content_elements[0].get_text(separator="\n", strip=True)
+                        + "\n"
+                        + content_elements[1].get_text(separator="\n", strip=True)
+                    )
                     all_scraper += f"URL: {link}\n{content}\n{'-'*80}\n\n"
             except requests.RequestException as e:
                 logger.warning(f"Error al acceder a {link}: {e}")
