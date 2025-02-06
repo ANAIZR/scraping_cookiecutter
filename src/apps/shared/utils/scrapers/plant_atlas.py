@@ -26,7 +26,7 @@ def get_soup(driver, url):
 def process_cards(driver, soup, processed_cards):
     all_scraper_page = []
     containers = soup.select("div.partner-list")
-
+    
     for container in containers:
         cards = container.select("div.col-lg-3")
         for card in cards:
@@ -108,11 +108,10 @@ def scraper_card_page(driver, link_card):
 
 def scraper_plant_atlas(url, sobrenombre):
     all_scraper = ""
-    driver = None  
+    driver = initialize_driver()
 
     try:
         collection, fs = connect_to_mongo()
-        driver = initialize_driver()
         soup = get_soup(driver, url)
 
         processed_cards = set()

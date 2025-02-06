@@ -15,7 +15,7 @@ def scraper_nemaplex(url, sobrenombre):
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = "" 
     
     try:
@@ -26,7 +26,7 @@ def scraper_nemaplex(url, sobrenombre):
 
         button = driver.find_element(By.CSS_SELECTOR, "#Button1")
         if button.is_enabled():
-            button.click()
+            driver.execute_script("arguments[0].click();", button)
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located(
                     (By.CSS_SELECTOR, "#GridView1")
@@ -43,7 +43,6 @@ def scraper_nemaplex(url, sobrenombre):
             row_data = " | ".join([col.text.strip() for col in columns]) 
             all_scraper += row_data + "\n" 
 
-        logger.info(f"Datos extraídos:\n{all_scraper}")
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
