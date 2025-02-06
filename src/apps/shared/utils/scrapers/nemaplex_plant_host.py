@@ -16,7 +16,7 @@ def scraper_nemaplex_plant_host(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = "" 
 
     try:
@@ -30,7 +30,7 @@ def scraper_nemaplex_plant_host(url, sobrenombre):
         for index in range(len(dropdown.options)):
             dropdown.select_by_index(index)
             submit_button = driver.find_element(By.XPATH, "//input[@type='submit']")
-            submit_button.click()
+            driver.execute_script("arguments[0].click();", submit_button)
 
             try:
                 WebDriverWait(driver, 30).until(
@@ -55,7 +55,7 @@ def scraper_nemaplex_plant_host(url, sobrenombre):
                 EC.presence_of_element_located((By.ID, "DropDownList1"))
             )
 
-        response = process_scraper_data(all_scraper.strip(), url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
     except Exception as e:
