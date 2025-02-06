@@ -13,8 +13,8 @@ from ..functions import (
     get_random_user_agent,
 )
 
-def scraper_fao_org_home(url, sobrenombre):
-    logger = get_logger("FAO_ORG_HOME")
+def scraper_scientific_discoveries(url, sobrenombre):
+    logger = get_logger("ARS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
@@ -45,25 +45,12 @@ def scraper_fao_org_home(url, sobrenombre):
             soup = BeautifulSoup(response.content, "html.parser")
 
             if depth >= 2:
-                # Extraer solo el contenido principal
-                # main_content = soup.find("body", id="main-content")
-                main_content = soup.find("body")
-                
+                main_content = soup.find("main", id="main-content")
                 if main_content:
-                    # Eliminar header y footer dentro del main content si existen
-                    for element in main_content.find_all(['header', 'footer']):
-                        element.decompose()
-                    
-                    # Extraer texto limpio
-                    page_text = main_content.get_text(separator=' ', strip=True)
-                    print( "scrapeo hecho por quma",page_text )
-                    
-                    # Eliminar espacios múltiples y unificar texto
-                    page_text = ' '.join(page_text.split())
                     nonlocal all_scraper
-                    all_scraper += f"URL: {url}\nCONTENIDO:\n{page_text}\n\n{'='*50}\n\n"
+                    page_text = main_content.get_text(separator=" ", strip=True)
+                    all_scraper += f"URL: {url}\n{page_text}\n\n" 
 
-            # ... (resto del código original de procesamiento de links)
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
                 full_url = urljoin(url, inner_href)
@@ -79,7 +66,7 @@ def scraper_fao_org_home(url, sobrenombre):
                     continue
 
                 if (
-                    urlparse(full_url).netloc == "www.fao.org"
+                    urlparse(full_url).netloc == "scientificdiscoveries.ars.usda.gov"
                     and full_url not in processed_links
                 ):
                     total_found_links += 1  
@@ -94,6 +81,7 @@ def scraper_fao_org_home(url, sobrenombre):
         return new_links
 
     def scrape_pages_in_parallel(url_list):
+        nonlocal total_non_scraped_links
         new_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_url = {
@@ -119,8 +107,10 @@ def scraper_fao_org_home(url, sobrenombre):
         all_scraper += f"Total links scraped: {total_scraped_links}\n"
         all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
         all_scraper += "\n\nURLs no scrapeadas:\n"
-        all_scraper += "\n".join(non_scraped_urls)  
+        all_scraper += "\n".join(non_scraped_urls)      
+        print("antes de procesar el scraper")
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        print("despues de procesar el scraper")
         print('respuesta por analizar',response)
         return response
 

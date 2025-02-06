@@ -108,6 +108,7 @@ def scraper_ars_usda(url, sobrenombre):
         all_scraper += "\n\nURLs no scrapeadas:\n"
         all_scraper += "\n".join(non_scraped_urls)  
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        print('respuesta por analizar',response)
         return response
 
     except Exception as e:
