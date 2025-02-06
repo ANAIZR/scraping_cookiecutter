@@ -20,7 +20,7 @@ def scraper_flmnh_ufl(
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
 
     def scrape_page():
@@ -66,7 +66,6 @@ def scraper_flmnh_ufl(
             scrape_page()
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
