@@ -57,7 +57,6 @@ def scraper_aphis_usda(url, sobrenombre):
             return []
         processed_links.add(url)
 
-        logger.info(f"Accediendo a {url} en el nivel {depth}")
 
         headers = {"User-Agent": get_random_user_agent()}
         new_links = []
@@ -124,7 +123,6 @@ def scraper_aphis_usda(url, sobrenombre):
 
     try:
         while urls_to_scrape:
-            logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
             urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
             time.sleep(random.uniform(1, 3))  
 

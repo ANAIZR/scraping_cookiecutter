@@ -24,7 +24,9 @@ def scraper_fao_org(
     try:
         while url:
             driver.get(url)
-            all_scraper = f"{url}\n\n"
+            logger.info("Ingresando a la URL de FAO.")
+
+            all_scraper += f"{url}\n\n"
             soup = BeautifulSoup(driver.page_source, "html.parser")
 
             h3_tags = soup.find_all("h3")
