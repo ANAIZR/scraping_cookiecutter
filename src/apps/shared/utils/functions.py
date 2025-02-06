@@ -159,7 +159,7 @@ def initialize_driver(retries=3):
                 raise
 
 
-def connect_to_mongo(db_name=None, collection_name=None):
+def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
 
     logger = get_logger("MONGO_CONNECTION")
     try:

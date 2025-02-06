@@ -1,80 +1,82 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from rest_framework.response import Response
-from rest_framework import status
 import time
+import requests
+from bs4 import BeautifulSoup
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    get_random_user_agent
 )
 
-
-def scraper_pest_alerts(
-    url,
-    sobrenombre,
-):
+def scraper_pest_alerts(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
+    headers = {"User-Agent": get_random_user_agent()}
 
     try:
         driver.get(url)
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
-        )
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "table")))
 
-        rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
+        all_links = set()  # Usamos un set para evitar duplicados
 
-        original_window = driver.current_window_handle
+        while True:
+            rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
 
-        for row in rows:
+            for row in rows:
+                try:
+                    second_td = row.find_elements(By.TAG_NAME, "td")[1]
+                    a_tag = second_td.find_element(By.TAG_NAME, "a")
+                    href = a_tag.get_attribute("href")
+                    if href:
+                        if href.startswith("/"):
+                            href = url + href[1:]  # Convertir en URL absoluta
+                        all_links.add(href)
+                except Exception as e:
+                    logger.warning(f"Error al extraer enlace de la fila: {e}")
+
+            # Intentar ir a la siguiente página si existe
             try:
-                second_td = row.find_elements(By.TAG_NAME, "td")[1]
-                a_tag = second_td.find_element(By.TAG_NAME, "a")
-                href = a_tag.get_attribute("href")
-                if href:
-                    if href.startswith("/"):
-                        href = url + href[1:]
-                    driver.execute_script("window.open(arguments[0]);", href)
+                next_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
+                )
+                next_button.click()
+                time.sleep(3)
+            except Exception:
+                logger.info("No se encontró el botón de siguiente página. Finalizando extracción de enlaces.")
+                break
 
-                    WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+        logger.info(f"Total de enlaces extraídos: {len(all_links)}")
 
-                    new_window = driver.window_handles[1]
-                    driver.switch_to.window(new_window)
+        # Ahora recorremos los enlaces con requests + BeautifulSoup
+        for link in all_links:
+            try:
+                logger.info(f"Procesando URL: {link}")
+                response = requests.get(link, headers=headers, timeout=10)
+                response.raise_for_status()
 
-                    WebDriverWait(driver, 30).until(
-                        EC.presence_of_all_elements_located(
-                            (By.CSS_SELECTOR, "div.bg-content-custom")
-                        )
-                    )
+                soup = BeautifulSoup(response.content, "html.parser")
 
-                    content_elements = driver.find_elements(
-                        By.CSS_SELECTOR, "div.bg-content-custom"
-                    )
-                    if len(content_elements) == 2:
-                        content = (
-                            content_elements[0].text + "\n" + content_elements[1].text
-                        )
-                        all_scraper += content
+                content_elements = soup.select("div.bg-content-custom")
+                if len(content_elements) == 2:
+                    content = content_elements[0].get_text(separator="\n", strip=True) + "\n" + content_elements[1].get_text(separator="\n", strip=True)
+                    all_scraper += f"URL: {link}\n{content}\n{'-'*80}\n\n"
+            except requests.RequestException as e:
+                logger.warning(f"Error al acceder a {link}: {e}")
 
-                    driver.close()
-
-                    driver.switch_to.window(original_window)
-
-                    time.sleep(2)
-
-            except Exception as e:
-                print(f"Error al procesar la fila o hacer clic en el enlace: {e}")
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
         return response
+
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error durante el scraping: {e}")
+        return {"error": str(e)}
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado.")
