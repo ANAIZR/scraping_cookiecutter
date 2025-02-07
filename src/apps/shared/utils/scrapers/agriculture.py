@@ -26,13 +26,15 @@ def scraper_agriculture(url, sobrenombre):
     def extract_links(current_url):
         if processed_links.get(current_url, 0) >= 2:
             logger.warning(f"Saltando URL (ya procesada más de 2 veces): {current_url}")
+            return []  
 
         try:
             logger.info(f"Conectando a la URL: {current_url}")
             response = requests.get(current_url, headers=headers, timeout=10) 
-            
+
             if not (200 <= response.status_code < 300):
                 logger.warning(f"HTTP {response.status_code} recibido para {current_url}. Saltando URL.")
+                return []  
 
             processed_links[current_url] = processed_links.get(current_url, 0) + 1  
             soup = BeautifulSoup(response.content, "html.parser")
@@ -40,47 +42,26 @@ def scraper_agriculture(url, sobrenombre):
             td_element = soup.find("td", class_="newsroom_2cols")
             if not td_element:
                 logger.warning(f"No se encontró el td con la clase 'newsroom_2cols' en {current_url}")
+                return []  
 
             links = [
                 urljoin(current_url, link.get("href"))
                 for link in td_element.find_all("a", href=True, target="_blank")
             ]
+
             logger.info(f"Se encontraron {len(links)} enlaces en {current_url}")
+            return links  
 
         except TimeoutException:
-            logger.error(f"Error: la página {url} está tardando demasiado en responder.")
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,            
-                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
-                },
-                status=status.HTTP_408_REQUEST_TIMEOUT,
-            )
+            logger.error(f"Error: la página {current_url} está tardando demasiado en responder.")
+            return []  
         except ConnectionError:
             logger.error("Error de conexión a la URL.")
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Mensaje": "No se pudo conectar a la página web.",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+            return []
         except Exception as e:
             logger.error(f"Error al procesar datos del scraper: {str(e)}")
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            return []
 
-                    "Mensaje": "Ocurrió un error al procesar los datos.",
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
 
 
     def extract_text(current_url):
