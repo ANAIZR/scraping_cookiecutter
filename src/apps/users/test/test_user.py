@@ -4,7 +4,6 @@ from src.apps.users.models import User
 
 @pytest.mark.django_db
 def test_admin_can_create_user():
-    """ Verifica que solo los administradores pueden crear usuarios """
     client = APIClient()
     admin = User.objects.create_user(
         username="admin_user",
@@ -21,9 +20,6 @@ def test_admin_can_create_user():
         "password": "securepassword",
         "system_role": 2
     })
-
-    print("Response Status:", response.status_code)
-    print("Response Data:", response.json())
 
     assert response.status_code == 201  
 
