@@ -47,11 +47,22 @@ def scraper_se_eppc(url, sobrenombre):
                         driver.get(href)
                         time.sleep(5) 
 
+                        # Hacer clic en "About This Subject"
+                        try:
+                            about_tab = WebDriverWait(driver, 10).until(
+                                EC.element_to_be_clickable((By.LINK_TEXT, "About This Subject"))
+                            )
+                            driver.execute_script("arguments[0].click();", about_tab)
+                            time.sleep(3)  
+                        except Exception as e:
+                            logger.warning(f"No se pudo hacer clic en 'About This Subject' en {href}: {e}")
+                            continue
+
+                        # Extraer contenido después de hacer clic
                         soup = BeautifulSoup(driver.page_source, "html.parser")
                         container = soup.select_one("div.container")
 
                         if container:
-
                             overview = container.select_one("#overview")
 
                             if overview:
