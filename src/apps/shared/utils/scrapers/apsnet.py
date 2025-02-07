@@ -26,7 +26,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 logger = get_logger("scraper")
 
-def scraper_pestnet(url, sobrenombre):
+def scraper_apsnet(url, sobrenombre):
     try:
         driver = initialize_driver()
         object_id = None
