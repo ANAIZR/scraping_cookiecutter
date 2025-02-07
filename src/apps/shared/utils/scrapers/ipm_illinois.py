@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-import PyPDF2
+import pypdf
 import io
 from ..functions import (
     process_scraper_data,
@@ -41,7 +41,7 @@ def scraper_ipm_illinoes(url,sobrenombre):
                 pdf_response = requests.get(pdf_url)
                 if pdf_response.status_code == 200:
                     pdf_bytes = io.BytesIO(pdf_response.content)
-                    pdf_reader = PyPDF2.PdfReader(pdf_bytes)
+                    pdf_reader = pypdf.PdfReader(pdf_bytes)
 
                     pdf_text = ""
                     for page in pdf_reader.pages:

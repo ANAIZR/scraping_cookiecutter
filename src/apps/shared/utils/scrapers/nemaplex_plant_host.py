@@ -11,7 +11,8 @@ from ..functions import (
     get_logger,
     initialize_driver,
 )
-
+import time
+import random
 def scraper_nemaplex_plant_host(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
@@ -50,6 +51,7 @@ def scraper_nemaplex_plant_host(url, sobrenombre):
                 logger.error(f"Error inesperado para la opción {index + 1}. Excepción: {str(e)}")
 
             driver.back()
+            time.sleep(random.randint(1, 3))
 
             WebDriverWait(driver, 60).until(
                 EC.presence_of_element_located((By.ID, "DropDownList1"))
