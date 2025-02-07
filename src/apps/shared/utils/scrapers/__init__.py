@@ -60,3 +60,4 @@ from .ecoport import scraper_ecoport
 from .pestnet import scraper_pestnet
 from .fao_org_home import scraper_fao_org_home
 from .scientific_discoveries import scraper_scientific_discoveries
+from .apsnet import scraper_apsnet
