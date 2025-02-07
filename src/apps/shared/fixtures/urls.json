@@ -975,6 +975,19 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 70,
+    "fields": {
+      "url": "https://cibnor.repositorioinstitucional.mx/jspui/bitstream/1001/1448/1/MANUAL%20DE%20PLAGAS%20Y%20ENFERMEDADES.pdf",
+      "sobrenombre": "MANUAL_PLAGAS_ENFERMEDADES",
+      "time_choices": 4,
+      "mode_scrapeo": 7,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 73,
     "fields": {
       "url": "http://www.virtualherbarium.org/",
