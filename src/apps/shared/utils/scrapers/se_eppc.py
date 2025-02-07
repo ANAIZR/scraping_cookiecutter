@@ -19,6 +19,7 @@ def scraper_se_eppc(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
     all_scraper = ""
+    failed_urls = [] 
 
     try:
         driver.get(url)
@@ -41,13 +42,11 @@ def scraper_se_eppc(url, sobrenombre):
                 if first_td:
                     href = first_td.get("href")
                     if href:
-                        if not href.startswith("http"):
-                            href = urljoin(url, href)
+                        href = urljoin(url, href)  
 
                         driver.get(href)
-                        time.sleep(5) 
+                        time.sleep(5)  
 
-                        # Hacer clic en "About This Subject"
                         try:
                             about_tab = WebDriverWait(driver, 10).until(
                                 EC.element_to_be_clickable((By.LINK_TEXT, "About This Subject"))
@@ -56,9 +55,9 @@ def scraper_se_eppc(url, sobrenombre):
                             time.sleep(3)  
                         except Exception as e:
                             logger.warning(f"No se pudo hacer clic en 'About This Subject' en {href}: {e}")
+                            failed_urls.append(href)  
                             continue
 
-                        # Extraer contenido después de hacer clic
                         soup = BeautifulSoup(driver.page_source, "html.parser")
                         container = soup.select_one("div.container")
 
@@ -69,18 +68,27 @@ def scraper_se_eppc(url, sobrenombre):
                                 page_text = overview.get_text(separator="\n", strip=True)
                                 if page_text:
                                     all_scraper += f"\n\nURL: {href}\n{page_text}\n"
-                                    logger.info(f"Contenido extraído correctamente de {href}")
+                                    logger.info(f"✅ Contenido extraído correctamente de {href}")
                                 else:
                                     logger.warning(f"El contenido de #overview en {href} está vacío.")
+                                    failed_urls.append(href)  
                             else:
-                                logger.warning(f"No se encontró #overview dentro de div.container en {href}. Continuando...")
+                                logger.warning(f"No se encontró #overview dentro de div.container en {href}.")
+                                failed_urls.append(href) 
                         else:
-                            logger.warning(f"No se encontró 'div.container' en {href}. Continuando con la siguiente página...")
+                            logger.warning(f"No se encontró 'div.container' en {href}.")
+                            failed_urls.append(href)  
 
             except Exception as e:
                 logger.error(f"Error al procesar el enlace {href}: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                failed_urls.append(href)  
 
-        
+        if failed_urls:
+            all_scraper += "\n\nURLs no procesadas:\n" + "\n".join(failed_urls) + "\n"
+            logger.warning("Algunas URLs no pudieron ser procesadas.")
+
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
@@ -90,4 +98,4 @@ def scraper_se_eppc(url, sobrenombre):
 
     finally:
         driver.quit()
-        logger.info("Navegador cerrado.")
+        logger.info(" Navegador cerrado.")
