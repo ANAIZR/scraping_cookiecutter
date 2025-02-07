@@ -11,20 +11,21 @@ from datetime import datetime
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
-    delete_old_documents,
     initialize_driver,
     get_logger,
     connect_to_mongo,
-    load_keywords
+    load_keywords,
 )
 from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
+
 logger = get_logger("scraper")
+
 
 def scraper_cabi_digital(url, sobrenombre):
     driver = initialize_driver()
-    
+
     try:
         if login_cabi_scienceconnect(driver):
             print("Login completado, continuando con el scraping...")
@@ -34,6 +35,7 @@ def scraper_cabi_digital(url, sobrenombre):
         driver.get(url)
         time.sleep(random.uniform(6, 10))
         object_id = None
+        response_data = []
         try:
 
             collection, fs = connect_to_mongo()
@@ -86,7 +88,10 @@ def scraper_cabi_digital(url, sobrenombre):
             )
 
         for keyword in keywords:
-            print(f"Buscando con la palabra clave: {keyword}")
+            logger.info(f"Buscando con la palabra clave: {keyword}")
+            content_accumulated = ""
+
+            # Buscar el término
             try:
                 search_input = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(
@@ -98,84 +103,83 @@ def scraper_cabi_digital(url, sobrenombre):
                 )
                 search_input.clear()
                 search_input.send_keys(keyword)
-                time.sleep(random.uniform(3, 6))
-
                 search_input.submit()
-                logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
-                logger.info(f"Error al realizar la búsqueda: {e}")
-                scraping_failed = True
+                logger.warning(f"Error al realizar la búsqueda para '{keyword}': {e}")
                 continue
+
             keyword_folder = generate_directory(keyword, main_folder)
             keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
 
-            content_accumulated = ""
             while True:
                 try:
-                    WebDriverWait(driver, 60).until(
+                    WebDriverWait(driver, 30).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "ul.rlist li"))
                     )
                     logger.info("Resultados encontrados en la página.")
 
+                    # Procesar resultados
                     soup = BeautifulSoup(driver.page_source, "html.parser")
                     items = soup.select("ul.rlist li")
                     if not items:
                         logger.warning(
-                            f"No se encontraron resultados para la palabra clave: {keyword}"
+                            f"No se encontraron resultados para '{keyword}'."
                         )
                         break
-                    logger.info(f"Encontrados {len(items)} resultados.")
+
                     for item in items:
-                        href = item.find("a")["href"]
-                        if href.startswith("/doi/10.1079/cabicompendium"):
-                            absolut_href = f"{base_domain}{href}"
-                            driver.get(absolut_href)
-                            visited_urls.add(absolut_href)
-                            WebDriverWait(driver, 60).until(
-                                EC.presence_of_element_located(
-                                    (By.CSS_SELECTOR, "body")
+                        anchor = item.find("a")  # Verifica si existe el enlace
+                        if (
+                            anchor and "href" in anchor.attrs
+                        ):  # Verifica si el atributo 'href' está presente
+                            href = anchor["href"]
+                            if href.startswith("/doi/10.1079/cabicompendium"):
+                                absolute_href = (
+                                    f"https://www.cabidigitallibrary.org{href}"
                                 )
-                            )
-
-                            time.sleep(random.uniform(6, 10))
-                            soup = BeautifulSoup(driver.page_source, "html.parser")
-                            abstracts = soup.select_one("#abstracts")
-                            body = soup.select_one("#bodymatter>.core-container")
-                            abstract_text = (
-                                abstracts.get_text(strip=True)
-                                if abstracts
-                                else "No abstract found"
-                            )
-                            body_text = (
-                                body.get_text(strip=True) if body else "No body found"
-                            )
-                            if abstract_text or body_text:
-                                content_accumulated += f"URL:{absolut_href} \nTexto: {abstract_text}\n\n\n{body_text}"
-                                content_accumulated += "-" * 100 + "\n\n"
-
-                                print(f"Página procesada y guardada: {absolut_href}")
-                            else:
-                                print("No se encontró contenido en la página.")
-                            driver.back()
-                            WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located(
-                                    (By.CSS_SELECTOR, "ul.rlist li")
+                                driver.get(absolute_href)
+                                WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located(
+                                        (By.CSS_SELECTOR, "body")
+                                    )
                                 )
+
+                                soup = BeautifulSoup(driver.page_source, "html.parser")
+                                abstract = soup.select_one("#abstracts")
+                                body = soup.select_one("#bodymatter>.core-container")
+                                abstract_text = (
+                                    abstract.get_text(strip=True)
+                                    if abstract
+                                    else "No abstract found"
+                                )
+                                body_text = (
+                                    body.get_text(strip=True)
+                                    if body
+                                    else "No body found"
+                                )
+
+                                if abstract_text or body_text:
+                                    content_accumulated += f"URL: {absolute_href}\nAbstract: {abstract_text}\n\nBody: {body_text}\n{'-' * 100}\n\n"
+
+                                driver.back()
+                                WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located(
+                                        (By.CSS_SELECTOR, "ul.rlist li")
+                                    )
+                                )
+                        else:
+                            logger.warning(
+                                f"No se encontró un enlace válido en el item: {item}"
                             )
-                            time.sleep(random.uniform(3, 6))
 
                     try:
                         next_page_button = driver.find_element(
-                            By.CSS_SELECTOR,
-                            ".pagination__btn.pagination__btn--next.icon-arrow_r",
+                            By.CSS_SELECTOR, ".pagination__btn--next"
                         )
-                        next_page_link = next_page_button.get_attribute("href")
-
-                        if next_page_link:
-                            logger.info(
-                                f"Yendo a la siguiente página: {next_page_link}"
+                        if next_page_button:
+                            driver.execute_script(
+                                "arguments[0].click();", next_page_button
                             )
-                            driver.get(next_page_link)
                         else:
                             logger.info(
                                 "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
@@ -186,14 +190,14 @@ def scraper_cabi_digital(url, sobrenombre):
                             "No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave."
                         )
                         driver.get(url)
-                        break  
+                        break
                 except TimeoutException:
                     logger.warning(
                         f"No se encontraron resultados para '{keyword}' después de esperar."
                     )
                     break
-                    
-            if content_accumulated:
+
+            if content_accumulated.strip():
                 with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
                     keyword_file.write(content_accumulated)
 
@@ -204,38 +208,54 @@ def scraper_cabi_digital(url, sobrenombre):
                         metadata={
                             "keyword": keyword,
                             "scraping_date": datetime.now(),
+                            "url": url,
                         },
                     )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                logger.info(
+                    f"Archivo almacenado en MongoDB para '{keyword}' con ObjectId: {object_id}"
+                )
+
+                keyword_files = list(
+                    fs.find({"metadata.keyword": keyword}).sort(
+                        "metadata.scraping_date", -1
+                    )
+                )
+                if len(keyword_files) > 2:
+                    for file_to_delete in keyword_files[2:]:
+                        fs.delete(file_to_delete["_id"])
+                        logger.info(
+                            f"Registro antiguo eliminado para '{keyword}' con ObjectId: {file_to_delete['_id']}"
+                        )
+                response_data.append(
+                    {
+                        "keyword": keyword,
+                        "url": url,
+                        "scraping_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "object_id": str(object_id),
+                    }
+                )
+            collection.insert_one(
+                {
+                    "url": url,
+                    "fecha_scraping": datetime.now(),
+                    "keywords_procesados": len(keywords),
+                    "detalles": response_data,
+                }
+            )
 
         if scraping_failed:
             return Response(
                 {
-                    "message": "Error durante el scraping. Algunas URLs fallaron.",
+                    "status": "warning",
+                    "message": "Scraping completado con algunos errores.",
+                    "data": response_data,
                 },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_207_MULTI_STATUS,
             )
         else:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-
             return Response(
                 {
+                    "message": "Scraping completado con éxito.",
                     "data": response_data,
                 },
                 status=status.HTTP_200_OK,
