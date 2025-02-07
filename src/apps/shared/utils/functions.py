@@ -7,6 +7,9 @@ import undetected_chromedriver as uc
 import time
 from pymongo import MongoClient
 import gridfs
+import requests
+import PyPDF2
+from io import BytesIO
 
 from rest_framework.response import Response
 from rest_framework import status
@@ -447,3 +450,20 @@ def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection,
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+def extract_text_from_pdf(pdf_url):
+    try:
+        headers = {"User-Agent": get_random_user_agent()}
+        response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
+        response.raise_for_status()  # Asegura que la petición fue exitosa
+
+        pdf_buffer = BytesIO(response.content)
+        reader = PyPDF2.PdfReader(pdf_buffer)
+
+        pdf_text = "\n".join(
+            [page.extract_text() for page in reader.pages if page.extract_text()]
+        )
+        return pdf_text if pdf_text else "No se pudo extraer texto del PDF."
+
+    except Exception as e:
+        return f"Error al extraer contenido del PDF ({pdf_url}): {e}"
