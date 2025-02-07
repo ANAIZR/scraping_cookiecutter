@@ -80,13 +80,7 @@ def scraper_se_eppc(url, sobrenombre):
             except Exception as e:
                 logger.error(f"Error al procesar el enlace {href}: {e}")
 
-        if not all_scraper.strip():
-            logger.warning(f"No se encontró contenido en las páginas exploradas desde {url}.")
-            return Response(
-                {"status": "no_content", "message": "No se encontraron datos para scrapear."},
-                status=status.HTTP_204_NO_CONTENT
-            )
-
+        
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
