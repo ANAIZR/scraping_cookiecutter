@@ -49,6 +49,7 @@ def scraper_pest_alerts(url, sobrenombre):
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
                 )
                 driver.execute_script("arguments[0].click();", next_button)
+                logger.info("Cargando siguiente página...")
                 time.sleep(3)
             except Exception:
                 break
