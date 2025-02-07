@@ -170,6 +170,17 @@ def scraper_padil(url, sobrenombre):
                         },
                     )
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                existing_versions = list(
+                    collection.find({"metadata.keyword": keyword}).sort("metadata.scraping_date", -1)
+                )
+
+                if len(existing_versions) > 2:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(oldest_version["_id"])
+                    collection.delete_one({"_id": oldest_version["_id"]})
+                    logger.info(
+                        f"Se eliminó la versión más antigua de '{keyword}' con object_id: {oldest_version['_id']}"
+                    )
 
         if scraping_failed:
             return Response(

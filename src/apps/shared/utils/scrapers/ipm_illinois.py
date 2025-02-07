@@ -8,7 +8,7 @@ from ..functions import (
     get_logger,
 )
 
-def scraper_ipm_illinoes(url,sobrenombre):
+def scraper_ipm_illinois(url,sobrenombre):
     all_scraper = ""
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
