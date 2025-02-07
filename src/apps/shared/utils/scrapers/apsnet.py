@@ -94,8 +94,8 @@ def scraper_apsnet(url, sobrenombre):
                         else:
                             next_page_number = current_page + 1
 
-                        if next_page_number > 1:
-                            logger.info(f"Se ha alcanzado la página límite (1). Deteniendo la paginación.")
+                        if next_page_number > 9:
+                            logger.info(f"Se ha alcanzado la página límite (10). Deteniendo la paginación.")
                             break
                         next_button.click()
                         time.sleep(random.uniform(3,6))
