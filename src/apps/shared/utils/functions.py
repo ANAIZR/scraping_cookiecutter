@@ -263,41 +263,49 @@ def delete_old_documents(url, collection, fs, limit=2):
 
 def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
+    
     try:
-        folder_path = generate_directory(sobrenombre, OUTPUT_DIR)
+        if not all_scraper.strip():
+            logger.warning("No hay contenido para guardar.")
+            return {"message": "No hay contenido extraído para almacenar."}
+
+        folder_path = generate_directory(sobrenombre)
         file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
 
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
+        logger.info(f"Archivo guardado localmente en: {file_path}")
 
         with open(file_path, "rb") as file_data:
             object_id = fs.put(file_data, filename=os.path.basename(file_path))
+            logger.info(f"Archivo subido a MongoDB con ObjectId: {object_id}")
 
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
+        data = {
+            "Objeto": object_id,
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+        }
+        collection.insert_one(data)
+        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
 
-            collection.insert_one(data)
-            logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+        delete_old_documents(url, collection, fs)
 
-            delete_old_documents(url, collection, fs)
-
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
+        response_data = {
+            "Tipo": "Web",
+            "Url": url,
+            "Fecha_scraper": data["Fecha_scraper"],
+            "Etiquetas": data["Etiquetas"],
+            "Mensaje": "Los datos han sido scrapeados correctamente.",
+        }
 
         return response_data
+
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
-        raise
+        return {"message": f"Error al guardar datos: {str(e)}"}
+
 
 def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
