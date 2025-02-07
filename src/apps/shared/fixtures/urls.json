@@ -280,7 +280,7 @@
     "pk": 21,
     "fields": {
       "url": "http://nemaplex.ucdavis.edu/Nemabase2010/PlantHostStatusDDQuery.aspx",
-      "sobrenombre": "NEMPLAEX",
+      "sobrenombre": "NEMAPLEX_PLANT_HOST",
       "time_choices": 1,
       "mode_scrapeo": 31,
       "created_at": "2024-09-16T12:00:00Z",
@@ -926,7 +926,7 @@
     "pk": 66,
     "fields": {
       "url": "http://nemaplex.ucdavis.edu/Nemabase2010/PlantNematodeHostStatusDDQuery.aspx",
-      "sobrenombre": "NEMAPLEX_plant",
+      "sobrenombre": "NEMAPLEX_PLANT_NEMATODE",
       "time_choices": 1,
       "mode_scrapeo": 41,
       "created_at": "2024-09-16T12:00:00Z",
