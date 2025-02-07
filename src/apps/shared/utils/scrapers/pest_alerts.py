@@ -48,7 +48,7 @@ def scraper_pest_alerts(url, sobrenombre):
                 next_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
                 )
-                next_button.click()
+                driver.execute_script("arguments[0].click();", next_button)
                 time.sleep(3)
             except Exception:
                 break
