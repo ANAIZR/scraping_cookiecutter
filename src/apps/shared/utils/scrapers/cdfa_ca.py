@@ -23,7 +23,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import requests
 import re
 from bs4 import BeautifulSoup
-from PyPDF2 import PdfReader
+from pypdf import PdfReader, PdfWriter
 from io import BytesIO
 import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed

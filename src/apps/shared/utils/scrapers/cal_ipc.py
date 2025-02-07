@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from PyPDF2 import PdfReader
+from pypdf import PdfReader, PdfWriter
 from io import BytesIO
 from ..functions import (
     process_scraper_data,

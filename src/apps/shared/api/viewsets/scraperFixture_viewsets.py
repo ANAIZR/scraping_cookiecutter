@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from datetime import datetime
+from src.apps.users.permissions import IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from ...models.scraperURL import ScraperURL
 from ...utils.scrapers import (
     scraper_iucngisd,
@@ -133,6 +135,8 @@ SCRAPER_FUNCTIONS = {
 }
 
 class ScraperAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
     def post(self, request):
         url = request.data.get("url")
         if not url:

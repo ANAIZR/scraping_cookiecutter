@@ -34,7 +34,6 @@ pdfplumber
 requests
 pymongo==4.10.1
 undetected-chromedriver
-PYPDF2
 coverage==7.2.0
 pytest
 pytest-django
@@ -44,3 +43,4 @@ django-celery-results
 python-decouple
 redis
 python-dotenv
+pypdf

@@ -1,6 +1,5 @@
 import requests
-import os
-import PyPDF2
+from pypdf import PdfReader
 from io import BytesIO
 from rest_framework.response import Response
 from rest_framework import status
@@ -11,13 +10,10 @@ from ..functions import (
     get_random_user_agent
 )
 
-
-import PyPDF2
-
-def extract_text_with_pypdf2(pdf_file, start_page=1, end_page=None):
+def extract_text_with_pypdf(pdf_file, start_page=1, end_page=None):
     try:
         text = ""
-        reader = PyPDF2.PdfReader(pdf_file)  
+        reader = PdfReader(pdf_file)  # ✅ Usa PdfReader correctamente
 
         total_pages = len(reader.pages)
 
@@ -28,10 +24,13 @@ def extract_text_with_pypdf2(pdf_file, start_page=1, end_page=None):
             raise ValueError(f"El número de página inicial ({start_page}) excede el total de páginas ({total_pages}).")
 
         for i in range(start, end):
-            text += reader.pages[i].extract_text() or "" 
+            page_text = reader.pages[i].extract_text()
+            if page_text:
+                text += page_text
+
         return text.strip()
     except Exception as e:
-        raise Exception(f"Error al extraer texto con PyPDF2: {e}")
+        raise Exception(f"Error al extraer texto con PyPDF: {e}")
 
 
 def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
@@ -46,7 +45,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
 
         pdf_file = BytesIO(response.content)
 
-        all_scraper = extract_text_with_pypdf2(pdf_file, start_page, end_page)
+        all_scraper = extract_text_with_pypdf(pdf_file, start_page, end_page)
 
         if not all_scraper.strip():
             return Response(
