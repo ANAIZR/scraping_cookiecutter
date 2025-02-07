@@ -64,15 +64,8 @@ class ScraperURL(CoreModel):
         Verifica si el tiempo límite ha expirado.
         """
         return timezone.now() > self.get_time_limit()
-
     def save(self, *args, **kwargs):
-        is_new = self.pk is None  # Verifica si es un objeto nuevo
+        self.fecha_scraper = timezone.now()  # Usar timezone.now()
         super().save(*args, **kwargs)
 
-        # Si es un nuevo objeto o si se actualiza, programa la tarea de Celery
-        if is_new or self.is_time_expired():
-            from .tasks import (
-                scrape_url,
-            )  # Importa la tarea aquí para evitar problemas circulares
-
-            scrape_url.apply_async((self.url,), eta=self.get_time_limit())
+   

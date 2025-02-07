@@ -162,7 +162,6 @@ class ScraperAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Extract parameters
         kwargs = {
             "url": url,
             "sobrenombre": scraper_url.sobrenombre
