@@ -2,28 +2,28 @@ import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
+import time
 from ..functions import get_logger, connect_to_mongo, process_scraper_data
 
 
 def scraper_gene_affrc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo()
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
 
     def fetch_url(record_id):
-        base_detail_url = (
-            "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_detail_en.php"
-        )
+        base_detail_url = "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_detail_en.php"
         detail_url = f"{base_detail_url}?id={record_id}"
         try:
             response = requests.get(detail_url, timeout=random.uniform(3, 7))
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             if soup.find("div", class_="container"):
+                logger.info(f"URL válida encontrada: {detail_url}")
                 return detail_url
             else:
-                logger.info(f"Página {detail_url} no contiene datos relevantes.")
+                logger.warning(f"Página {detail_url} no contiene datos relevantes.")
         except requests.RequestException as e:
             logger.error(f"Error al acceder a {detail_url}: {e}")
         return None
@@ -44,7 +44,7 @@ def scraper_gene_affrc(url, sobrenombre):
                         extracted_data += " ".join(header.text.strip() for header in headers) + ": "
                     extracted_data += " ".join(cell.text.strip() for cell in cells) + "\n"
             else:
-                logger.info(f"No se encontró tabla en {link}")
+                logger.warning(f"⚠ No se encontró tabla en {link}")
 
             extracted_data += f"URL: {link}\n"
             return extracted_data
@@ -54,33 +54,50 @@ def scraper_gene_affrc(url, sobrenombre):
             return ""
 
     try:
+        start_time = time.time()  
+
         start_id = 1
         max_attempts = 15000
+        logger.info(f"Generando y verificando URLs desde {start_id} hasta {start_id + max_attempts - 1}.")
 
         all_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [executor.submit(fetch_url, record_id) for record_id in range(start_id, start_id + max_attempts)]
-            for future in as_completed(futures):
+            for i, future in enumerate(as_completed(futures), start=1):
                 result = future.result()
                 if result:
                     all_links.append(result)
+                if i % 100 == 0:
+                    logger.info(f"Progreso: {i}/{max_attempts} URLs verificadas.")
 
         logger.info(f"Total de enlaces válidos encontrados: {len(all_links)}")
 
+        if not all_links:
+            logger.warning("No se encontraron enlaces válidos. Finalizando proceso.")
+            return
+
+        processed_count = 0
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [executor.submit(process_link, link) for link in all_links]
             for future in as_completed(futures):
                 all_scraper += future.result()
-                all_scraper += "**************************"
-                all_scraper += "\n"
-                
+                all_scraper += "**************************\n"
+                processed_count += 1
+                if processed_count % 50 == 0:
+                    logger.info(f"Progreso: {processed_count}/{len(all_links)} enlaces procesados.")
 
-        summary = f"Total URLs procesadas: {len(all_links)}\n"
+        summary = f"Total URLs procesadas: {processed_count}/{len(all_links)}\n"
+        logger.info(summary)
         all_scraper += summary
-        
+
+        end_time = time.time() 
+        elapsed_time = round(end_time - start_time, 2)
+        logger.info(f"Scraping completado en {elapsed_time} segundos.")
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
     except Exception as e:
         logger.error(f"Ocurrió un error durante el scraping: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
