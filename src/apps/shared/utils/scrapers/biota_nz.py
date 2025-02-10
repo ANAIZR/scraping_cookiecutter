@@ -155,6 +155,8 @@ def scraper_biota_nz(url, sobrenombre):
                         "metadata.url": url  
                     }).sort("metadata.scraping_date", -1)
                 )
+                logger.info(f"Versiones encontradas para '{keyword}': {existing_versions}")
+
 
                 if len(existing_versions) > 2:
                     oldest_version = existing_versions[-1]  
