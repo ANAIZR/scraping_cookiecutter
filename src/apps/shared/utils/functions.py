@@ -274,7 +274,15 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
             file.write(all_scraper)
 
         with open(file_path, "rb") as file_data:
-            object_id = fs.put(file_data, filename=os.path.basename(file_path))
+            file_content = file_data.read()  
+        object_id = fs.put(file_content, 
+                           filename=os.path.basename(file_path), 
+                           metadata={
+                               "url": url,
+                               "sobrenombre": sobrenombre,
+                               "fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                               "content": all_scraper  
+                           })
 
         data = {
                 "Objeto": object_id,
