@@ -16,22 +16,14 @@ from ..functions import (
     connect_to_mongo,
     extract_text_from_pdf,
     load_keywords,
-    process_scraper_data  # Importamos la función para procesar y guardar los datos
+    process_scraper_data
 )
 
 def scraper_search_usa_gov(url, sobrenombre):
-    logger = get_logger("ERS")
+    logger = get_logger("SEARCH_USA_GOV")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
-    all_scraper = ""
-    # processed_links = set()
-    # urls_to_scrape = [(url, 1)]  
-    # non_scraped_urls = []  
-
-    # total_found_links = 0
-    # total_scraped_links = 0
-    # total_non_scraped_links = 0
-
+    
     def scrape_pages(url, sobrenombre):
         driver = initialize_driver()
         driver.get(url)
@@ -47,17 +39,16 @@ def scraper_search_usa_gov(url, sobrenombre):
             search_input.send_keys(keyword)
             search_input.submit()
             time.sleep(random.uniform(3, 6))
-            # search_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search-button")))
-            # search_button.click()
-            
+
             while True:
                 soup = BeautifulSoup(driver.page_source, "html.parser")
                 result_divs = soup.select("div.content-block-item.result")
                 
                 for div in result_divs:
-                    link = div.find("a", href=True)
+                    link = div.find("a", href=True) 
                     if link:
                         full_url = link["href"]
+                        
                         if full_url.lower().endswith(".pdf"):
                             if full_url not in processed_links:
                                 logger.info(f"Extrayendo texto de PDF: {full_url}")
@@ -65,8 +56,18 @@ def scraper_search_usa_gov(url, sobrenombre):
                                 all_scraper += f"\n\nURL: {full_url}\n{pdf_text}\n"
                                 processed_links.add(full_url)
                             continue
-                        processed_links.add(full_url)
-                
+                        else:
+                            # Scrape HTML content
+                            if full_url not in processed_links:
+                                logger.info(f"Extrayendo texto de página web: {full_url}")
+                                driver.get(full_url)
+                                time.sleep(random.uniform(3, 6))
+                                soup_page = BeautifulSoup(driver.page_source, "html.parser")
+                                text_div = soup_page.find("div", class_="usa-width-three-fourths usa-layout-docs-main_content")
+                                text_content = text_div.get_text(strip=True) if text_div else "No se encontró contenido."
+                                all_scraper += f"\n\nURL: {full_url}\n{text_content}\n"
+                                processed_links.add(full_url)
+
                 try:
                     next_page_button = driver.find_element(By.CSS_SELECTOR, "a.next_page")
                     next_page_link = next_page_button.get_attribute("href")
@@ -79,11 +80,12 @@ def scraper_search_usa_gov(url, sobrenombre):
                     break
 
         driver.quit()
+        return all_scraper
 
-    
     try:
         all_scraper = scrape_pages(url, sobrenombre)
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        print("response by quma", response)
         return response
 
     except Exception as e:
