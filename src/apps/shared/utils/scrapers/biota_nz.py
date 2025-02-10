@@ -46,6 +46,9 @@ def scraper_biota_nz(url, sobrenombre):
 
         logger.info("Página de BIOTA NZ cargada exitosamente.")
 
+        scraping_exitoso = False 
+        object_ids = []  
+
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
 
@@ -66,8 +69,6 @@ def scraper_biota_nz(url, sobrenombre):
 
             keyword_folder = generate_directory(keyword, main_folder)
             keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
-
-            content_accumulated = ""
 
             while True:
                 try:
@@ -104,12 +105,26 @@ def scraper_biota_nz(url, sobrenombre):
                                     "div#detail-page>div.page-content-wrapper>div.details-page-content"
                                 )
                                 body_text = body.get_text(strip=True) if body else ""
-                                content_accumulated += (
-                                    f"URL: {full_url}\nTexto: {body_text}\n\n"
-                                )
-                                content_accumulated += "-" * 100 + "\n\n"
-                            else:
-                                logger.warning(f"Error al acceder a la URL: {full_url}")
+                                content_accumulated = f"URL: {full_url}\nTexto: {body_text}"
+
+                                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
+                                    keyword_file.write(content_accumulated)
+
+                                with open(keyword_file_path, "rb") as file_data:
+                                    object_id = fs.put(
+                                        file_data,
+                                        url =  full_url,
+                                        metadata={
+                                            "keyword": keyword,
+                                            "content": content_accumulated,
+                                            "scraping_date": datetime.now(),
+                                            "Etiquetas": ["planta", "plaga"],
+                                        },
+                                    )
+                                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                object_ids.append(object_id)  # Guardamos el ID
+                                scraping_exitoso = True  
 
                     try:
                         next_page = WebDriverWait(driver, 10).until(
@@ -131,99 +146,31 @@ def scraper_biota_nz(url, sobrenombre):
                     )
                     break
 
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
+        # **Si al menos un documento fue guardado en MongoDB, hacer limpieza y responder**
+        if scraping_exitoso:
+            delete_old_documents(url, collection, fs)  # Solo se ejecuta si hubo éxito
 
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Etiquetas": ["planta", "plaga"],
+                    "Mensaje": "Los datos han sido scrapeados correctamente.",
+                    "Object_Ids": [str(obj_id) for obj_id in object_ids]  # Convertimos ObjectId a string
+                },
+                status=status.HTTP_200_OK,
+            )
 
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
-                )
-                logger.info(f"Versiones encontradas para '{keyword}': {existing_versions}")
-
-
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
-
-
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
-        response_data = {
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": data["Fecha_scraper"],
-            "Etiquetas": data["Etiquetas"],
-            "Mensaje": "Los datos han sido scrapeados correctamente.",
-        }
-        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
-
-        collection.insert_one(data)
-        delete_old_documents(url, collection, fs)
-
-        return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    except TimeoutException:
-        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
-            },
-            status=status.HTTP_408_REQUEST_TIMEOUT,
-        )
-    except ConnectionError:
-        logger.error("Error de conexión a la URL.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "No se pudo conectar a la página web.",
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
-    except Exception as e:
-        logger.error(f"Error al procesar datos del scraper: {str(e)}")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "Ocurrió un error al procesar los datos.",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
+        else:
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos relevantes en el scraping.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
     finally:
         if driver:
             driver.quit()
