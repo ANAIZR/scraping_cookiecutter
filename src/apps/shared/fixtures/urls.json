@@ -1203,6 +1203,32 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 91,
+    "fields": {
+      "url": "https://www.npdn.org/",
+      "sobrenombre": "npdn",
+      "time_choices": 1,
+      "mode_scrapeo": 65,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 92,
+    "fields": {
+      "url": "https://www.eppo.int/",
+      "sobrenombre": "eppo_int",
+      "time_choices": 1,
+      "mode_scrapeo": 66,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 90,
     "fields": {
       "url": "https://www.canada.ca/en/natural-resources-canada/search.html",

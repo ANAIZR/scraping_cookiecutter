@@ -70,6 +70,8 @@ from ...utils.scrapers import (
     scraper_scientific_discoveries,
     scraper_search_usa_gov,
     scraper_apsnet,
+    scraper_npdn,
+    scraper_eppo_int,
     scraper_canada_ca
 )
 
@@ -137,6 +139,8 @@ SCRAPER_FUNCTIONS = {
     61: scraper_scientific_discoveries,
     62: scraper_search_usa_gov,
     63: scraper_apsnet,
+    65: scraper_npdn,
+    66: scraper_eppo_int,
     64: scraper_canada_ca
 }
 
