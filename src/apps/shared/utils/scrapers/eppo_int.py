@@ -13,8 +13,8 @@ from ..functions import (
     get_random_user_agent,
 )
 
-def scraper_scientific_discoveries(url, sobrenombre):
-    logger = get_logger("SCIENTIFIC_DISCOVERIES")
+def scraper_eppo_int(url, sobrenombre):
+    logger = get_logger("EPPO_INT")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
@@ -45,7 +45,8 @@ def scraper_scientific_discoveries(url, sobrenombre):
             soup = BeautifulSoup(response.content, "html.parser")
 
             if depth >= 2:
-                main_content = soup.find("main", id="main-content")
+                # main_content = soup.find("main", id="main-content")
+                main_content = soup.find("div", class_=["main-content"])
                 if main_content:
                     nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
@@ -66,7 +67,7 @@ def scraper_scientific_discoveries(url, sobrenombre):
                     continue
 
                 if (
-                    urlparse(full_url).netloc == "scientificdiscoveries.ars.usda.gov"
+                    urlparse(full_url).netloc == "www.eppo.int"
                     and full_url not in processed_links
                 ):
                     total_found_links += 1  
@@ -81,7 +82,6 @@ def scraper_scientific_discoveries(url, sobrenombre):
         return new_links
 
     def scrape_pages_in_parallel(url_list):
-        nonlocal total_non_scraped_links
         new_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_url = {
@@ -107,11 +107,8 @@ def scraper_scientific_discoveries(url, sobrenombre):
         all_scraper += f"Total links scraped: {total_scraped_links}\n"
         all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
         all_scraper += "\n\nURLs no scrapeadas:\n"
-        all_scraper += "\n".join(non_scraped_urls)      
-        print("antes de procesar el scraper")
+        all_scraper += "\n".join(non_scraped_urls)  
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        print("despues de procesar el scraper")
-        print('respuesta por analizar',response)
         return response
 
     except Exception as e:
