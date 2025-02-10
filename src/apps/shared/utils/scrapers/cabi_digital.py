@@ -154,6 +154,38 @@ def scraper_cabi_digital(url, sobrenombre):
                                 content_accumulated += "-" * 100 + "\n\n"
 
                                 print(f"Página procesada y guardada: {absolut_href}")
+                                if content_accumulated:
+                                    with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
+                                        keyword_file.write(content_accumulated)
+
+                                    with open(keyword_file_path, "rb") as file_data:
+                                        object_id = fs.put(
+                                            file_data,
+                                            filename=os.path.basename(keyword_file_path),
+                                            metadata={
+                                                "url": absolut_href,
+                                                "content": content_accumulated,
+                                                "scraping_date": datetime.now(),
+                                                "Etiquetas": ["planta", "plaga"],
+                                            },
+                                        )
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                    existing_versions = list(
+                                        collection.find({
+                                            "metadata.keyword": keyword,
+                                            "metadata.url": url  
+                                        }).sort("metadata.scraping_date", -1)
+                                    )
+
+                                    if len(existing_versions) > 2:
+                                        oldest_version = existing_versions[-1]  
+                                        fs.delete(oldest_version["_id"])  
+                                        collection.delete_one({"_id": oldest_version["_id"]}) 
+                                        logger.info(
+                                            f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
+                                        )
+
                             else:
                                 print("No se encontró contenido en la página.")
                             driver.back()
@@ -193,39 +225,7 @@ def scraper_cabi_digital(url, sobrenombre):
                     )
                     break
                     
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
-
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
-                )
-
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
-
+            
 
         if scraping_failed:
             return Response(
