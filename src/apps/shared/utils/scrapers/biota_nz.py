@@ -20,10 +20,8 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 from selenium.common.exceptions import TimeoutException
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger("scraper")
-
 
 def scraper_biota_nz(url, sobrenombre):
     driver = initialize_driver()
@@ -33,8 +31,8 @@ def scraper_biota_nz(url, sobrenombre):
         driver.get(url)
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
-        main_folder = generate_directory(url)
+        collection, fs = connect_to_mongo()
+        main_folder = generate_directory(sobrenombre)
 
         keywords = load_keywords("plants.txt")
         if not keywords:
@@ -142,11 +140,30 @@ def scraper_biota_nz(url, sobrenombre):
                         file_data,
                         filename=os.path.basename(keyword_file_path),
                         metadata={
+                            "url": url,
                             "keyword": keyword,
+                            "content": content_accumulated,
                             "scraping_date": datetime.now(),
+                            "Etiquetas": ["planta", "plaga"],
                         },
                     )
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                existing_versions = list(
+                    collection.find({
+                        "metadata.keyword": keyword,
+                        "metadata.url": url  
+                    }).sort("metadata.scraping_date", -1)
+                )
+
+                if len(existing_versions) > 2:
+                    oldest_version = existing_versions[-1]  
+                    fs.delete(oldest_version["_id"])  
+                    collection.delete_one({"_id": oldest_version["_id"]}) 
+                    logger.info(
+                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
+                    )
+
 
         data = {
             "Objeto": object_id,
@@ -162,16 +179,12 @@ def scraper_biota_nz(url, sobrenombre):
             "Etiquetas": data["Etiquetas"],
             "Mensaje": "Los datos han sido scrapeados correctamente.",
         }
+        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
 
         collection.insert_one(data)
         delete_old_documents(url, collection, fs)
 
-        return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return response_data
 
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
@@ -207,3 +220,4 @@ def scraper_biota_nz(url, sobrenombre):
     finally:
         if driver:
             driver.quit()
+            logger.info("Navegador cerrado")
