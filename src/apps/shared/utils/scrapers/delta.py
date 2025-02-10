@@ -35,88 +35,85 @@ def scraper_delta(url, sobrenombre):
             if body:
                 print("Elemento body encontrado")
                 elementos_p = body.find_elements(By.CSS_SELECTOR, "p")
-                enlaces_disponibles = False  # Bandera para detener el bucle
-
+                enlaces_disponibles = False  
                 for p in elementos_p:
                     try:
-                        enlace = p.find_element(By.CSS_SELECTOR, "a")
-                        if enlace:
-                            href = enlace.get_attribute("href")
-                            if (
-                                href
-                                and href.startswith(f"{base_url}")
-                                and href not in processed_links
-                            ):
-                                enlaces_disponibles = True
-                                processed_links.add(href)
-                                total_enlaces_encontrados += 1
-                                print(f"Enlace encontrado en la URL principal: {href}")
-                                driver.get(href)
+                        enlaces = p.find_elements(By.CSS_SELECTOR, "a")  # Obtener lista de enlaces dentro de <p>
+                        if enlaces:  # Verificar si hay al menos un enlace
+                            for enlace in enlaces:
+                                href = enlace.get_attribute("href")
+                                if (
+                                    href
+                                    and href.startswith(f"{base_url}")
+                                    and href not in processed_links
+                                ):
+                                    enlaces_disponibles = True
+                                    processed_links.add(href)
+                                    total_enlaces_encontrados += 1
+                                    print(f"Enlace encontrado en la URL principal: {href}")
+                                    driver.get(href)
 
-                                body_url = WebDriverWait(driver, 30).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "body")
+                                    # Esperar a que cargue el body de la nueva URL
+                                    try:
+                                        body_url = WebDriverWait(driver, 30).until(
+                                            EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+                                        )
+                                    except Exception as e:
+                                        print(f"Error esperando el body en {href}: {e}")
+                                        driver.back()
+                                        continue
+
+                                    if body_url:
+                                        elementos_p_url = body_url.find_elements(By.CSS_SELECTOR, "p")
+                                        for p_url in elementos_p_url:
+                                            try:
+                                                enlaces_url = p_url.find_elements(By.CSS_SELECTOR, "a")
+                                                if enlaces_url:
+                                                    for enlace_url in enlaces_url:
+                                                        href_url = enlace_url.get_attribute("href")
+                                                        if (
+                                                            href_url
+                                                            and href_url.startswith(f"{base_url}")
+                                                            and href_url.endswith(".htm")
+                                                            and href_url not in processed_links
+                                                        ):
+                                                            processed_links.add(href_url)
+                                                            total_enlaces_encontrados += 1
+                                                            driver.get(href_url)
+
+                                                            try:
+                                                                body = WebDriverWait(driver, 30).until(
+                                                                    EC.presence_of_element_located(
+                                                                        (By.CSS_SELECTOR, "body")
+                                                                    )
+                                                                )
+                                                                if body:
+                                                                    total_enlaces_scrapeados += 1
+                                                                    all_scraper += f"{href_url}\n"
+                                                                    all_scraper += f"{body.text}\n\n"
+                                                                    all_scraper += f"{'='*50}\n\n"
+                                                            except Exception as e:
+                                                                print(f"Error cargando {href_url}: {e}")
+
+                                                            driver.back()
+                                            except Exception as e:
+                                                print(f"Error al procesar sub enlace: {e}")
+                                                continue
+
+                                    total_enlaces_scrapeados += 1
+                                    driver.back()
+
+                                    body = WebDriverWait(driver, 30).until(
+                                        EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
                                     )
-                                )
-                                if body_url:
-                                    elementos_p_url = body_url.find_elements(
-                                        By.CSS_SELECTOR, "p"
-                                    )
-                                    for p_url in elementos_p_url:
-                                        try:
-                                            enlace_url = p_url.find_element(
-                                                By.CSS_SELECTOR, "a"
-                                            )
-                                            if enlace_url:
-                                                href_url = enlace_url.get_attribute(
-                                                    "href"
-                                                )
-                                                if (
-                                                    href_url
-                                                    and href_url.startswith(
-                                                        f"{base_url}"
-                                                    )
-                                                    and href_url.endswith(".htm")
-                                                    and href_url not in processed_links
-                                                ):
-                                                    processed_links.add(href_url)
-                                                    total_enlaces_encontrados += 1
-                                                    driver.get(href_url)
-
-                                                    body = WebDriverWait(
-                                                        driver, 30
-                                                    ).until(
-                                                        EC.presence_of_element_located(
-                                                            (By.CSS_SELECTOR, "body")
-                                                        )
-                                                    )
-                                                    if body:
-                                                        total_enlaces_scrapeados += 1
-                                                        all_scraper += f"{href_url}\n"
-                                                        all_scraper += (
-                                                            f"{body.text}\n\n"
-                                                        )
-                                                        all_scraper += f"{'='*50}\n\n"
-                                                    driver.back()
-                                        except Exception as e:
-                                            print(f"Error al procesar sub enlace: {e}")
-                                            continue
-
-                                total_enlaces_scrapeados += 1
-                                driver.back()
-
-                                body = WebDriverWait(driver, 30).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "body")
-                                    )
-                                )
-                                break
+                                    break
                     except StaleElementReferenceException:
                         print("Referencia obsoleta al elemento <p>, saltando...")
                         continue
                     except Exception as e:
                         print(f"Error al procesar enlace en <p>: {e}")
                         continue
+
 
                 if not enlaces_disponibles:
                     break

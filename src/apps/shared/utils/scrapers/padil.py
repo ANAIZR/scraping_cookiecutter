@@ -216,7 +216,12 @@ def scraper_padil(url, sobrenombre):
             collection.insert_one(data)
             delete_old_documents(url, collection, fs)
 
-            return response_data
+            return Response(
+            {
+                "data": response_data,
+            },
+            status=status.HTTP_200_OK,
+        )
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(

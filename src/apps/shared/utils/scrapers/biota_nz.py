@@ -155,6 +155,8 @@ def scraper_biota_nz(url, sobrenombre):
                         "metadata.url": url  
                     }).sort("metadata.scraping_date", -1)
                 )
+                logger.info(f"Versiones encontradas para '{keyword}': {existing_versions}")
+
 
                 if len(existing_versions) > 2:
                     oldest_version = existing_versions[-1]  
@@ -184,7 +186,12 @@ def scraper_biota_nz(url, sobrenombre):
         collection.insert_one(data)
         delete_old_documents(url, collection, fs)
 
-        return response_data
+        return Response(
+            {
+                "data": response_data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")

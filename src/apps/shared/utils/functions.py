@@ -308,7 +308,12 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
         logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
 
 
-        return response_data
+        return Response(
+            {
+                "data": response_data,
+            },
+            status=status.HTTP_200_OK,
+        )
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
