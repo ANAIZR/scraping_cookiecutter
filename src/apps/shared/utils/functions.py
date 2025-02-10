@@ -320,6 +320,7 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
                 "Objeto": object_id,
                 "Tipo": "Documento",
                 "Url": url,
+                "content": all_scraper,
                 "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Etiquetas": ["planta", "plaga"],
             }
