@@ -13,7 +13,7 @@ from ..functions import (
 def extract_text_with_pypdf(pdf_file, start_page=1, end_page=None):
     try:
         text = ""
-        reader = PdfReader(pdf_file)  # ✅ Usa PdfReader correctamente
+        reader = PdfReader(pdf_file)  
 
         total_pages = len(reader.pages)
 

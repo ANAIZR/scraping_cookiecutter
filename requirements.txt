@@ -44,3 +44,4 @@ python-decouple
 redis
 python-dotenv
 pypdf
+pyPDF2
