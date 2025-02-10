@@ -62,3 +62,4 @@ from .fao_org_home import scraper_fao_org_home
 from .scientific_discoveries import scraper_scientific_discoveries
 from .search_usa_gov import scraper_search_usa_gov
 from .apsnet import scraper_apsnet
+from .canada_ca import scraper_canada_ca

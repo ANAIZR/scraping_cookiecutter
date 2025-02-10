@@ -69,7 +69,8 @@ from ...utils.scrapers import (
     scraper_fao_org_home,
     scraper_scientific_discoveries,
     scraper_search_usa_gov,
-    scraper_apsnet
+    scraper_apsnet,
+    scraper_canada_ca
 )
 
 SCRAPER_FUNCTIONS = {
@@ -135,7 +136,8 @@ SCRAPER_FUNCTIONS = {
     60: scraper_fao_org_home,
     61: scraper_scientific_discoveries,
     62: scraper_search_usa_gov,
-    63: scraper_apsnet
+    63: scraper_apsnet,
+    64: scraper_canada_ca
 }
 
 class ScraperAPIView(APIView):
