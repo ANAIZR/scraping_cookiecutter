@@ -16,13 +16,11 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 import os
-from datetime import datetime
 import random
-import json
 import time
+from datetime import datetime
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-from django.utils.timezone import make_aware
 
 logger = get_logger("scraper")
 
@@ -32,6 +30,7 @@ def scraper_canada_ca(url, sobrenombre):
         driver.get(url)
         time.sleep(random.uniform(3, 6))
         logger.info(f"Iniciando scraping para URL: {url}")
+
         collection, fs = connect_to_mongo()
         main_folder = generate_directory(sobrenombre)
 
@@ -44,7 +43,8 @@ def scraper_canada_ca(url, sobrenombre):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        logger.infoº("Página de canada.ca cargada exitosamente.")
+
+        logger.info("Página de canada.ca cargada exitosamente.")
 
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
@@ -68,79 +68,150 @@ def scraper_canada_ca(url, sobrenombre):
             except Exception as e:
                 logger.error(f"Error al buscar la palabra clave: {keyword}. Error: {str(e)}")
                 continue
-            
+
             keyword_folder = generate_directory(keyword, main_folder)
             keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
 
             content_accumulated = ""
+            hrefs = set() 
+            total_urls_found = 0
+
+            max_first_result = 20
 
             while True:
                 try:
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
-                    results = soup.select("section#wb-land")
 
-                    # Extraer enlaces de los resultados de búsqueda
-                    for div in results:
-                        link = div.find("a", href=True)
-                        if link and link["href"]:
-                            full_href = link["href"]
-                            hrefs.append(full_href)
+                    links = soup.select("section#wb-land a[href]")
+
+                    if not links:
+                        logger.warning(f"No se encontraron enlaces en la búsqueda para '{keyword}'")
+                        break
+
+                    for link in links:
+                        full_href = link.get("href")
+                        if full_href and full_href.startswith("http"):
+                            hrefs.add(full_href)
                             total_urls_found += 1
 
-                    # Extraer información de cada URL encontrada
-                    for href in hrefs:
-                        try:
-                            driver.get(href)
-                            time.sleep(random.uniform(3, 6))
+                    current_url = driver.current_url
 
-                            page_source = driver.page_source
-                            soup = BeautifulSoup(page_source, "html.parser")
+                    if "firstResult=" in current_url:
+                        first_result_value = int(current_url.split("firstResult=")[1].split("&")[0])
+                    else:
+                        first_result_value = 0
 
-                            # Extraer el contenido del selector main.main-container
-                            main_content = soup.select_one("main.main-container")
-                            text_content = main_content.get_text(strip=True) if main_content else "No se encontró contenido"
+                    if first_result_value >= max_first_result:
+                        logger.info(f"Se alcanzó el límite de paginación (firstResult={max_first_result}). Deteniendo el scraping.")
+                        break
 
-                            content_accumulated += f"URL: {href}\nContenido:\n{text_content}\n\n"
-                            content_accumulated += "-" * 100 + "\n\n"
-
-                        except Exception as e:
-                            logger.error(f"Error al extraer contenido de {href}: {str(e)}")
-                            continue
-
-                    # Manejo de paginación
                     try:
+                        time.sleep(2)
+
                         next_button = WebDriverWait(driver, 5).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, "button.page-button"))
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, "button.page-button.next-page-button"))
                         )
-                        next_page_url = next_button.get_attribute("href")
-                        
-                        if "firstResult=" in next_page_url:
-                            next_page_number = int(next_page_url.split("firstResult=")[1].split("&")[0])
-                        else:
-                            next_page_number = 10
 
-                        if next_page_number >= 10:
-                            logger.info(f"Se ha alcanzado el límite de paginación (firstResult=10). Deteniendo el scraping.")
-                            break
+                        driver.execute_script("arguments[0].click();", next_button)
 
-                        next_button.click()
+                        logger.info(f"Se hizo clic en el botón 'Next'. Nueva URL: {driver.current_url}")
+
                         time.sleep(random.uniform(3, 6))
+
                     except (TimeoutException, NoSuchElementException):
-                        logger.info("No hay más páginas disponibles.")
-                        break 
+                        logger.info("No hay más páginas disponibles o no se encontró el botón 'Next'.")
+                        break
 
                 except Exception as e:
                     logger.error(f"Error al obtener los resultados de la búsqueda: {str(e)}")
                     break
-    except Exxception as e:
-        logger.error(f"Error al cargar la página de canada.ca: {str(e)}")
+            
+            for href in hrefs:
+                try:
+                    driver.get(href)
+                    time.sleep(random.uniform(3, 6))
+
+                    page_source = driver.page_source
+                    soup = BeautifulSoup(page_source, "html.parser")
+
+                    main_content = soup.select_one("main.main-container")
+                    if main_content:
+                        text_content = main_content.get_text(strip=True)
+                    else:
+                        text_content = "No se encontró contenido"
+
+                    content_accumulated += f"URL: {href}\nContenido:\n{text_content}\n\n"
+                    content_accumulated += "-" * 100 + "\n\n"
+
+                except Exception as e:
+                    logger.error(f"Error al extraer contenido de {href}: {str(e)}")
+                    continue
+
+            if content_accumulated:
+                try:
+                    with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
+                        keyword_file.write(content_accumulated)
+
+                    with open(keyword_file_path, "rb") as file_data:
+                        object_id = fs.put(
+                            file_data,
+                            filename=os.path.basename(keyword_file_path),
+                            metadata={
+                                "url": url,
+                                "keyword": keyword,
+                                "content": content_accumulated,
+                                "scraping_date": datetime.now(),
+                                "Etiquetas": ["planta", "plaga"],
+                            },
+                        )
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                except Exception as e:
+                    logger.error(f"Error al guardar en MongoDB: {str(e)}")
+
+
+
         return Response(
             {
-                "status": "error",
-                "message": f"Error al cargar la página de canada.ca: {str(e)}"
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": f"Se encontraron {total_urls_found} URLs y se guardaron correctamente.",
             },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status=status.HTTP_200_OK,
+        )
+
+    except TimeoutException:
+        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+            },
+            status=status.HTTP_408_REQUEST_TIMEOUT,
+        )
+
+    except ConnectionError:
+        logger.error("Error de conexión a la URL.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "No se pudo conectar a la página web.",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    except Exception as e:
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": f"Ocurrió un error al procesar los datos: {str(e)}",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
     finally:
