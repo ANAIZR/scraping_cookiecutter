@@ -30,7 +30,7 @@ def scraper_padil(url, sobrenombre):
         driver = initialize_driver()
         collection, fs = connect_to_mongo("scrapping-can", "collection")
 
-        main_folder = generate_directory(url)
+        main_folder = generate_directory(sobrenombre)
         keywords = load_keywords("plants.txt")
         base_domain = "https://www.padil.gov.au"
 
@@ -165,11 +165,30 @@ def scraper_padil(url, sobrenombre):
                         file_data,
                         filename=os.path.basename(keyword_file_path),
                         metadata={
+                            "url": url,
                             "keyword": keyword,
+                            "content": content_accumulated,
                             "scraping_date": datetime.now(),
+                            "Etiquetas": ["planta", "plaga"],
                         },
                     )
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                existing_versions = list(
+                    collection.find({
+                        "metadata.keyword": keyword,
+                        "metadata.url": url  
+                    }).sort("metadata.scraping_date", -1)
+                )
+
+                if len(existing_versions) > 2:
+                    oldest_version = existing_versions[-1]  
+                    fs.delete(oldest_version["_id"])  
+                    collection.delete_one({"_id": oldest_version["_id"]}) 
+                    logger.info(
+                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
+                    )
+
 
         if scraping_failed:
             return Response(
@@ -197,18 +216,14 @@ def scraper_padil(url, sobrenombre):
             collection.insert_one(data)
             delete_old_documents(url, collection, fs)
 
-            return Response(
-                {
-                    "data": response_data,
-                },
-                status=status.HTTP_200_OK,
-            )
+            return response_data
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(
             {
                 "Tipo": "Web",
-                "Url": url,
+                "Url": url,            
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
             },
             status=status.HTTP_408_REQUEST_TIMEOUT,
@@ -219,6 +234,7 @@ def scraper_padil(url, sobrenombre):
             {
                 "Tipo": "Web",
                 "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Mensaje": "No se pudo conectar a la página web.",
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -229,9 +245,12 @@ def scraper_padil(url, sobrenombre):
             {
                 "Tipo": "Web",
                 "Url": url,
+                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+
                 "Mensaje": "Ocurrió un error al procesar los datos.",
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
     finally:
         driver.quit()
+        logger.info("Navegador cerrado.")
