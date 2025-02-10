@@ -16,7 +16,8 @@ from ..functions import (
     connect_to_mongo,
     extract_text_from_pdf,
     load_keywords,
-    process_scraper_data
+    generate_directory,            # IMPORTAMOS LA FUNCIÓN PARA CREAR DIRECTORIOS
+    get_next_versioned_filename    # IMPORTAMOS LA FUNCIÓN PARA GENERAR NOMBRES DE ARCHIVO VERSIONADOS
 )
 
 def scraper_search_usa_gov(url, sobrenombre):
@@ -31,7 +32,8 @@ def scraper_search_usa_gov(url, sobrenombre):
         time.sleep(random.uniform(6, 10))
         
         processed_links = set()
-        all_scraper = ""
+        # Diccionario para almacenar el contenido scrapeado por cada palabra clave
+        all_scraper = {}
         keywords = load_keywords("plants.txt")
         
         if not keywords:
@@ -44,7 +46,14 @@ def scraper_search_usa_gov(url, sobrenombre):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         
+        # Crear el directorio principal usando el parámetro 'sobrenombre'
+        main_folder = generate_directory(sobrenombre)
+        logger.info(f"Directorio principal creado: {main_folder}")
+        
         for keyword in keywords:
+            logger.info(f"Procesando la palabra clave: {keyword}")
+            scraped_content = ""  # Variable donde se acumulará la información de esta palabra clave
+            
             # Espera a que el input de búsqueda esté presente
             search_input = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.ID, "query"))
@@ -71,44 +80,47 @@ def scraper_search_usa_gov(url, sobrenombre):
                             if full_url not in processed_links:
                                 logger.info(f"Extrayendo texto de PDF: {full_url}")
                                 pdf_text = extract_text_from_pdf(full_url)
-                                all_scraper += f"\n\nURL: {full_url}\n{pdf_text}\n"
+                                scraped_content += f"\n\nURL: {full_url}\n{pdf_text}\n"
                                 processed_links.add(full_url)
                             continue
-                        else:
-                            if full_url not in processed_links:
-                                logger.info(f"Extrayendo texto de página web: {full_url}")
-                                driver.get(full_url)
-                                time.sleep(random.uniform(3, 6))
-                                soup_page = BeautifulSoup(driver.page_source, "html.parser")
-                                text_div = soup_page.find(
-                                    "div",
-                                    class_="usa-width-three-fourths usa-layout-docs-main_content"
-                                )
-                                text_content = (
-                                    text_div.get_text(strip=True)
-                                    if text_div
-                                    else "No se encontró contenido."
-                                )
-                                all_scraper += f"\n\nURL: {full_url}\n{text_content}\n"
-                                processed_links.add(full_url)
-
-                try:
-                    next_page_button = driver.find_element(By.CSS_SELECTOR, "a.next_page")
-                    if next_page_button.is_displayed() and next_page_button.is_enabled():
-                        next_page_link = next_page_button.get_attribute("href")
-                        if next_page_link:
-                            driver.get(next_page_link)
+                        elif full_url not in processed_links:
+                            logger.info(f"Extrayendo texto de página web: {full_url}")
+                            driver.get(full_url)
                             time.sleep(random.uniform(3, 6))
-                        else:
-                            logger.info("No hay más páginas para navegar.")
-                            break
-                    else:
-                        logger.info("El botón 'next_page' no está visible o no es clickeable.")
-                        break
-                except NoSuchElementException:
-                    logger.info("No se encontró el botón 'next_page'. Fin de la paginación.")
-                    break
+                            soup_page = BeautifulSoup(driver.page_source, "html.parser")
+                            text_div = soup_page.find(
+                                "div",
+                                class_="usa-width-three-fourths usa-layout-docs-main_content"
+                            )
+                            text_content = (
+                                text_div.get_text(strip=True)
+                                if text_div
+                                else "No se encontró contenido."
+                            )
+                            scraped_content += f"\n\nURL: {full_url}\n{text_content}\n"
+                            processed_links.add(full_url)
 
+                # Si en este caso no se maneja paginación, salimos del while.
+                # En otro escenario, aquí podrías agregar lógica para navegar a la siguiente página.
+                break  
+            
+            # Almacenar el contenido scrapeado en el diccionario para este keyword
+            all_scraper[keyword] = scraped_content
+            
+            # Crear un subdirectorio para la palabra clave dentro del directorio principal
+            keyword_folder = generate_directory(keyword, main_folder)
+            # Generar un nombre de archivo versionado para guardar el contenido
+            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
+            
+            # Guardar el contenido en el archivo
+            with open(keyword_file_path, "w", encoding="utf-8") as f:
+                f.write(scraped_content)
+                
+            logger.info(f"Datos de la palabra clave '{keyword}' guardados en {keyword_file_path}")
+        
+        # # Procesar los datos (si es necesario) antes de enviar la respuesta
+        # processed_data = process_scraper_data(all_scraper)
+        
         response_data = {
             "Tipo": "Web",
             "Url": url,
