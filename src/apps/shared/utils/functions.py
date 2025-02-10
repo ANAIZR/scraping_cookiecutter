@@ -254,6 +254,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
                 "Objeto": object_id,
                 "Tipo": "Web",
                 "Url": url,
+                "content": all_scraper,
                 "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Etiquetas": ["planta", "plaga"],
             }
