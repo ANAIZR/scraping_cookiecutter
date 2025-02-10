@@ -167,19 +167,47 @@ def scraper_canada_ca(url, sobrenombre):
                         )
                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
+                    existing_versions = list(
+                        collection.find({
+                            "metadata.keyword": keyword,
+                            "metadata.url": url  
+                        }).sort("metadata.scraping_date", -1)
+                    )
+                    logger.info(f"Versiones encontradas para '{keyword}': {existing_versions}")
+
+                    try:
+                        if len(existing_versions) > 2:
+                            oldest_version = existing_versions[-1]  
+                            fs.delete(oldest_version["_id"])  
+                            collection.delete_one({"_id": oldest_version["_id"]}) 
+                            logger.info(
+                                f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}'"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error al eliminar versiones antiguas: {str(e)}")
+
+                    data = {
+                        "Objeto": object_id,
+                        "Tipo": "Web",
+                        "Url": url,
+                        "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Etiquetas": ["planta", "plaga"],
+                    }
+
+                    collection.insert_one(data)
+                    delete_old_documents(url, collection, fs)
+
+                    return Response(
+                        {
+                            "Tipo": "Web",
+                            "Url": url,
+                            "Mensaje": f"Se encontraron {total_urls_found} URLs y se guardaron correctamente.",
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+
                 except Exception as e:
-                    logger.error(f"Error al guardar en MongoDB: {str(e)}")
-
-
-
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": f"Se encontraron {total_urls_found} URLs y se guardaron correctamente.",
-            },
-            status=status.HTTP_200_OK,
-        )
+                    logger.error(f"Error al guardar los datos en MongoDB: {str(e)}")
 
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
