@@ -237,26 +237,27 @@ def get_next_versioned_pdf_filename(folder_path, base_name="archivo"):
         raise
 
 def delete_old_documents(url, collection, fs, limit=2):
-
     logger = get_logger("ELIMINAR DE LA BD DOCUMENTOS ANTIGUOS")
+    
     try:
-        docs_for_url = collection.find({"Url": url}).sort("Fecha_scraper", -1)
         docs_count = collection.count_documents({"Url": url})
 
         if docs_count > limit:
-            docs_to_delete = list(docs_for_url)[limit:]
+            docs_to_delete = collection.find({"Url": url}).sort("Fecha_scraper", -1).skip(limit)
+
             for doc in docs_to_delete:
                 collection.delete_one({"_id": doc["_id"]})
-                # Borrar el archivo de GridFS
-                fs.delete(doc["Objeto"])
 
-            logger.info(
-                f"Se han eliminado {docs_count - limit} documentos antiguos para la URL {url}."
-            )
+                # Borrar el archivo de GridFS solo si existe
+                if fs.exists(doc["Objeto"]):
+                    fs.delete(doc["Objeto"])
+                    logger.info(f"Archivo eliminado en GridFS con ObjectId: {doc['Objeto']}")
+                else:
+                    logger.warning(f"Intento de eliminación fallido: No se encontró el archivo en GridFS con ObjectId: {doc['Objeto']}")
+
+            logger.info(f"Se han eliminado {docs_count - limit} documentos antiguos para la URL {url}.")
         else:
-            logger.info(
-                f"No se encontraron documentos para eliminar. Se mantienen {docs_count} documentos para la URL {url}."
-            )
+            logger.info(f"No se encontraron documentos para eliminar. Se mantienen {docs_count} documentos para la URL {url}.")
 
         return docs_count > limit
     except Exception as e:
