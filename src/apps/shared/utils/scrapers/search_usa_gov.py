@@ -96,26 +96,26 @@ def scraper_search_usa_gov(url, sobrenombre):
                             driver.get(href)
                             visited_urls.add(href)
 
-                            # if href.lower().endswith(".pdf"):
-                            #     logger.info(f"Extrayendo texto de PDF: {href}")
-                            #     body_text = extract_text_from_pdf(href)
+                            if href.lower().endswith(".pdf"):
+                                logger.info(f"Extrayendo texto de PDF: {href}")
+                                body_text = extract_text_from_pdf(href)
 
-                            # else:
-                            WebDriverWait(driver, 60).until(
-                                EC.presence_of_element_located(
-                                    (By.CSS_SELECTOR, "body")
+                            else:
+                                WebDriverWait(driver, 60).until(
+                                    EC.presence_of_element_located(
+                                        (By.CSS_SELECTOR, "body")
+                                    )
                                 )
-                            )
 
-                            time.sleep(random.uniform(6, 10))
-                            soup = BeautifulSoup(driver.page_source, "html.parser")
-                            body = soup.find(
-                                "div", 
-                                class_=["usa-width-three-fourths", "usa-layout-docs-main_content"]
-                            )
-                            body_text = (
-                                body.get_text(strip=True) if body else "No body found"
-                            )
+                                time.sleep(random.uniform(6, 10))
+                                soup = BeautifulSoup(driver.page_source, "html.parser")
+                                body = soup.find(
+                                    "div", 
+                                    class_=["usa-width-three-fourths", "usa-layout-docs-main_content"]
+                                )
+                                body_text = (
+                                    body.get_text(strip=True) if body else "No body found"
+                                )
 
                             if body_text:
                                 content_accumulated += f"URL:{href} \n\n\n{body_text}"
