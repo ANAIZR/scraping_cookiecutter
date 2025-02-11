@@ -8,9 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
+
     initialize_driver,
     get_logger,
     connect_to_mongo,
@@ -34,7 +32,6 @@ def scraper_biota_nz(url, sobrenombre):
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
         collection, fs = connect_to_mongo()
-        main_folder = generate_directory(sobrenombre)
 
         keywords = load_keywords("plants.txt")
         if not keywords:
@@ -69,8 +66,6 @@ def scraper_biota_nz(url, sobrenombre):
                 logger.error(f"Error al buscar la palabra clave '{keyword}': {e}")
                 continue
 
-            keyword_folder = generate_directory(keyword, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
 
             while True:
                 try:
