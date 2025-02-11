@@ -99,13 +99,17 @@ def scraper_biota_nz(url, sobrenombre):
                                 link_soup = BeautifulSoup(
                                     response.content, "html.parser"
                                 )
-                                body = link_soup.select_one(
-                                    "div#detail-page>div.page-content-wrapper>div.details-page-content"
-                                )
-                                body_text = body.get_text(strip=True) if body else ""
-                                content_accumulated = f"Texto: {body_text}"
+                                section_head = link_soup.select_one("div#detail-page div#section-head h2")
+                                title_text = section_head.get_text(strip=True) if section_head else ""
 
-                                print(f"Página procesada y guardada: {full_url}")
+                                section_body = link_soup.select_one("div#detail-page div#section-body")
+                                sections_html = ""
+
+                                if section_body:
+                                    sections = section_body.find_all("div", id=lambda x: x and x.startswith("section-"))
+                                    sections_html = "".join(str(section) for section in sections)
+
+                                content_accumulated = f"<h2>{title_text}</h2>{sections_html}"
                                 if content_accumulated:
                                     
                                     object_id = fs.put(

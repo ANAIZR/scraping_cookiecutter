@@ -9,8 +9,6 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
     delete_old_documents,
     initialize_driver,
     get_logger,
@@ -20,6 +18,8 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
+from bson import ObjectId
+
 logger = get_logger("scraper")
 
 def scraper_cabi_library(url, sobrenombre):
@@ -38,7 +38,6 @@ def scraper_cabi_library(url, sobrenombre):
 
             collection, fs = connect_to_mongo()
 
-            main_folder = generate_directory(sobrenombre)
 
             keywords = load_keywords("plants.txt")
             if not keywords:
@@ -50,7 +49,7 @@ def scraper_cabi_library(url, sobrenombre):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             visited_urls = set()
-            scraping_failed = False
+            scraping_exitoso = True
             base_domain = "https://www.cabidigitallibrary.org"
         except Exception as e:
             logger.error(f"Error al inicializar el scraper: {str(e)}")
@@ -84,6 +83,7 @@ def scraper_cabi_library(url, sobrenombre):
             logger.info(
                 "El botón de 'Guardar preferencias' no apareció o no fue clicable."
             )
+        object_ids = []
 
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
@@ -104,10 +104,9 @@ def scraper_cabi_library(url, sobrenombre):
                 logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
-                scraping_failed = True
+                scraping_exitoso = False
                 continue
-            keyword_folder = generate_directory(keyword, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
+            
 
             content_accumulated = ""
             while True:
@@ -150,7 +149,47 @@ def scraper_cabi_library(url, sobrenombre):
                                 content_accumulated += f"URL:{absolut_href} \nTexto: {abstract_text}\n"
                                 content_accumulated += "-" * 100 + "\n\n"
 
-                                print(f"Página procesada y guardada: {absolut_href}")
+                                if content_accumulated:
+                                    object_id = fs.put(
+                                        content_accumulated.encode("utf-8"),
+                                        metadata={
+                                            "url": absolut_href,
+                                            "scraping_date": datetime.now(),
+                                            "Etiquetas": ["planta", "plaga"],
+                                            "contenido": content_accumulated,
+                                        },
+                                    )
+                                    object_ids.append(object_id)
+                                    logger.info(
+                                        f"Archivo almacenado en MongoDB con object_id: {object_id}"
+                                    )
+
+                                    collection.insert_one(
+                                        {
+                                            "_id": object_id,
+                                            "url": absolut_href,
+                                            "scraping_date": datetime.now(),
+                                            "Etiquetas": ["planta", "plaga"],
+                                        }
+                                    )
+
+                                    existing_versions = list(
+                                        collection.find({"url": absolut_href}).sort(
+                                            "scraping_date", -1
+                                        )
+                                    )
+
+                                    if len(existing_versions) > 2:
+                                        oldest_version = existing_versions[-1]
+                                        fs.delete(ObjectId(oldest_version["_id"]))
+                                        collection.delete_one(
+                                            {"_id": ObjectId(oldest_version["_id"])}
+                                        )
+                                        logger.info(
+                                            f"Se eliminó la versión más antigua de '{keyword}' con URL '{absolut_href}' y object_id: {oldest_version['_id']}"
+                                        )
+                                    scraping_exitoso = True
+
                             else:
                                 print("No se encontró contenido en la página.")
                             driver.back()
@@ -190,70 +229,32 @@ def scraper_cabi_library(url, sobrenombre):
                     )
                     break
                     
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
+            
 
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
-                )
-
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
-
-        if scraping_failed:
-            return Response(
-                {
-                    "message": "Error durante el scraping. Algunas URLs fallaron.",
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        else:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
+        if scraping_exitoso:
 
             return Response(
                 {
-                    "data": response_data,
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Etiquetas": ["planta", "plaga"],
+                    "Mensaje": "Los datos han sido scrapeados correctamente.",
+                    "Object_Ids": [
+                        str(obj_id) for obj_id in object_ids
+                    ],  # Convertimos ObjectId a string
                 },
                 status=status.HTTP_200_OK,
+            )
+
+        else:
+            return Response(
+                {
+                    "Tipo": "Web",
+                    "Url": url,
+                    "Mensaje": "No se encontraron datos relevantes en el scraping.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
             )
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
@@ -288,3 +289,4 @@ def scraper_cabi_library(url, sobrenombre):
 
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")
