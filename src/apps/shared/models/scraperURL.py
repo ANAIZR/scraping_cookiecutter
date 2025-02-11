@@ -49,7 +49,9 @@ class ScraperURL(CoreModel):
 
         # Asegura que `reference_date` sea timezone-aware
         if timezone.is_naive(reference_date):
-            reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
+            reference_date = timezone.make_aware(
+                reference_date, timezone.get_current_timezone()
+            )
 
         if self.time_choices == 1:  # Mensual
             return reference_date + timedelta(days=30)
@@ -64,8 +66,36 @@ class ScraperURL(CoreModel):
         Verifica si el tiempo límite ha expirado.
         """
         return timezone.now() > self.get_time_limit()
+
     def save(self, *args, **kwargs):
         self.fecha_scraper = timezone.now()  # Usar timezone.now()
         super().save(*args, **kwargs)
 
-   
+
+class Species(models.Model):
+    scientific_name = models.CharField(max_length=255, unique=True)
+    common_names = models.TextField(blank=True, null=True)
+    synonyms = models.TextField(blank=True, null=True)
+    invasiveness_description = models.TextField(blank=True, null=True)
+    distribution = models.TextField(blank=True, null=True)
+    impact = models.JSONField(blank=True, null=True)
+    habitat = models.TextField(blank=True, null=True)
+    life_cycle = models.TextField(blank=True, null=True)
+    reproduction = models.TextField(blank=True, null=True)
+    hosts = models.TextField(blank=True, null=True)
+    symptoms = models.TextField(blank=True, null=True)
+    affected_organs = models.TextField(blank=True, null=True)
+    environmental_conditions = models.TextField(blank=True, null=True)
+    prevention_control = models.JSONField(blank=True, null=True)
+    uses = models.TextField(blank=True, null=True)
+    source_url = models.URLField(max_length=500)
+    scraper_source = models.ForeignKey(
+        ScraperURL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="species",
+    )
+
+    def __str__(self):
+        return self.scientific_name
