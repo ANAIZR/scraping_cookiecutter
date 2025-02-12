@@ -23,7 +23,7 @@ from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
 logger = get_logger("scraper")
 
-def scraper_search_usa_gov(url, sobrenombre):
+def scraper_doaj_org(url, sobrenombre):
     driver = initialize_driver()
     
     try:
@@ -47,15 +47,19 @@ def scraper_search_usa_gov(url, sobrenombre):
                 )
             visited_urls = set()
             scraping_failed = False
-            base_domain = "https://search.usa.gov"
         except Exception as e:
             logger.error(f"Error al inicializar el scraper: {str(e)}")
 
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
             try:
+                radio_button = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "articles"))
+                )
+                radio_button.click()
+
                 search_input = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.ID, "query"))
+                    EC.presence_of_element_located((By.ID, "keywords"))
                 )
                 search_input.clear()
                 search_input.send_keys(keyword)
@@ -79,7 +83,7 @@ def scraper_search_usa_gov(url, sobrenombre):
                     logger.info("Resultados encontrados en la página.")
 
                     soup = BeautifulSoup(driver.page_source, "html.parser")
-                    items = soup.select("div.content-block-item.result")
+                    items = soup.select("li.card.search-results__record")
                     if not items:
                         logger.warning(
                             f"No se encontraron resultados para la palabra clave: {keyword}"
@@ -108,7 +112,7 @@ def scraper_search_usa_gov(url, sobrenombre):
                                 soup = BeautifulSoup(driver.page_source, "html.parser")
                                 body = soup.find(
                                     "div", 
-                                    class_=["usa-width-three-fourths", "usa-layout-docs-main_content"]
+                                    class_=["article-details__abstract"]
                                 )
                                 body_text = (
                                     body.get_text(strip=True) if body else "No body found"

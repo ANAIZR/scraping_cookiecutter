@@ -65,3 +65,4 @@ from .apsnet import scraper_apsnet
 from .npdn import scraper_npdn
 from .eppo_int import scraper_eppo_int
 from .canada_ca import scraper_canada_ca
+from .doaj_org import scraper_doaj_org
