@@ -93,7 +93,6 @@ def scraper_doaj_org(url, sobrenombre):
                     if items:
                         logger.info(f"Encontrados {len(items)} resultados.")
                         for item in items:
-                            # href = item.find_element("a")["href"]
                             href = item.find_element(By.CSS_SELECTOR, "h3.search-results__heading a").get_attribute("href")
 
                             print("href by quma: ", href)
@@ -119,7 +118,7 @@ def scraper_doaj_org(url, sobrenombre):
                                     )
 
                                     soup = BeautifulSoup(driver.page_source, "html.parser")
-                                    body = soup.find("div", class_="article-details__abstract")
+                                    body = soup.find("p", class_="article-details__abstract")
                                     body_text = (
                                         body.get_text(strip=True) if body else "No body found"
                                     )
