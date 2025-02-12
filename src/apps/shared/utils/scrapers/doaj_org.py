@@ -57,7 +57,8 @@ def scraper_doaj_org(url, sobrenombre):
                 label = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, "//label[@for='articles']"))
                 )
-                label.click()
+                # label.click()
+                driver.execute_script("arguments[0].click();", label)
 
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.ID, "keywords"))
@@ -84,53 +85,58 @@ def scraper_doaj_org(url, sobrenombre):
                     logger.info("Resultados encontrados en la página.")
 
                     soup = BeautifulSoup(driver.page_source, "html.parser")
-                    items = soup.select("li.card.search-results__record")
-                    if not items:
-                        logger.warning(
-                            f"No se encontraron resultados para la palabra clave: {keyword}"
-                        )
-                        break
-                    logger.info(f"Encontrados {len(items)} resultados.")
-                    for item in items:
-                        href = item.find("a")["href"]
+                    # items = soup.select("li.card.search-results__record")
+                    items = WebDriverWait(driver, 10).until(
+                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.card.search-results__record"))
+                    )
+                    time.sleep(random.uniform(3, 6))
+                    if items:
+                        logger.info(f"Encontrados {len(items)} resultados.")
+                        for item in items:
+                            # href = item.find_element("a")["href"]
+                            href = item.find_element(By.CSS_SELECTOR, "h3.search-results__heading a").get_attribute("href")
 
-                        if href:
-                            driver.get(href)
-                            visited_urls.add(href)
+                            print("href by quma: ", href)
+                            if href:
+                                driver.get(href)
+                                visited_urls.add(href)
 
-                            if href.lower().endswith(".pdf"):
-                                logger.info(f"Extrayendo texto de PDF: {href}")
-                                body_text = extract_text_from_pdf(href)
+                                if href.lower().endswith(".pdf"):
+                                    logger.info(f"Extrayendo texto de PDF: {href}")
+                                    body_text = extract_text_from_pdf(href)
 
-                            else:
-                                WebDriverWait(driver, 60).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "body")
+                                else:
+                                    WebDriverWait(driver, 60).until(
+                                        EC.presence_of_element_located(
+                                            (By.CSS_SELECTOR, "body")
+                                        )
                                     )
-                                )
 
-                                time.sleep(random.uniform(6, 10))
-                                soup = BeautifulSoup(driver.page_source, "html.parser")
-                                body = soup.find(
-                                    "div", 
-                                    class_=["article-details__abstract"]
-                                )
-                                body_text = (
-                                    body.get_text(strip=True) if body else "No body found"
-                                )
+                                    time.sleep(random.uniform(6, 10))
 
-                            if body_text:
-                                content_accumulated += f"URL:{href} \n\n\n{body_text}"
-                                content_accumulated += "-" * 100 + "\n\n"
+                                    WebDriverWait(driver, 10).until(
+                                        EC.presence_of_element_located((By.CLASS_NAME, "article-details__abstract"))
+                                    )
 
-                                print(f"Página procesada y guardada: {href}")
-                            else:
-                                print("No se encontró contenido en la página.")
-                            driver.back()
-                            WebDriverWait(driver, 60).until(
-                                EC.presence_of_element_located((By.ID, "results"))
-                            )
-                            time.sleep(random.uniform(3, 6))
+                                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                                    body = soup.find("div", class_="article-details__abstract")
+                                    body_text = (
+                                        body.get_text(strip=True) if body else "No body found"
+                                    )
+
+                                if body_text:
+                                    content_accumulated += f"URL:{href} \n\n\n{body_text}"
+                                    content_accumulated += "-" * 100 + "\n\n"
+
+                                    print(f"Página procesada y guardada: {href}")
+                                    print(f"info guardada: {body_text}")
+                                else:
+                                    print("No se encontró contenido en la página.")
+                                driver.back()
+                                WebDriverWait(driver, 60).until(
+                                    EC.presence_of_element_located((By.ID, "results"))
+                                )
+                                time.sleep(random.uniform(3, 6))
 
                     try:
                         next_page_button = driver.find_element(
