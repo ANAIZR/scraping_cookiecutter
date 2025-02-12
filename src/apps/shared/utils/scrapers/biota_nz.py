@@ -21,6 +21,78 @@ from selenium.common.exceptions import TimeoutException
 from bson import ObjectId
 
 logger = get_logger("scraper")
+import ollama
+import json
+from datetime import datetime
+
+def text_to_json(content, url):
+    prompt = f"""
+    Organiza el siguiente contenido en el formato JSON especificado.
+    
+    **Contenido:**
+    {content}
+
+    **Estructura esperada en JSON:**
+    {{
+      "nombre_cientifico": "",
+      "nombres_comunes": "",
+      "sinonimos": "",
+      "descripcion_invasividad": "",
+      "distribucion": "",
+      "impacto": {{
+        "Económico": "",
+        "Ambiental": "",
+        "Social": ""
+      }},
+      "habitat": "",
+      "ciclo_vida": "",
+      "reproduccion": "",
+      "hospedantes": "",
+      "sintomas": "",
+      "organos_afectados": "",
+      "condiciones_ambientales": "",
+      "prevencion_control": {{
+        "Prevención": "",
+        "Control": ""
+      }},
+      "usos": "",
+      "url": "{url}",
+      "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+      "fuente": "CABI Digital Library",
+      "frecuencia": "Mensual"
+    }}
+
+    **Instrucciones:**
+    1. Extrae el nombre científico y los nombres comunes de la especie.
+    2. Lista los sinónimos científicos si están disponibles.
+    3. Proporciona una descripción de la invasividad de la especie.
+    4. Identifica los países o regiones donde está distribuida.
+    5. Extrae información sobre impacto económico, ambiental y social.
+    6. Describe el hábitat donde se encuentra.
+    7. Explica el ciclo de vida y los métodos de reproducción.
+    8. Lista los hospedantes afectados por la especie.
+    9. Describe los síntomas y los órganos afectados en los hospedantes.
+    10. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
+    11. Extrae información sobre métodos de prevención y control.
+    12. Lista los usos conocidos de la especie.
+    13. Usa la hora actual para completar el campo "hora".
+    14. Usa "Mensual" como frecuencia de escrapeo.
+
+    Devuelve solo el JSON con los datos extraídos, sin texto adicional.
+    """
+
+    response = ollama.chat(
+        model="llama3",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    json_output = response["message"]["content"]
+
+    try:
+        return json.loads(json_output)  # Convertir a JSON
+    except json.JSONDecodeError:
+        print("Error al convertir a JSON")
+        return None
 
 
 def scraper_biota_nz(url, sobrenombre):
@@ -108,54 +180,43 @@ def scraper_biota_nz(url, sobrenombre):
 
                                 if section_body:
                                     sections = section_body.find_all("div", id=lambda x: x and x.startswith("section-"))
-                                    sections_html = "".join(str(section) for section in sections)
+                                    sections_text = "\n".join(section.get_text(strip=True) for section in sections)
 
-                                content_accumulated = f"<h2>{title_text}</h2>{sections_html}"
+                                content_accumulated = f"Nombre Científico: {title_text}\n{sections_text}"
+
                                 if content_accumulated:
+                                    structured_data = text_to_json(content_accumulated, full_url)
                                     
-                                    object_id = fs.put(
-                                            content_accumulated.encode("utf-8"),
+                                    if structured_data:
+                                        object_id = fs.put(
+                                            json.dumps(structured_data, ensure_ascii=False).encode("utf-8"),
                                             metadata={
                                                 "url_source": full_url,
-                                                "url":url,
+                                                "url": url,
                                                 "scraping_date": datetime.now(),
                                                 "Etiquetas": ["planta", "plaga"],
-                                                "contenido": content_accumulated,
-                                                
+                                                "contenido": structured_data,
                                             },
                                         )
-                                    object_ids.append(object_id)
-                                    object_urls.append(full_url)
-                                    logger.info(
-                                        f"Archivo almacenado en MongoDB con object_id: {object_id}"
-                                    )
+                                        object_ids.append(object_id)
+                                        object_urls.append(full_url)
+                                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                                    collection.insert_one(
-                                        {
-                                            "_id": object_id,
-                                            "url_source": full_url,
-                                            "url": url,
-                                            "scraping_date": datetime.now(),
-                                            "Etiquetas": ["planta", "plaga"],
-                                        }
-                                    )
+                                        collection.insert_one(structured_data)
 
-                                    existing_versions = list(
-                                        collection.find({"url_source": full_url}).sort(
-                                            "scraping_date", -1
+                                        existing_versions = list(
+                                            collection.find({"url_source": full_url}).sort("scraping_date", -1)
                                         )
-                                    )
 
-                                    if len(existing_versions) > 2:
-                                        oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version["_id"]))
-                                        collection.delete_one(
-                                            {"_id": ObjectId(oldest_version["_id"])}
-                                        )
-                                        logger.info(
-                                            f"Se eliminó la versión más antigua de '{keyword}' con URL '{full_url}' y object_id: {oldest_version['_id']}"
-                                        )
-                                    scraping_exitoso = True
+                                        if len(existing_versions) > 2:
+                                            oldest_version = existing_versions[-1]
+                                            fs.delete(ObjectId(oldest_version["_id"]))
+                                            collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                                            logger.info(
+                                                f"Se eliminó la versión más antigua de '{keyword}' con URL '{full_url}' y object_id: {oldest_version['_id']}"
+                                            )
+                                        scraping_exitoso = True
+
 
                     try:
                         next_page = WebDriverWait(driver, 10).until(
