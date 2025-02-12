@@ -53,10 +53,11 @@ def scraper_doaj_org(url, sobrenombre):
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
             try:
-                radio_button = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.ID, "articles"))
+                # Esperar a que el label esté clickeable
+                label = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//label[@for='articles']"))
                 )
-                radio_button.click()
+                label.click()
 
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.ID, "keywords"))
