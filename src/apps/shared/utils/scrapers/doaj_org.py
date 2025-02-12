@@ -85,13 +85,17 @@ def scraper_doaj_org(url, sobrenombre):
                     logger.info("Resultados encontrados en la página.")
 
                     soup = BeautifulSoup(driver.page_source, "html.parser")
-                    # items = soup.select("li.card.search-results__record")
-                    items = WebDriverWait(driver, 10).until(
-                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.card.search-results__record"))
-                    )
+                    try:
+                        items = WebDriverWait(driver, 10).until(
+                            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.card.search-results__record"))
+                        )
+                    except Exception as e:
+                        logger.warning("No se encontraron elementos en la página.")
+                        items = []  # Asegurar que items sea una lista vacía
+
                     time.sleep(random.uniform(3, 6))
                     if items:
-                        logger.info(f"Encontrados {len(items)} resultados.")
+                        logger.info(f"Item encontrados {len(items)} resultados.")
                         for item in items:
                             href = item.find_element(By.CSS_SELECTOR, "h3.search-results__heading a").get_attribute("href")
 
@@ -136,6 +140,10 @@ def scraper_doaj_org(url, sobrenombre):
                                     EC.presence_of_element_located((By.ID, "results"))
                                 )
                                 time.sleep(random.uniform(3, 6))
+                    else:
+                        logger.info(f"Item no existen {len(items)} resultados.")
+                        driver.get(url)
+                        time.sleep(random.uniform(3, 6))
 
                     try:
                         next_page_button = driver.find_element(
