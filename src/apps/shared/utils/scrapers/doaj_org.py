@@ -146,9 +146,10 @@ def scraper_doaj_org(url, sobrenombre):
                         time.sleep(random.uniform(3, 6))
 
                     try:
+                        logger.info("Buscando botón para la siguiente página.")
                         next_page_button = driver.find_element(
                             By.CSS_SELECTOR,
-                            ".pagination__btn.pagination__btn--next.icon-arrow_r",
+                            "doaj-pager-next.doaj-pager-next-bottom-pager",
                         )
                         next_page_link = next_page_button.get_attribute("href")
 
