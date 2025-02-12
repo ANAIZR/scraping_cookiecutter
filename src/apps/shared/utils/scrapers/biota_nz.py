@@ -1,7 +1,6 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import os
 import time
 import random
 import requests
@@ -19,8 +18,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from selenium.common.exceptions import TimeoutException
 from bson import ObjectId
-import ollama
-import json
 
 def summarize_content(content):
     if not content.strip():
