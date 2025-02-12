@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import os
 import time
 import random
 import requests
@@ -19,27 +20,9 @@ from rest_framework import status
 from selenium.common.exceptions import TimeoutException
 from bson import ObjectId
 
-def summarize_content(content):
-    if not content.strip():
-        return "No hay contenido para resumir."
-
-    prompt = f"""
-    Genera un resumen conciso del siguiente texto en formato JSON con la estructura:
-    {{"titulo": "Título de la sección", "resumen": "Resumen del contenido"}}
-
-    Texto:
-    {content}
-    """
-
-    try:
-        response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
-        return json.loads(response["message"]["content"]) 
-    except Exception as e:
-        logger.error(f"Error al generar resumen con Ollama: {e}")
-        return {"titulo": "Desconocido", "resumen": "No se pudo generar el resumen."}
 logger = get_logger("scraper")
 
-sections_json = [] 
+
 def scraper_biota_nz(url, sobrenombre):
     driver = initialize_driver()
     base_domain = "https://biotanz.landcareresearch.co.nz"
@@ -64,6 +47,7 @@ def scraper_biota_nz(url, sobrenombre):
 
         scraping_exitoso = False
         object_ids = []
+        object_urls = []
 
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
@@ -113,87 +97,65 @@ def scraper_biota_nz(url, sobrenombre):
                             )
 
                             if response.status_code == 200:
-                                link_soup = BeautifulSoup(response.content, "html.parser")
-                                
-                                # Extraer el título general
+                                link_soup = BeautifulSoup(
+                                    response.content, "html.parser"
+                                )
                                 section_head = link_soup.select_one("div#detail-page div#section-head h2")
                                 title_text = section_head.get_text(strip=True) if section_head else ""
-                                
-                                # Procesar las secciones del cuerpo
+
                                 section_body = link_soup.select_one("div#detail-page div#section-body")
-                                sections_json = []  # Lista para almacenar la info de cada sección
-                                
+                                sections_html = ""
+
                                 if section_body:
                                     sections = section_body.find_all("div", id=lambda x: x and x.startswith("section-"))
-                                    if sections:
-                                        for section in sections:
-                                            # Opcional: extraer un título interno para la sección
-                                            section_title_elem = section.find("h2")
-                                            section_title = section_title_elem.get_text(strip=True) if section_title_elem else "Sin título"
-                                            
-                                            # Extraer el contenido (texto limpio)
-                                            section_text = section.get_text(strip=True)
-                                            
-                                            # Obtener el resumen vía Ollama
-                                            summary_data = summarize_content(section_text)
-                                            
-                                            # Agregar la información en formato JSON para la sección
-                                            sections_json.append({
-                                                "titulo": section_title,
-                                                "contenido": section_text,
-                                                "resumen": summary_data.get("resumen", "Resumen no disponible")
-                                            })
-                                    else:
-                                        sections_json = [{
-                                            "titulo": "Sin secciones",
-                                            "contenido": "No sections found",
-                                            "resumen": "No se encontraron secciones para resumir."
-                                        }]
-                                else:
-                                    sections_json = [{
-                                        "titulo": "Sin bodymatter",
-                                        "contenido": "No se encontró el bodymatter",
-                                        "resumen": "No se encontró la parte de bodymatter para procesar secciones."
-                                    }]
-                                
-                                # Construir el contenido final. Puedes elegir almacenarlo como HTML o como JSON.
-                                # En este ejemplo se crea un bloque HTML con el título general y el JSON formateado.
-                                json_final = json.dumps(sections_json, indent=4, ensure_ascii=False)
-                                content_accumulated = f"<h2>{title_text}</h2><pre>{json_final}</pre>"
-                                
+                                    sections_html = "".join(str(section) for section in sections)
+
+                                content_accumulated = f"<h2>{title_text}</h2>{sections_html}"
                                 if content_accumulated:
+                                    
                                     object_id = fs.put(
-                                        content_accumulated.encode("utf-8"),
-                                        metadata={
-                                            "url": full_url,
+                                            content_accumulated.encode("utf-8"),
+                                            metadata={
+                                                "url_source": full_url,
+                                                "url":url,
+                                                "scraping_date": datetime.now(),
+                                                "Etiquetas": ["planta", "plaga"],
+                                                "contenido": content_accumulated,
+                                                
+                                            },
+                                        )
+                                    object_ids.append(object_id)
+                                    object_urls.append(full_url)
+                                    logger.info(
+                                        f"Archivo almacenado en MongoDB con object_id: {object_id}"
+                                    )
+
+                                    collection.insert_one(
+                                        {
+                                            "_id": object_id,
+                                            "url_source": full_url,
+                                            "url": url,
                                             "scraping_date": datetime.now(),
                                             "Etiquetas": ["planta", "plaga"],
-                                            "contenido": sections_json,
-                                        },
+                                        }
                                     )
-                                    object_ids.append(object_id)
-                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                
-                                    collection.insert_one({
-                                        "_id": object_id,
-                                        "url": full_url,
-                                        "scraping_date": datetime.now(),
-                                        "Etiquetas": ["planta", "plaga"],
-                                    })
-                                
+
                                     existing_versions = list(
-                                        collection.find({"url": full_url}).sort("scraping_date", -1)
+                                        collection.find({"url_source": full_url}).sort(
+                                            "scraping_date", -1
+                                        )
                                     )
-                                
+
                                     if len(existing_versions) > 2:
                                         oldest_version = existing_versions[-1]
                                         fs.delete(ObjectId(oldest_version["_id"]))
-                                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                                        collection.delete_one(
+                                            {"_id": ObjectId(oldest_version["_id"])}
+                                        )
                                         logger.info(
                                             f"Se eliminó la versión más antigua de '{keyword}' con URL '{full_url}' y object_id: {oldest_version['_id']}"
                                         )
                                     scraping_exitoso = True
-
 
                     try:
                         next_page = WebDriverWait(driver, 10).until(
@@ -226,7 +188,8 @@ def scraper_biota_nz(url, sobrenombre):
                     "Mensaje": "Los datos han sido scrapeados correctamente.",
                     "Object_Ids": [
                         str(obj_id) for obj_id in object_ids
-                    ],  # Convertimos ObjectId a string
+                    ],  
+                    "Urls": object_urls
                 },
                 status=status.HTTP_200_OK,
             )
