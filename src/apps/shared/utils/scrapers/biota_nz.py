@@ -89,7 +89,7 @@ def text_to_json(content, url):
     json_output = response["message"]["content"]
 
     try:
-        return json.loads(json_output)  # Convertir a JSON
+        return json.loads(json_output)  
     except json.JSONDecodeError:
         print("Error al convertir a JSON")
         return None
