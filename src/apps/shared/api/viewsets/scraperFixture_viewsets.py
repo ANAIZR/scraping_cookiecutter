@@ -73,6 +73,7 @@ from ...utils.scrapers import (
     scraper_npdn,
     scraper_eppo_int,
     scraper_canada_ca,
+    scraper_gc_ca,
     scraper_doaj_org,
     scraper_cdnsciencepub
 )
@@ -144,6 +145,7 @@ SCRAPER_FUNCTIONS = {
     65: scraper_npdn,
     66: scraper_eppo_int,
     64: scraper_canada_ca,
+    67: scraper_gc_ca,
     68: scraper_doaj_org,
     69: scraper_cdnsciencepub
 }
