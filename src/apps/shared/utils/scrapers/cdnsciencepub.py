@@ -119,7 +119,7 @@ def scraper_cdnsciencepub(url, sobrenombre):
                                     soup = BeautifulSoup(driver.page_source, "html.parser")
                                     body = soup.find("section", id="abstract")
                                     body_text = (
-                                        body.get_text(strip=True) if body else "No body found"
+                                        body.get_text(separator=" ", strip=True) if body else "No body found"
                                     )
 
                                 if body_text:
@@ -131,9 +131,11 @@ def scraper_cdnsciencepub(url, sobrenombre):
                                 else:
                                     print("No se encontró contenido en la página.")
                                 driver.back()
+
                                 WebDriverWait(driver, 60).until(
-                                    EC.presence_of_element_located((By.ID, "results"))
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, ".rlist.search__body"))
                                 )
+
                                 time.sleep(random.uniform(3, 6))
                     else:
                         logger.info(f"Items no existen {len(items)} resultados.")

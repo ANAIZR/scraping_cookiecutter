@@ -124,7 +124,7 @@ def scraper_doaj_org(url, sobrenombre):
                                     soup = BeautifulSoup(driver.page_source, "html.parser")
                                     body = soup.find("p", class_="article-details__abstract")
                                     body_text = (
-                                        body.get_text(strip=True) if body else "No body found"
+                                        body.get_text(separator=" ", strip=True) if body else "No body found"
                                     )
 
                                 if body_text:

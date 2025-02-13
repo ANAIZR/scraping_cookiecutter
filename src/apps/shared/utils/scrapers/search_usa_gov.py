@@ -111,7 +111,7 @@ def scraper_search_usa_gov(url, sobrenombre):
                                     class_=["usa-width-three-fourths", "usa-layout-docs-main_content"]
                                 )
                                 body_text = (
-                                    body.get_text(strip=True) if body else "No body found"
+                                    body.get_text(separator=" ", strip=True) if body else "No body found"
                                 )
 
                             if body_text:
