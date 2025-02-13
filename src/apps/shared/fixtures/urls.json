@@ -1252,5 +1252,18 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 95,
+    "fields": {
+      "url": "https://cdnsciencepub.com/action/doSearch",
+      "sobrenombre": "cdnsciencepub",
+      "time_choices": 1,
+      "mode_scrapeo": 69,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
   }
 ]
