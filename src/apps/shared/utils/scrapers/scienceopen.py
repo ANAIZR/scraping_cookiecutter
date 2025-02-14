@@ -25,8 +25,8 @@ logger = get_logger("scraper")
 
 def scraper_scienceopen(url, sobrenombre):
     driver = initialize_driver()
+    urls_by_keyword = dict()
 
-    
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
@@ -71,9 +71,10 @@ def scraper_scienceopen(url, sobrenombre):
             logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
 
         for keyword in keywords:
+            fullhrefs = []
+
             print(f"Buscando con la palabra clave: {keyword}")
             try:
-
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, ".so-text-input"))
                 )
@@ -87,11 +88,11 @@ def scraper_scienceopen(url, sobrenombre):
                 logger.info(f"Error al realizar la búsqueda: {e}")
                 scraping_failed = True
                 continue
-            keyword_folder = generate_directory(keyword, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
+
 
             content_accumulated = ""
             while True:
+                print("Buscando resultados en la página.")
                 try:
                     WebDriverWait(driver, 60).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, ".so-m-t-20"))
@@ -111,66 +112,18 @@ def scraper_scienceopen(url, sobrenombre):
                     if items:
                         logger.info(f"Items encontrados {len(items)} resultados.")
                         for item in items:
-
-                            WebDriverWait(driver, 30).until(
-                            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.so-article-list-item"))
-                            )
-
                             logger.info("Extrayendo información de la página.")
-                            
                             href = item.find_element(By.CSS_SELECTOR, "h3.so-article-list-item-title a").get_attribute("href")
                             print("href by quma: ", href)
+                            fullhrefs.append(href)
 
-                            if href:
-                                driver.get(href)
-                                visited_urls.add(href)
 
-                                if href.lower().endswith(".pdf"):
-                                    logger.info(f"Extrayendo texto de PDF: {href}")
-                                    body_text = extract_text_from_pdf(href)
-
-                                else:
-                                    WebDriverWait(driver, 60).until(
-                                        EC.presence_of_element_located(
-                                            (By.CSS_SELECTOR, "body")
-                                        )
-                                    )
-
-                                    time.sleep(random.uniform(6, 10))
-
-                                    WebDriverWait(driver, 10).until(
-                                        EC.presence_of_element_located((By.CSS_SELECTOR, "section.so-layout-section div.so-d"))
-                                    )
-
-                                    soup = BeautifulSoup(driver.page_source, "html.parser")
-                                    # body = soup.find("section",class_=["so-layout-section","so-d"])
-                                    body = soup.select_one("section.so-layout-section div.so-d") 
-                                    body_text = (
-                                        body.get_text(separator=" ", strip=True) if body else "No body found"
-                                    )
-
-                                if body_text:
-                                    content_accumulated += f"URL:{href} \n\n\n{body_text}"
-                                    content_accumulated += "-" * 100 + "\n\n"
-
-                                    print(f"Página procesada y guardada: {href}")
-                                    print(f"info guardada: {body_text}")
-                                else:
-                                    print("No se encontró contenido en la página.")
-                                    
-                                driver.back()
-
-                                WebDriverWait(driver, 60).until(
-                                    EC.presence_of_element_located((By.CSS_SELECTOR, ".so-m-t-20"))
-                                )
-
-                                logger.info("DATOS GUARDADOS CORRECTAMENTE")
-                                time.sleep(random.uniform(3, 6))
                     else:
                         logger.info(f"Items no existen {len(items)} resultados.")
                         driver.get(url)
                         time.sleep(random.uniform(3, 6))
 
+                    #Siguiente boton
                     try:
                         logger.info("Buscando botón para la siguiente página.")
                         next_page_button = driver.find_element(
@@ -195,44 +148,101 @@ def scraper_scienceopen(url, sobrenombre):
                         )
                         driver.get(url)
                         break  
+                
                 except TimeoutException:
                     logger.warning(
                         f"No se encontraron resultados para '{keyword}' después de esperar."
                     )
                     break
+
+                urls_by_keyword[keyword] = fullhrefs
+                fullhrefs = [] #limpiar la lista de urls
+
+        #Scraping de las urls
+        # for href in urls_by_keyword:
+        for word in urls_by_keyword:
+            keyword_folder = generate_directory(word, main_folder)
+            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
+
+            for href in urls_by_keyword[word]:
+                if href:
+                    driver.get(href)
+                    visited_urls.add(href)
+
+                    if href.lower().endswith(".pdf"):
+                        logger.info(f"Extrayendo texto de PDF: {href}")
+                        body_text = extract_text_from_pdf(href)
+
+                    else:
+                        WebDriverWait(driver, 60).until(
+                            EC.presence_of_element_located(
+                                (By.CSS_SELECTOR, "body")
+                            )
+                        )
+
+                        time.sleep(random.uniform(6, 10))
+
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "section.so-layout-section div.so-d"))
+                        )
+
+                        soup = BeautifulSoup(driver.page_source, "html.parser")
+                        # body = soup.find("section",class_=["so-layout-section","so-d"])
+                        body = soup.select_one("section.so-layout-section div.so-d") 
+                        body_text = (
+                            body.get_text(separator=" ", strip=True) if body else "No body found"
+                        )
+
+                    if body_text:
+                        content_accumulated += f"URL:{href} \n\n\n{body_text}"
+                        content_accumulated += "-" * 100 + "\n\n"
+
+                        print(f"Página procesada y guardada: {href}")
+                        print(f"info guardada: {body_text}")
+                    else:
+                        print("No se encontró contenido en la página.")
+                        
+                    # driver.back()
+
+                    WebDriverWait(driver, 60).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, ".so-m-t-20"))
+                    )
+
+                    logger.info("DATOS GUARDADOS CORRECTAMENTE")
+                    time.sleep(random.uniform(3, 6))
                     
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
+        if content_accumulated:
+            with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
+                keyword_file.write(content_accumulated)
 
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
+            with open(keyword_file_path, "rb") as file_data:
+                object_id = fs.put(
+                    file_data,
+                    filename=os.path.basename(keyword_file_path),
+                    metadata={
+                        "url": url,
+                        "keyword": keyword,
+                        "content": content_accumulated,
+                        "scraping_date": datetime.now(),
+                        "Etiquetas": ["planta", "plaga"],
+                    },
                 )
+            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
+            existing_versions = list(
+                collection.find({
+                    "metadata.keyword": keyword,
+                    "metadata.url": url  
+                }).sort("metadata.scraping_date", -1)
+            )
+
+            if len(existing_versions) > 2:
+                oldest_version = existing_versions[-1]  
+                fs.delete(oldest_version["_id"])  
+                collection.delete_one({"_id": oldest_version["_id"]}) 
+                logger.info(
+                    f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
+                )
 
 
 
