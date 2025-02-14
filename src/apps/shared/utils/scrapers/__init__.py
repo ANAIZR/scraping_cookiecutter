@@ -69,3 +69,4 @@ from .doaj_org import scraper_doaj_org
 from .cdnsciencepub import scraper_cdnsciencepub
 from .scienceopen import scraper_scienceopen
 from .gc_ca import scraper_gc_ca
+from .agresearchmag import scraper_agresearchmag
