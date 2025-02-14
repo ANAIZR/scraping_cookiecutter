@@ -25,6 +25,7 @@ logger = get_logger("scraper")
 
 def scraper_scienceopen(url, sobrenombre):
     driver = initialize_driver()
+
     
     try:
         driver.get(url)
@@ -74,13 +75,13 @@ def scraper_scienceopen(url, sobrenombre):
             try:
 
                 search_input = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".so-text-input.so-m-b-10"))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".so-text-input"))
                 )
                 search_input.clear()
                 search_input.send_keys(keyword)
                 time.sleep(random.uniform(3, 6))
 
-                search_input.send_keys(Keys.RETURN)
+                search_input.submit()
                 logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
@@ -98,7 +99,6 @@ def scraper_scienceopen(url, sobrenombre):
 
                     logger.info("Resultados encontrados en la página.")
 
-                    soup = BeautifulSoup(driver.page_source, "html.parser")
                     try:
                         items = WebDriverWait(driver, 10).until(
                             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.so-article-list-item"))
@@ -157,6 +157,7 @@ def scraper_scienceopen(url, sobrenombre):
                                     print(f"info guardada: {body_text}")
                                 else:
                                     print("No se encontró contenido en la página.")
+                                    
                                 driver.back()
 
                                 WebDriverWait(driver, 60).until(
