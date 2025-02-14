@@ -20,7 +20,6 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-from ..credentials import login_cabi_scienceconnect
 logger = get_logger("scraper")
 
 def scraper_doaj_org(url, sobrenombre):

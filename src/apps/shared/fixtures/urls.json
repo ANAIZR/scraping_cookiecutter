@@ -1075,7 +1075,7 @@
     "model": "shared.ScraperURL",
     "pk": 80,
     "fields": {
-      "url": "https://www.ippc.int/",
+      "url": "https://www.ippc.int/es/core-activities/standards-setting/ispms/",
       "sobrenombre": "ippc-int",
       "time_choices": 1,
       "mode_scrapeo": 54,
