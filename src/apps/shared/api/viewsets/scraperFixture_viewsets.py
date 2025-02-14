@@ -74,7 +74,8 @@ from ...utils.scrapers import (
     scraper_eppo_int,
     scraper_canada_ca,
     scraper_doaj_org,
-    scraper_cdnsciencepub
+    scraper_cdnsciencepub,
+    scraper_scienceopen
 )
 
 SCRAPER_FUNCTIONS = {
@@ -145,7 +146,8 @@ SCRAPER_FUNCTIONS = {
     66: scraper_eppo_int,
     64: scraper_canada_ca,
     68: scraper_doaj_org,
-    69: scraper_cdnsciencepub
+    69: scraper_cdnsciencepub,
+    70: scraper_scienceopen
 }
 
 class ScraperAPIView(APIView):
