@@ -91,8 +91,14 @@ def scraper_ippc_int(url, sobrenombre):
                     if items:
                         logger.info(f"Item encontrados {len(items)} resultados.")
                         for item in items:
-                            # href = item.find_element(By.CSS_SELECTOR, "h3.search-results__heading a").get_attribute("href")
-                            href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
+                            # href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
+
+                            try:
+                                href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
+                            except NoSuchElementException:
+                                href = None
+                                # Opcional: registrar el error
+                                logger.info("Elemento no encontrado, continuando...")
 
                             if href:                                
                                 print("href by quma: ", href)
@@ -108,7 +114,7 @@ def scraper_ippc_int(url, sobrenombre):
                                     content_accumulated += "-" * 100 + "\n\n"
 
                                     print(f"Página procesada y guardada: {href}")
-                                    print(f"info guardada: {body_text}")
+                                    # print(f"info guardada: {body_text}")
                                 else:
                                     print("No se encontró contenido en la página.")
                                     
