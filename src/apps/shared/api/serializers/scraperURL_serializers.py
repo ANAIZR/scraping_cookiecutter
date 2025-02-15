@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ...models.scraperURL import ScraperURL
+from ...models.scraperURL import ScraperURL, Species
 
 
 class ScraperURLSerializer(serializers.ModelSerializer):
@@ -35,3 +35,10 @@ class ScraperURLSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Esta URL ya ha sido registrada.")
 
         return value
+
+
+
+class SpeciesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Species
+        fields = "__all__"
