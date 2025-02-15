@@ -156,9 +156,7 @@ def scraper_ala_org(url, sobrenombre):
 
             except Exception as e:
                 logger.error(f"Error al cargar los resultados: {e}")
-                with open("error_page.html", "w", encoding="utf-8") as f:
-                    f.write(driver.page_source)
-                logger.info("Se guardó el HTML de la página con error como 'error_page.html'.")
+
                 break
         all_scraper += f"\nTotal enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
