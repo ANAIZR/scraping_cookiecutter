@@ -4,32 +4,15 @@ from urllib.parse import urljoin
 from django.http import JsonResponse
 from datetime import datetime
 from bson import ObjectId
-from io import BytesIO
-import PyPDF2
 from ..functions import (
     process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-def extract_text_from_pdf(pdf_url):
-    try:
-        headers = {"User-Agent": get_random_user_agent()}
-        response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
-        response.raise_for_status()
-
-        pdf_buffer = BytesIO(response.content)
-        reader = PyPDF2.PdfReader(pdf_buffer)
-
-        pdf_text = "\n".join(
-            [page.extract_text() for page in reader.pages if page.extract_text()]
-        )
-        return pdf_text if pdf_text else "No se pudo extraer texto del PDF."
-
-    except Exception as e:
-        return f"Error al extraer contenido del PDF ({pdf_url}): {e}"
+import chardet
 
 def scraper_aphidnet(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
@@ -57,13 +40,18 @@ def scraper_aphidnet(url, sobrenombre):
 
         visited_urls.add(current_url)
         try:
-            if current_url.endswith(".pdf"):
+            response = requests.get(current_url, headers=headers, stream=True, timeout=10)
+            response.raise_for_status()
+            
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "pdf" in content_type:
                 content_text = extract_text_from_pdf(current_url)
             else:
-                response = requests.get(current_url, headers=headers)
-                response.raise_for_status()
+                detected_encoding = chardet.detect(response.content)["encoding"]
+                if detected_encoding:
+                    response.encoding = detected_encoding
+                
                 soup = BeautifulSoup(response.text, "html.parser")
-
                 content_section = soup.find("section", id="content")
                 portfolio_section = soup.find("section", class_="portfolio")
 
@@ -72,13 +60,15 @@ def scraper_aphidnet(url, sobrenombre):
                 if portfolio_section:
                     portfolio_text = portfolio_section.get_text(strip=True)
 
-            if content_text or portfolio_text:
+            full_content = f"{content_text}\n{portfolio_text}".strip()
+            
+            if full_content:
                 object_id = fs.put(
-                    content_text.encode("utf-8"),
+                    full_content.encode("utf-8"),
                     source_url=current_url,
                     scraping_date=datetime.now(),
                     Etiquetas=["planta", "plaga"],
-                    contenido=content_text,
+                    contenido=full_content,
                     url=url
                 )
                 total_urls_scraped += 1
@@ -113,7 +103,7 @@ def scraper_aphidnet(url, sobrenombre):
                 urls_not_scraped.append(current_url)
                 total_failed_scrapes += 1
 
-            links = soup.find_all("a", href=True) if not current_url.endswith(".pdf") else []
+            links = soup.find_all("a", href=True) if "html" in content_type else []
             extracted_links = []
             for link in links:
                 href = link["href"]
@@ -123,10 +113,10 @@ def scraper_aphidnet(url, sobrenombre):
                     continue
                 if not full_url.startswith(url):
                     continue
-                if "images.bugwood.org" in full_url:
+                if full_url.endswith(".jpg") or "credits" in full_url or "glossary" in full_url:
                     continue
                 extracted_links.append((full_url, current_depth + 1))
-                total_urls_found += len(extracted_links)
+                total_urls_found += 1
 
             return extracted_links
 
