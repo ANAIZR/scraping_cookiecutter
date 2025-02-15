@@ -22,6 +22,7 @@ def scraper_ala_org(url, sobrenombre):
     total_scraped_successfully = 0
     total_failed_scrapes = 0
     all_scraper = ""
+    scraped_urls = []
 
     try:
         driver.get(url)
@@ -59,7 +60,7 @@ def scraper_ala_org(url, sobrenombre):
                         
                         if href:
                             href = urljoin(url, href)  
-
+                            scraped_urls.append(href)
                             logger.info(f"Accediendo a {href}")
 
                             try:
@@ -78,8 +79,7 @@ def scraper_ala_org(url, sobrenombre):
                                 content = driver.find_element(By.CSS_SELECTOR, "section.container-fluid")
                                 if content:
                                     content_text = content.text.strip()
-                                    all_scraper += f"URL: {href}\n{content_text}\n\n"
-
+                                    
                                     object_id = fs.put(
                                         content_text.encode("utf-8"),
                                         source_url=href,
@@ -110,7 +110,7 @@ def scraper_ala_org(url, sobrenombre):
                                     if len(existing_versions) > 2:
                                         oldest_version = existing_versions[-1]
                                         fs.delete(ObjectId(oldest_version["_id"]))
-                                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])});
                                         logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}'")
                                     
                                     logger.info(f"Contenido extraído de {href}.")
@@ -147,15 +147,12 @@ def scraper_ala_org(url, sobrenombre):
 
             except Exception as e:
                 logger.error(f"Error al cargar los resultados: {e}")
-
                 break
-        all_scraper += f"\nTotal enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
-        all_scraper += "\nURLs fallidas:\n" + "\n".join(failed_urls)
-        if not all_scraper.strip():
-            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
-            return {"status": "no_content", "url": url, "message": "No se encontraron datos para scrapear."}
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
         response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response

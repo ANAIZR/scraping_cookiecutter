@@ -12,6 +12,8 @@ from ..functions import (
     get_logger,
     get_random_user_agent,
 )
+from datetime import datetime
+from bson import ObjectId
 
 def scraper_aphis_usda(url, sobrenombre):
     logger = get_logger("APHIS")
@@ -21,6 +23,7 @@ def scraper_aphis_usda(url, sobrenombre):
     processed_links = set()
     urls_to_scrape = [(url, 1)]  
     non_scraped_urls = []  
+    scraped_urls = []
 
     total_found_links = 0
     total_scraped_links = 0
@@ -28,6 +31,7 @@ def scraper_aphis_usda(url, sobrenombre):
 
     def scrape_page(url, depth):
         nonlocal total_found_links, total_scraped_links, total_non_scraped_links
+        content_text = ""
 
         if url in processed_links or depth > 3: 
             return []
@@ -47,10 +51,46 @@ def scraper_aphis_usda(url, sobrenombre):
             if depth >= 2:
                 main_content = soup.find("main", id="main")
                 if main_content:
-                    nonlocal all_scraper
-                    # page_text = main_content.get_text(strip=True)
-                    page_text = main_content.get_text(separator=" ", strip=True)
-                    all_scraper += f"URL: {url}\n{page_text}\n\n" 
+                    content_text = main_content.get_text(separator=" ", strip=True)
+
+            if content_text:
+                object_id = fs.put(
+                    content_text.encode("utf-8"),
+                    source_url=url,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=content_text,
+                    url=url
+                )
+                total_scraped_links += 1
+                scraped_urls.append(url)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                collection.insert_one(
+                    {
+                        "_id": object_id,
+                        "source_url": url,
+                        "scraping_date": datetime.now(),
+                        "Etiquetas": ["planta", "plaga"],
+                        "url": url,
+                    }
+                )
+
+                existing_versions = list(
+                    collection.find({"source_url": url}).sort(
+                        "scraping_date", -1
+                    )
+                )
+
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(ObjectId(oldest_version["_id"]))
+                    collection.delete_one(
+                        {"_id": ObjectId(oldest_version["_id"])}
+                    )
+                    logger.info(
+                        f"Se eliminó la versión más antigua con este enlace: '{url}' y object_id: {oldest_version['_id']}"
+                    )
 
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
@@ -61,7 +101,7 @@ def scraper_aphis_usda(url, sobrenombre):
                     non_scraped_urls.append(full_url)  
                     continue
 
-                if "forms" in full_url or "":  
+                if "forms" in full_url:  
                     total_non_scraped_links += 1  
                     non_scraped_urls.append(full_url)  
                     continue
@@ -72,7 +112,6 @@ def scraper_aphis_usda(url, sobrenombre):
                 ):
                     total_found_links += 1  
                     new_links.append((full_url, depth + 1))
-                    total_scraped_links += 1 
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al procesar el enlace {url}: {e}")
@@ -103,11 +142,12 @@ def scraper_aphis_usda(url, sobrenombre):
             urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
             time.sleep(random.uniform(1, 3))  
 
-        all_scraper += f"\n\nTotal links found: {total_found_links}\n"
+        all_scraper += f"Total links found: {total_found_links}\n"
         all_scraper += f"Total links scraped: {total_scraped_links}\n"
+        all_scraper += "Scraped URLs:\n" + "\n".join(scraped_urls) + "\n"
         all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
-        all_scraper += "\n\nURLs no scrapeadas:\n"
-        all_scraper += "\n".join(non_scraped_urls)  
+        all_scraper += "Non-scraped URLs:\n" + "\n".join(non_scraped_urls) + "\n"
+
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 

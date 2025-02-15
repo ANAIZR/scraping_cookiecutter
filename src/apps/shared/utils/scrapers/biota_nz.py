@@ -8,32 +8,33 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
     initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
     get_random_user_agent,
+    process_scraper_data_v2,
 )
 from rest_framework.response import Response
 from rest_framework import status
 from selenium.common.exceptions import TimeoutException
+from bson import ObjectId
 
 logger = get_logger("scraper")
 
 def scraper_biota_nz(url, sobrenombre):
     driver = initialize_driver()
     base_domain = "https://biotanz.landcareresearch.co.nz"
-
+    total_scraped_links = 0
+    scraped_urls = []
+    non_scraped_urls = []
+    
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
         collection, fs = connect_to_mongo()
-        main_folder = generate_directory(sobrenombre)
-
+        
         keywords = load_keywords("plants.txt")
         if not keywords:
             return Response(
@@ -48,7 +49,7 @@ def scraper_biota_nz(url, sobrenombre):
 
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
-
+            
             try:
                 driver.get(url)
                 time.sleep(random.uniform(6, 10))
@@ -63,11 +64,6 @@ def scraper_biota_nz(url, sobrenombre):
             except Exception as e:
                 logger.error(f"Error al buscar la palabra clave '{keyword}': {e}")
                 continue
-
-            keyword_folder = generate_directory(keyword, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
-
-            content_accumulated = ""
 
             while True:
                 try:
@@ -103,13 +99,50 @@ def scraper_biota_nz(url, sobrenombre):
                                 body = link_soup.select_one(
                                     "div#detail-page>div.page-content-wrapper>div.details-page-content"
                                 )
-                                body_text = body.get_text(strip=True) if body else ""
-                                content_accumulated += (
-                                    f"URL: {full_url}\nTexto: {body_text}\n\n"
-                                )
-                                content_accumulated += "-" * 100 + "\n\n"
+                                content_text = body.get_text(strip=True) if body else ""
+                                
+                                if content_text:
+                                    object_id = fs.put(
+                                        content_text.encode("utf-8"),
+                                        source_url=full_url,
+                                        scraping_date=datetime.now(),
+                                        Etiquetas=["planta", "plaga"],
+                                        contenido=content_text,
+                                        url=url
+                                    )
+                                    total_scraped_links += 1
+                                    scraped_urls.append(full_url)
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                    collection.insert_one(
+                                        {
+                                            "_id": object_id,
+                                            "source_url": full_url,
+                                            "scraping_date": datetime.now(),
+                                            "Etiquetas": ["planta", "plaga"],
+                                            "url": url,
+                                        }
+                                    )
+
+                                    existing_versions = list(
+                                        collection.find({"source_url": full_url}).sort(
+                                            "scraping_date", -1
+                                        )
+                                    )
+
+                                    if len(existing_versions) > 1:
+                                        oldest_version = existing_versions[-1]
+                                        fs.delete(ObjectId(oldest_version["_id"]))
+                                        collection.delete_one(
+                                            {"_id": ObjectId(oldest_version["_id"])}
+                                        )
+                                        logger.info(
+                                            f"Se eliminó la versión más antigua con este enlace: '{full_url}' y object_id: {oldest_version['_id']}"
+                                        )
+                                else:
+                                    non_scraped_urls.append(full_url)
                             else:
-                                logger.warning(f"Error al acceder a la URL: {full_url}")
+                                non_scraped_urls.append(full_url)
 
                     try:
                         next_page = WebDriverWait(driver, 10).until(
@@ -131,88 +164,16 @@ def scraper_biota_nz(url, sobrenombre):
                     )
                     break
 
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
-
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
-                )
-                logger.info(f"Versiones encontradas para '{keyword}': {existing_versions}")
-
-
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
-
-
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
-        response_data = {
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": data["Fecha_scraper"],
-            "Etiquetas": data["Etiquetas"],
-            "Mensaje": "Los datos han sido scrapeados correctamente.",
-        }
-        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
-
-        collection.insert_one(data)
-        delete_old_documents(url, collection, fs)
-
-        return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-    except TimeoutException:
-        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
-            },
-            status=status.HTTP_408_REQUEST_TIMEOUT,
-        )
-    except ConnectionError:
-        logger.error("Error de conexión a la URL.")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "No se pudo conectar a la página web.",
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
         return Response(

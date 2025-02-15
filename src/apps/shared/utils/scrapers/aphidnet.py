@@ -23,6 +23,7 @@ def scraper_aphidnet(url, sobrenombre):
     total_urls_scraped = 0
     total_failed_scrapes = 0
     urls_not_scraped = []
+    urls_scraped = []
     visited_urls = set()
     urls_to_scrape = []
     max_depth = 3
@@ -72,6 +73,7 @@ def scraper_aphidnet(url, sobrenombre):
                     url=url
                 )
                 total_urls_scraped += 1
+                urls_scraped.append(current_url)
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                 collection.insert_one(
@@ -90,7 +92,7 @@ def scraper_aphidnet(url, sobrenombre):
                     )
                 )
 
-                if len(existing_versions) > 2:
+                if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
                     fs.delete(ObjectId(oldest_version["_id"]))
                     collection.delete_one(
@@ -157,9 +159,11 @@ def scraper_aphidnet(url, sobrenombre):
             f"Total de URLs fallidas: {total_failed_scrapes}\n\n"
         )
 
+        if urls_scraped:
+            all_scraper += "URLs scrapeadas:\n" + "\n".join(urls_scraped) + "\n\n"
+        
         if urls_not_scraped:
-            all_scraper += "URLs fallidas:\n\n"
-            all_scraper += "\n".join(urls_not_scraped) + "\n"
+            all_scraper += "URLs fallidas:\n" + "\n".join(urls_not_scraped) + "\n"
 
         response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
