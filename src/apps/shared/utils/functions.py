@@ -277,13 +277,8 @@ def save_scraper_data_v2(all_scraper, url, sobrenombre):
                 "Etiquetas": ["planta", "plaga"],
                 "Mensaje": "Los datos han sido scrapeados correctamente.",
             }
-        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
-        return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data: {type(response_data)}")
+        return response_data
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
@@ -332,12 +327,7 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
         logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
 
 
-        return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return response_data
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
