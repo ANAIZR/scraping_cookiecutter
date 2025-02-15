@@ -18,7 +18,9 @@ def scraper_ala_org(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
-
+    total_links_found = 0
+    total_scraped_successfully = 0
+    total_failed_scrapes = 0
     all_scraper = ""
 
     try:
@@ -36,6 +38,7 @@ def scraper_ala_org(url, sobrenombre):
             logger.error(f"No se pudo hacer clic en el botón de búsqueda: {e}")
             return {"error": "No se encontró el botón de búsqueda"}
         object_ids = []
+        failed_urls = []
         while True:
             try:
                 WebDriverWait(driver, 30).until(
@@ -47,6 +50,8 @@ def scraper_ala_org(url, sobrenombre):
                 if not lis:
                     logger.warning("No se encontraron resultados en la búsqueda.")
                     break  
+                total_links_found += len(lis)
+
                 for li in lis:
                     try:
                         a_tag = li.find_element(By.CSS_SELECTOR, "a")
@@ -64,6 +69,9 @@ def scraper_ala_org(url, sobrenombre):
                                 )
                             except Exception as e:
                                 logger.warning(f"No se pudo hacer clic en {href}: {e}")
+                                total_failed_scrapes += 1
+                                failed_urls.append(href)
+
                                 continue  
                             try:
                                 content = driver.find_element(By.CSS_SELECTOR, "section.container-fluid")
@@ -79,6 +87,8 @@ def scraper_ala_org(url, sobrenombre):
                                         url=url
                                     )
                                     object_ids.append(object_id)
+                                    total_scraped_successfully += 1
+
                                     logger.info(
                                         f"Archivo almacenado en MongoDB con object_id: {object_id}"
                                     )
@@ -111,6 +121,10 @@ def scraper_ala_org(url, sobrenombre):
                                     logger.info(f"Contenido extraído de {href}.")
                             except Exception as e:
                                 logger.warning(f"No se pudo extraer contenido de {href}: {e}")
+                                total_failed_scrapes += 1
+                                failed_urls.append(href)
+
+
 
                             try:
                                 driver.back()
@@ -122,6 +136,8 @@ def scraper_ala_org(url, sobrenombre):
 
                     except Exception as e:
                         logger.warning(f"Error al procesar un resultado de búsqueda: {e}")
+                        total_failed_scrapes += 1
+
                         continue
 
                 try:
@@ -144,12 +160,15 @@ def scraper_ala_org(url, sobrenombre):
                     f.write(driver.page_source)
                 logger.info("Se guardó el HTML de la página con error como 'error_page.html'.")
                 break
-
+        all_scraper += f"\nTotal enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "\nURLs fallidas:\n" + "\n".join(failed_urls)
         if not all_scraper.strip():
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
             return {"status": "no_content", "url": url, "message": "No se encontraron datos para scrapear."}
 
-        response = process_scraper_data_v2(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
