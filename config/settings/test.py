@@ -9,6 +9,15 @@ SECRET_KEY = env(
     default=SECRET_KEY_TOKEN,
 )
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",  # Usa SQLite para pruebas rápidas
+        "NAME": ":memory:",  # Crea la base de datos en memoria
+        "TEST": {
+            "NAME": ":memory:",  # Asegura que las pruebas se ejecuten en memoria
+        },
+    }
+}
 
 # PASSWORDS
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
