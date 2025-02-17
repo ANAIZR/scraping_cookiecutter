@@ -445,7 +445,7 @@ def extract_text_from_pdf(pdf_url):
     try:
         headers = {"User-Agent": get_random_user_agent()}
         response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
-        response.raise_for_status()  # Asegura que la petición fue exitosa
+        response.raise_for_status() 
 
         pdf_buffer = BytesIO(response.content)
         reader = PyPDF2.PdfReader(pdf_buffer)
