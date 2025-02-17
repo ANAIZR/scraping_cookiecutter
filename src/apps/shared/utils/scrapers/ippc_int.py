@@ -9,9 +9,6 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
     initialize_driver,
     get_logger,
     connect_to_mongo,
@@ -190,9 +187,6 @@ def scraper_ippc_int(url, sobrenombre):
                         f"No se encontraron resultados para '{keyword}' después de esperar."
                     )
                     break
-                    
-
-
 
         all_scraper = (
             f"Total enlaces scrapeados: {total_scraped_links}\n"
