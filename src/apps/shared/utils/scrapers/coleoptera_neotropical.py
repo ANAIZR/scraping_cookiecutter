@@ -1,26 +1,23 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
-import gridfs
-import os
+import logging
+from bson import ObjectId
 from rest_framework.response import Response
 from rest_framework import status
 
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
+    process_scraper_data_v2,
     connect_to_mongo,
     initialize_driver
 )
 
+logger = logging.getLogger(__name__)
+
 def scraper_coleoptera_neotropical(url, sobrenombre):
     driver = initialize_driver()
-
     collection, fs = connect_to_mongo()
 
     try:
@@ -32,54 +29,67 @@ def scraper_coleoptera_neotropical(url, sobrenombre):
         content = driver.find_element(By.CSS_SELECTOR, "body tbody")
 
         rows = content.find_elements(By.TAG_NAME, "tr")
-        total_rows = len(rows)
 
+        scraped_rows = 0
+        failed_rows = 0
         all_scraper_data = []
-        scrape_count = 0
 
         for row in rows:
             cols = row.find_elements(By.TAG_NAME, "td")
-            row_data = [col.text.strip() for col in cols]  
-            all_scraper_data.append(row_data) 
-            scrape_count += 1  
+            row_data = [col.text.strip() for col in cols]
 
-        scrape_info = f"Total de filas encontradas: {total_rows}\nFilas scrapeadas: {scrape_count}\n\n"
+            if row_data:
+                all_scraper_data.append(", ".join(row_data))
+                scraped_rows += 1
+            else:
+                failed_rows += 1
 
-        scraped_text = scrape_info + "\n".join([", ".join(row) for row in all_scraper_data])
+        scraped_text = "\n".join(all_scraper_data)
 
-        folder_path = generate_directory(url)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+        if scraped_text:
+            object_id = fs.put(
+            scraped_text.encode("utf-8"),
+            source_url=url,
+            scraping_date=datetime.now(),
+            Etiquetas=["planta", "plaga"],
+            contenido=scraped_text,
+            url=url
+            )
+            collection.insert_one(
+                {
+                    "_id": object_id,
+                    "source_url": url,
+                    "scraping_date": datetime.now(),
+                    "Etiquetas": ["planta", "plaga"],
+                    "contenido": scraped_text,
+                    "url": url,
+                }
+            )
+            existing_versions = list(
+            collection.find({"source_url": url}).sort("scraping_date", -1)
+            )
+            if len(existing_versions) > 1:
+                oldest_version = existing_versions[-1]
+                fs.delete(ObjectId(oldest_version["_id"]))
+                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(scraped_text)
 
-        with open(file_path, "rb") as file_data:
-            object_id = fs.put(file_data, filename=os.path.basename(file_path))
 
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
+        report_text = f"Total filas encontradas: {len(rows)}\n"
+        report_text += f"Filas scrapeadas: {scraped_rows}\n"
+        report_text += f"Filas no scrapeadas: {failed_rows}\n"
 
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scrapper": data["Fecha_scrapper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-
-            collection.insert_one(data)
-
-            delete_old_documents(url, collection, fs)
         
-        return Response(
-            response_data,
-            status=status.HTTP_200_OK,
-        )
+        
+
+       
+
+        logger.info(f"Contenido almacenado en MongoDB con object_id: {object_id}, filas scrapeadas: {scraped_rows}, filas fallidas: {failed_rows}")
+
+        
+        response = process_scraper_data_v2(report_text, url, sobrenombre)
+        return response
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
