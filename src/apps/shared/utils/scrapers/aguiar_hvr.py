@@ -11,7 +11,7 @@ from rest_framework import status
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..functions import (
-    process_scraper_data_v2,
+    process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
@@ -197,7 +197,7 @@ def scraper_aguiar_hvr(url, sobrenombre):
         state.all_scraper +=(
             "\n\nLista de enlaces scrapeados:\n" + "\n".join(state.scraped_urls)
         )
-        response = process_scraper_data_v2(state.all_scraper, url, sobrenombre)
+        response = process_scraper_data(state.all_scraper, url, sobrenombre)
         return response
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
