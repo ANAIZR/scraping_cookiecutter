@@ -52,14 +52,20 @@ def scraper_acir_aphis_usda(url, sobrenombre):
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
             try:
-                search_input = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.ID, "input-16"))
+                list_search_input = WebDriverWait(driver, 10).until(
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "input.slds-input"))
                 )
-                search_input.clear()
-                search_input.send_keys(keyword)
+                segundo_input = list_search_input[1]
+
+                segundo_input.clear()
+                segundo_input.send_keys(keyword)
+                print(f"se pinto la Palabra clave: {keyword}")
                 time.sleep(random.uniform(3, 6))
 
-                search_input.submit()
+                btn_search = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "button.slds-button.slds-button_brand.slds-button_stretch.slds-m-left_x-small.enable-button"))
+                )
+                btn_search.click()
                 logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
@@ -99,7 +105,7 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                         for fila in filas:
                             tds = fila.find_all("td")
                             for td in tds:
-                                body_text += f"{td.get_text(separator=" ", strip=True)};"
+                                body_text += f"{td.get_text(separator=' ', strip=True)};"
                             body_text += "\n"
 
 
@@ -114,7 +120,7 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                             print("No se encontró contenido en la página.")
                         driver.back()
                         WebDriverWait(driver, 60).until(
-                            EC.presence_of_element_located((By.ID, "results"))
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "table.slds-table"))
                         )
                         time.sleep(random.uniform(3, 6))
                     else:
