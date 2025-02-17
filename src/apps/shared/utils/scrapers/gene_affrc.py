@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
+from datetime import datetime
+from bson import ObjectId
 from ..functions import get_logger, connect_to_mongo, process_scraper_data
 
 
@@ -9,7 +11,10 @@ def scraper_gene_affrc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
+
     all_scraper = ""
+    scraped_urls = []
+    total_scraped_links = 0
 
     def fetch_url(record_id):
         base_detail_url = (
@@ -48,6 +53,44 @@ def scraper_gene_affrc(url, sobrenombre):
                 logger.info(f"No se encontró tabla en {link}")
 
             extracted_data += f"URL: {link}\n"
+
+            if extracted_data.strip():
+                object_id = fs.put(
+                    extracted_data.encode("utf-8"),
+                    source_url=link,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=extracted_data,
+                    url=url
+                )
+
+                collection.insert_one(
+                    {
+                        "_id": object_id,
+                        "source_url": link,
+                        "scraping_date": datetime.now(),
+                        "Etiquetas": ["planta", "plaga"],
+                        "url": url,
+                    }
+                )
+
+                scraped_urls.append(link)
+                global total_scraped_links
+                total_scraped_links += 1
+
+                existing_versions = list(
+                    collection.find({"source_url": link}).sort("scraping_date", -1)
+                )
+
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(ObjectId(oldest_version["_id"]))
+                    collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+
+                    logger.info(
+                        f"Se eliminó la versión más antigua con este enlace: '{link}' y object_id: {oldest_version['_id']}"
+                    )
+
             return extracted_data
 
         except requests.RequestException as e:
@@ -72,19 +115,20 @@ def scraper_gene_affrc(url, sobrenombre):
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [executor.submit(process_link, link) for link in all_links]
             for future in as_completed(futures):
-                all_scraper += future.result()
-                all_scraper += "**************************"
-                all_scraper += "\n"
-                
+                future.result()
 
-        summary = f"Total URLs procesadas: {len(all_links)}\n"
-        logger.info(summary)
-        all_scraper += summary
-        
+        all_scraper = (
+            f"Total URLs generadas: {max_attempts}\n"
+            f"Total URLs válidas encontradas: {len(all_links)}\n"
+            f"Total URLs scrapeadas y almacenadas: {total_scraped_links}\n\n"
+            "Lista de URLs scrapeadas:\n"
+            + "\n".join(scraped_urls)
+        )
 
-        # Almacenar datos en MongoDB
+        logger.info("Scraping completado exitosamente.")
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
     except Exception as e:
         logger.error(f"Ocurrió un error durante el scraping: {e}")
+        return None
