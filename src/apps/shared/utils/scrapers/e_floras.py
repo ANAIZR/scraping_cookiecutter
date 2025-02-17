@@ -17,8 +17,8 @@ from ..functions import (
 logger = get_logger("Iniciando")
 
 def scraper_e_floras(
-    url=None,
-    sobrenombre=None
+    url,
+    sobrenombre
 ):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
@@ -138,7 +138,14 @@ def scraper_e_floras(
 
         scraper_page()
         is_first_page = False
-
+        next_page_selector = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located(
+                        (
+                            By.CSS_SELECTOR,
+                            "#TableMain #ucFloraTaxonList_panelTaxonList  span a[title='Page 2']"
+                        )
+                    )
+                )
         if next_page_selector:
             try:
                 next_page_button = WebDriverWait(driver, 30).until(
@@ -162,7 +169,6 @@ def scraper_e_floras(
         all_scraper = (
             f"Total enlaces encontrados: {total_td_found}\n"
             f"Total enlaces scrapeados: {total_td_scraped}\n"
-            f"Total enlaces almacenados en MongoDB: {total_scraped_links}\n\n"
             "Lista de URLs scrapeadas:\n"
             + "\n".join(scraped_urls)
         )
