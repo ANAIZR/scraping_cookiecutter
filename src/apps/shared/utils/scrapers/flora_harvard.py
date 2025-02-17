@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 from datetime import datetime
 from bson import ObjectId
 from ..functions import (
-    process_scraper_data_v2,
+    process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
@@ -180,7 +180,7 @@ def scraper_flora_harvard(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "URLs no procesadas:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
