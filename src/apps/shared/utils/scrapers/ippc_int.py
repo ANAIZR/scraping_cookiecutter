@@ -16,15 +16,21 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    process_scraper_data_v2
 )
 from rest_framework.response import Response
 from rest_framework import status
+from bson import ObjectId
+
 logger = get_logger("scraper")
 
 def scraper_ippc_int(url, sobrenombre):
     driver = initialize_driver()
-    
+    total_scraped_links = 0
+    scraped_urls = []
+    non_scraped_urls = []
+
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
@@ -32,8 +38,6 @@ def scraper_ippc_int(url, sobrenombre):
         try:
 
             collection, fs = connect_to_mongo()
-
-            main_folder = generate_directory(sobrenombre)
 
             keywords = load_keywords("plants.txt")
             if not keywords:
@@ -63,20 +67,16 @@ def scraper_ippc_int(url, sobrenombre):
                 logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
-                scraping_failed = True
                 continue
-            keyword_folder = generate_directory(keyword, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
 
-            content_accumulated = ""
+
             while True:
                 try:
                     WebDriverWait(driver, 60).until(
                         EC.presence_of_element_located((By.ID, "publications"))
                     )
                     logger.info("Resultados encontrados en la página.")
-
-                    soup = BeautifulSoup(driver.page_source, "html.parser")
+                    
                     try:
                         items = WebDriverWait(driver, 10).until(
                             EC.presence_of_all_elements_located(
@@ -91,8 +91,6 @@ def scraper_ippc_int(url, sobrenombre):
                     if items:
                         logger.info(f"Item encontrados {len(items)} resultados.")
                         for item in items:
-                            # href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
-
                             try:
                                 href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
                             except NoSuchElementException:
@@ -110,13 +108,45 @@ def scraper_ippc_int(url, sobrenombre):
                                     body_text = extract_text_from_pdf(href)
 
                                 if body_text:
-                                    content_accumulated += f"URL:{href} \n\n\n{body_text}"
-                                    content_accumulated += "-" * 100 + "\n\n"
+                                    object_id = fs.put(
+                                        body_text.encode("utf-8"),
+                                        source_url=href,
+                                        scraping_date=datetime.now(),
+                                        Etiquetas=["planta", "plaga"],
+                                        contenido=body_text,
+                                        url=url
+                                    )
+                                    total_scraped_links += 1
+                                    scraped_urls.append(href)
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                                    print(f"Página procesada y guardada: {href}")
-                                    # print(f"info guardada: {body_text}")
+                                    collection.insert_one(
+                                        {
+                                            "_id": object_id,
+                                            "source_url": href,
+                                            "scraping_date": datetime.now(),
+                                            "Etiquetas": ["planta", "plaga"],
+                                            "url": url,
+                                        }
+                                    )
+
+                                    existing_versions = list(
+                                        collection.find({"source_url": href}).sort(
+                                            "scraping_date", -1
+                                        )
+                                    )
+
+                                    if len(existing_versions) > 1:
+                                        oldest_version = existing_versions[-1]
+                                        fs.delete(ObjectId(oldest_version["_id"]))
+                                        collection.delete_one(
+                                            {"_id": ObjectId(oldest_version["_id"])}
+                                        )
+                                        logger.info(
+                                            f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
+                                        )
                                 else:
-                                    print("No se encontró contenido en la página.")
+                                    non_scraped_urls.append(href)
                                     
                                 driver.back()
                                 WebDriverWait(driver, 60).until(
@@ -133,21 +163,22 @@ def scraper_ippc_int(url, sobrenombre):
                     try:
                         logger.info("Buscando botón para la siguiente página.")
                         next_page_button = driver.find_element(
-                            By.CSS_SELECTOR,
-                            "doaj-pager-next.doaj-pager-next-bottom-pager",
+                            By.ID,
+                            "publications_next",
                         )
-                        next_page_link = next_page_button.get_attribute("href")
 
-                        if next_page_link:
-                            logger.info(
-                                f"Yendo a la siguiente página: {next_page_link}"
-                            )
-                            driver.get(next_page_link)
-                        else:
+                        # Verificar si tiene la clase "disabled"
+                        if "disabled" in next_page_button.get_attribute("class"):
                             logger.info(
                                 "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
                             )
                             break
+                        else:
+                            logger.info(
+                                f"Yendo a la siguiente página"
+                            )
+                            next_page_button.click()
+
                     except NoSuchElementException:
                         logger.info(
                             "No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave."
@@ -160,72 +191,19 @@ def scraper_ippc_int(url, sobrenombre):
                     )
                     break
                     
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
-
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
-                )
-
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
 
 
-        if scraping_failed:
-            return Response(
-                {
-                    "message": "Error durante el scraping. Algunas URLs fallaron.",
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        else:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
 
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-
-            return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+    
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(
