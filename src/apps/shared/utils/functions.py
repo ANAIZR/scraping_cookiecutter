@@ -249,8 +249,8 @@ def save_scraper_data(all_scraper, url, sobrenombre):
         response_data = {
                 "Tipo": "WEB",
                 "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
+                "Fecha_scraper": datetime.now(),
+                "Etiquetas": ["planta", "plaga"],
                 "Mensaje": "Los datos han sido scrapeados correctamente.",
             }
         logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
