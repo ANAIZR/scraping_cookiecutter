@@ -17,7 +17,7 @@ import chardet
 def scraper_aphidnet(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("APHIDNET")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     
     total_urls_found = 0
     total_urls_scraped = 0

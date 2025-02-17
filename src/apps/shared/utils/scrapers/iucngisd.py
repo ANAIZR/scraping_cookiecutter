@@ -10,8 +10,10 @@ from rest_framework.response import Response
 from rest_framework import status
 import time
 import requests
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
@@ -19,8 +21,7 @@ from ..functions import (
 
 lock = Lock()
 
-
-def fetch_content(href, logger, scraped_count, failed_hrefs):
+def fetch_content(href, logger, scraped_count, failed_hrefs, collection, fs, url):
     try:
         response = requests.get(href, timeout=10)
         logger.info(f"Accediendo al enlace: {href}")
@@ -35,7 +36,39 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
             )
             with lock:
                 scraped_count[0] += 1
-            return f"URL: {href}\n{content_text}"
+
+            object_id = fs.put(
+                content_text.encode("utf-8"),
+                source_url=href,
+                scraping_date=datetime.now(),
+                Etiquetas=["planta", "plaga"],
+                contenido=content_text,
+                url=url
+            )
+            
+            collection.insert_one(
+                {
+                    "_id": object_id,
+                    "source_url": href,
+                    "scraping_date": datetime.now(),
+                    "Etiquetas": ["planta", "plaga"],
+                    "url": url,
+                }
+            )
+            
+            existing_versions = list(
+                collection.find({"source_url": href}).sort("scraping_date", -1)
+            )
+            
+            if len(existing_versions) > 1:
+                oldest_version = existing_versions[-1]
+                fs.delete(ObjectId(oldest_version["_id"]))
+                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                logger.info(
+                    f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
+                )
+            
+            return href
         else:
             logger.warning(f"No se encontró contenido interno en la página: {href}")
             failed_hrefs.append(href)
@@ -45,7 +78,6 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
         failed_hrefs.append(href)
         return None
 
-
 def scraper_iucngisd(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
@@ -53,6 +85,7 @@ def scraper_iucngisd(url, sobrenombre):
     all_scraper = ""
     scraped_count = [0]
     failed_hrefs = []
+    scraped_urls = []
 
     try:
         driver = initialize_driver()
@@ -91,32 +124,23 @@ def scraper_iucngisd(url, sobrenombre):
             results = list(
                 executor.map(
                     lambda href: fetch_content(
-                        href, logger, scraped_count, failed_hrefs
+                        href, logger, scraped_count, failed_hrefs, collection, fs, url
                     ),
                     hrefs,
                 )
             )
 
-        for content in results:
-            if content:
-                all_scraper += content + "\n\n"
-        if not all_scraper.strip():
-            logger.error(
-                "No se pudo obtener contenido de los enlaces. Proceso terminado con errores."
-            )
-            return Response(
-                {
-                    "error": "No se pudo obtener contenido de los enlaces. Revisa los logs para más detalles."
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        scraped_urls = [res for res in results if res]
 
-        logger.info(f"Enlaces encontrados: {len(hrefs)}")
-        logger.info(f"Enlaces scrapeados exitosamente: {scraped_count[0]}")
-        logger.info(f"Enlaces fallidos: {len(failed_hrefs)}")
-        logger.info(f"HREFs fallidos: {failed_hrefs}")
+        all_scraper += (
+            f"Total enlaces encontrados: {len(hrefs)}\n"
+            f"Total enlaces scrapeados exitosamente: {scraped_count[0]}\n"
+            f"Enlaces scrapeados:\n" + "\n".join(scraped_urls) + "\n"
+            f"Total enlaces fallidos: {len(failed_hrefs)}\n"
+            f"Enlaces fallidos:\n" + "\n".join(failed_hrefs) + "\n"
+        )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:

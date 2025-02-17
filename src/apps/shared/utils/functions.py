@@ -7,6 +7,7 @@ import undetected_chromedriver as uc
 import time
 from pymongo import MongoClient
 import gridfs
+from bson import ObjectId
 import requests
 import PyPDF2
 from io import BytesIO
@@ -331,57 +332,65 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
+
+
 def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
-        folder_path = generate_directory(sobrenombre, OUTPUT_DIR)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+        content_text = all_scraper.strip()
 
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(all_scraper)
+        if not content_text:
+            logger.warning("El contenido está vacío, no se guardará en MongoDB.")
+            return {"error": "El contenido del scraper está vacío."}
 
-        with open(file_path, "rb") as file_data:
-            file_content = file_data.read()  
-        object_id = fs.put(file_content, 
-                           filename=os.path.basename(file_path), 
-                           metadata={
-                               "url": url,
-                               "sobrenombre": sobrenombre,
-                               "fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                               "content": all_scraper  
-                           })
+        object_id = fs.put(
+            content_text.encode("utf-8"),
+            source_url=url,
+            scraping_date=datetime.now(),
+            Etiquetas=["planta", "plaga"],
+            contenido=content_text,  # Se agrega el contenido
+            url=url
+        )
 
-        logger.info(f"Archivo subido a MongoDB con ObjectId: {object_id}")
+        logger.info(f"Archivo almacenado en MongoDB con ObjectId: {object_id}")
 
-        if not object_id:
-            raise Exception("Error al guardar el archivo en GridFS, ObjectID no generado.")
-        data = {
-                "Objeto": object_id,
-                "Tipo": "Documento",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            
-        collection.insert_one(data)
-        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+        collection.insert_one({
+            "_id": object_id,
+            "source_url": url,
+            "scraping_date": datetime.now(),
+            "Etiquetas": ["planta", "plaga"],
+            "contenido": content_text,  # Se almacena el contenido en la base de datos
+            "url": url,
+        })
 
-        delete_old_documents(url, collection, fs)
+        existing_versions = list(
+            collection.find({"source_url": url}).sort("scraping_date", -1)
+        )
+
+        if len(existing_versions) > 1:
+            oldest_version = existing_versions[-1]
+            fs.delete(ObjectId(oldest_version["_id"]))
+            collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+            logger.info(
+                f"Se eliminó la versión más antigua con este enlace: '{url}' y ObjectId: {oldest_version['_id']}'"
+            )
 
         response_data = {
-                "Tipo": "Documento",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
+            "Tipo": "Documento",
+            "Url": url,
+            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Etiquetas": ["planta", "plaga"],
+            "Contenido": content_text,  # Se devuelve el contenido en la respuesta
+            "Mensaje": "Los datos han sido scrapeados y guardados correctamente en MongoDB.",
+        }
 
-
+        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
         return response_data
+
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         return {"error": f"Error al guardar datos del scraper: {str(e)}"}
+
 
 def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
