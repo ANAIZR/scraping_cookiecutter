@@ -1,33 +1,32 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
 import time
-import random
-import traceback
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
 )
-
+import random
+from datetime import datetime
+from bson import ObjectId
+from urllib.parse import urljoin
 
 def scraper_ala_org(url, sobrenombre):
     logger = get_logger("ALA_ORG")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
+    total_links_found = 0
+    total_scraped_successfully = 0
+    total_failed_scrapes = 0
     all_scraper = ""
+    scraped_urls = []
 
     try:
-        start_time = time.time() 
-
         driver.get(url)
-        logger.info(" Página cargada correctamente.")
-
-        page_number = 1 
-        total_links = 0  
+        logger.info("Página cargada correctamente.")
 
         try:
             button = WebDriverWait(driver, 30).until(
@@ -39,10 +38,9 @@ def scraper_ala_org(url, sobrenombre):
         except Exception as e:
             logger.error(f"No se pudo hacer clic en el botón de búsqueda: {e}")
             return {"error": "No se encontró el botón de búsqueda"}
-
+        object_ids = []
+        failed_urls = []
         while True:
-            logger.info(f" Procesando página {page_number} de resultados...")
-
             try:
                 WebDriverWait(driver, 30).until(
                     EC.presence_of_all_elements_located((By.CSS_SELECTOR, "ol li.search-result"))
@@ -52,69 +50,94 @@ def scraper_ala_org(url, sobrenombre):
 
                 if not lis:
                     logger.warning("No se encontraron resultados en la búsqueda.")
-                    break 
+                    break  
+                total_links_found += len(lis)
 
-                logger.info(f"Se encontraron {len(lis)} resultados en la página {page_number}.")
-
-                for index, li in enumerate(lis, start=1):
+                for li in lis:
                     try:
                         a_tag = li.find_element(By.CSS_SELECTOR, "a")
                         href = a_tag.get_attribute("href")
+                        
+                        if href:
+                            href = urljoin(url, href)  
+                            scraped_urls.append(href)
+                            logger.info(f"Accediendo a {href}")
 
-                        if not href:
-                            logger.warning(f"El resultado {index} no tiene enlace. Omitiendo...")
-                            continue
+                            try:
+                                driver.execute_script("arguments[0].click();", a_tag) 
+                                WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "section.container-fluid"))
+                                )
+                                time.sleep(random.randint(2, 4))
+                            except Exception as e:
+                                logger.warning(f"No se pudo hacer clic en {href}: {e}")
+                                total_failed_scrapes += 1
+                                failed_urls.append(href)
+                                continue  
 
-                        if href.startswith("/"):
-                            href = url + href[1:]
+                            try:
+                                content = driver.find_element(By.CSS_SELECTOR, "section.container-fluid")
+                                if content:
+                                    content_text = content.text.strip()
+                                    
+                                    object_id = fs.put(
+                                        content_text.encode("utf-8"),
+                                        source_url=href,
+                                        scraping_date=datetime.now(),
+                                        Etiquetas=["planta", "plaga"],
+                                        contenido=content_text,
+                                        url=url
+                                    )
+                                    object_ids.append(object_id)
+                                    total_scraped_successfully += 1
 
-                        logger.info(f"Accediendo a {href}")
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                        total_links += 1  
+                                    collection.insert_one(
+                                        {
+                                            "_id": object_id,
+                                            "source_url": href,
+                                            "scraping_date": datetime.now(),
+                                            "Etiquetas": ["planta", "plaga"],
+                                            "url": url,
+                                        }
+                                    )
 
-                        try:
-                            ActionChains(driver).move_to_element(a_tag).click().perform()
-                            WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "section.container-fluid"))
-                            )
-                            logger.info(f"Página de detalles cargada: {href}")
-                        except Exception as e:
-                            logger.warning(f"No se pudo hacer clic en {href}: {e}")
-                            continue  
+                                    existing_versions = list(
+                                        collection.find({"source_url": href}).sort("scraping_date", -1)
+                                    )
 
-                        try:
-                            content = driver.find_element(By.CSS_SELECTOR, "section.container-fluid")
-                            if content.text.strip():
-                                all_scraper += f"URL: {href}\n{content.text.strip()}\n\n"
-                                logger.info(f"Contenido extraído de {href}.")
-                            else:
-                                logger.warning(f"Página {href} no tiene contenido útil.")
-                        except Exception as e:
-                            logger.warning(f"No se pudo extraer contenido de {href}: {e}")
+                                    if len(existing_versions) > 2:
+                                        oldest_version = existing_versions[-1]
+                                        fs.delete(ObjectId(oldest_version["_id"]))
+                                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])});
+                                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}'")
+                                    
+                                    logger.info(f"Contenido extraído de {href}.")
+                            except Exception as e:
+                                logger.warning(f"No se pudo extraer contenido de {href}: {e}")
+                                total_failed_scrapes += 1
+                                failed_urls.append(href)
 
-                        try:
-                            driver.back()
-                            time.sleep(random.randint(2, 4))
-                            logger.info(f"Regresando a la página {page_number} de resultados.")
-                        except Exception as e:
-                            logger.warning(f"No se pudo regresar a la página de resultados, recargando URL: {url}")
-                            driver.get(url)
-                            time.sleep(random.randint(2, 4))
+                            try:
+                                driver.back()
+                                time.sleep(random.randint(2, 4))
+                            except Exception as e:
+                                logger.warning(f"No se pudo regresar a la página de resultados, recargando URL: {url}")
+                                driver.get(url)
+                                time.sleep(random.randint(2, 4))
 
                     except Exception as e:
                         logger.warning(f"Error al procesar un resultado de búsqueda: {e}")
-                        logger.error(traceback.format_exc())
-                        continue
+                        total_failed_scrapes += 1
 
                 try:
                     next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
                     next_page_url = next_page_btn.get_attribute("href")
-
                     if next_page_url:
-                        logger.info(f"➡ Navegando a la siguiente página: {next_page_url}")
+                        logger.info(f"Navegando a la siguiente página: {next_page_url}")
                         driver.get(next_page_url)
                         time.sleep(3)
-                        page_number += 1  # Incrementar contador de páginas procesadas
                     else:
                         logger.info("No hay más páginas de resultados.")
                         break
@@ -124,27 +147,18 @@ def scraper_ala_org(url, sobrenombre):
 
             except Exception as e:
                 logger.error(f"Error al cargar los resultados: {e}")
-                with open("error_page.html", "w", encoding="utf-8") as f:
-                    f.write(driver.page_source)
-                logger.info("Se guardó el HTML de la página con error como 'error_page.html'.")
                 break
+        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        if not all_scraper.strip():
-            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
-            return {"status": "no_content", "url": url, "message": "No se encontraron datos para scrapear."}
-
-        end_time = time.time()  
-        elapsed_time = round(end_time - start_time, 2)
-        logger.info(f"Scraping completado en {elapsed_time} segundos.")
-        logger.info(f"Total de páginas procesadas: {page_number}")
-        logger.info(f"Total de enlaces procesados: {total_links}")
-
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
         logger.error(f"Error general durante el scraping: {str(e)}")
-        logger.error(traceback.format_exc())
         return {"error": str(e)}
 
     finally:

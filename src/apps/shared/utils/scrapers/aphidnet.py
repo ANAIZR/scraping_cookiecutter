@@ -2,29 +2,34 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from django.http import JsonResponse
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import chardet
 
-
-def scraper_aphidnet(url=None, wait_time=None, sobrenombre="APHIDNET"):
+def scraper_aphidnet(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("APHIDNET")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
-    all_scraper = ""
+    collection, fs = connect_to_mongo()
+    
     total_urls_found = 0
     total_urls_scraped = 0
+    total_failed_scrapes = 0
     urls_not_scraped = []
+    urls_scraped = []
     visited_urls = set()
     urls_to_scrape = []
     max_depth = 3
 
     def scrape_page(current_url, current_depth):
-        nonlocal total_urls_found, total_urls_scraped, all_scraper
+        nonlocal total_urls_found, total_urls_scraped, total_failed_scrapes
         content_text = ""
         portfolio_text = ""
 
@@ -32,57 +37,94 @@ def scraper_aphidnet(url=None, wait_time=None, sobrenombre="APHIDNET"):
             return []
 
         if not current_url.startswith(url):
-            print(f"URL fuera del dominio permitido: {current_url}")
             return []
 
         visited_urls.add(current_url)
         try:
-            response = requests.get(current_url, headers=headers)
+            response = requests.get(current_url, headers=headers, stream=True, timeout=10)
             response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
+            
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "pdf" in content_type:
+                content_text = extract_text_from_pdf(current_url)
+            else:
+                detected_encoding = chardet.detect(response.content)["encoding"]
+                if detected_encoding:
+                    response.encoding = detected_encoding
+                
+                soup = BeautifulSoup(response.text, "html.parser")
+                content_section = soup.find("section", id="content")
+                portfolio_section = soup.find("section", class_="portfolio")
 
-            content_section = soup.find("section", id="content")
-            portfolio_section = soup.find("section", class_="portfolio")
+                if content_section:
+                    content_text = content_section.get_text(strip=True)
+                if portfolio_section:
+                    portfolio_text = portfolio_section.get_text(strip=True)
 
-            if content_section:
-                content_text = content_section.get_text(strip=True)
-            if portfolio_section:
-                portfolio_text = portfolio_section.get_text(strip=True)
-
-            if content_text or portfolio_text:
-                all_scraper += f"URL: {current_url}\n\n"
-                all_scraper += f"\nContenido principal':\n{content_text}\n"
-                all_scraper += f"\nContenido secundario':\n{portfolio_text}\n"
-                all_scraper += "-" * 80 + "\n\n"
+            full_content = f"{content_text}\n{portfolio_text}".strip()
+            
+            if full_content:
+                object_id = fs.put(
+                    full_content.encode("utf-8"),
+                    source_url=current_url,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=full_content,
+                    url=url
+                )
                 total_urls_scraped += 1
+                urls_scraped.append(current_url)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-            links = soup.find_all("a", href=True)
+                collection.insert_one(
+                    {
+                        "_id": object_id,
+                        "source_url": current_url,
+                        "scraping_date": datetime.now(),
+                        "Etiquetas": ["planta", "plaga"],
+                        "url": url,
+                    }
+                )
+
+                existing_versions = list(
+                    collection.find({"source_url": current_url}).sort(
+                        "scraping_date", -1
+                    )
+                )
+
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(ObjectId(oldest_version["_id"]))
+                    collection.delete_one(
+                        {"_id": ObjectId(oldest_version["_id"])}
+                    )
+                    logger.info(
+                        f"Se eliminó la versión más antigua con este enlace: '{current_url}' y object_id: {oldest_version['_id']}"
+                    )
+            else:
+                urls_not_scraped.append(current_url)
+                total_failed_scrapes += 1
+
+            links = soup.find_all("a", href=True) if "html" in content_type else []
             extracted_links = []
             for link in links:
                 href = link["href"]
-
                 full_url = urljoin(current_url, href)
 
                 if href == "#" or not href or href.startswith("#"):
                     continue
                 if not full_url.startswith(url):
                     continue
-                if (
-                    full_url.endswith(".pdf")
-                    or full_url.endswith(".jpg")
-                    or full_url.endswith(".png")
-                    or full_url.endswith(".gif")
-                    or "images.bugwood.org" in full_url
-                ):
+                if full_url.endswith(".jpg") or "credits" in full_url or "glossary" in full_url:
                     continue
                 extracted_links.append((full_url, current_depth + 1))
-                total_urls_found += len(extracted_links)
+                total_urls_found += 1
 
             return extracted_links
 
         except requests.RequestException as e:
-            print(f"Error al procesar la URL: {current_url}, error: {str(e)}")
             urls_not_scraped.append(current_url)
+            total_failed_scrapes += 1
             return []
 
     def scrape_pages_in_parallel(url_list):
@@ -114,15 +156,16 @@ def scraper_aphidnet(url=None, wait_time=None, sobrenombre="APHIDNET"):
             f"Resumen del scraping:\n"
             f"Total de URLs encontradas: {total_urls_found}\n"
             f"Total de URLs scrapeadas: {total_urls_scraped}\n"
-            f"Total de URLs no scrapeadas: {len(urls_not_scraped)}\n\n"
-            f"{'-'*80}\n\n"
-        ) + all_scraper
+            f"Total de URLs fallidas: {total_failed_scrapes}\n\n"
+        )
 
+        if urls_scraped:
+            all_scraper += "URLs scrapeadas:\n" + "\n".join(urls_scraped) + "\n\n"
+        
         if urls_not_scraped:
-            all_scraper += "URLs no scrapeadas:\n\n"
-            all_scraper += "\n".join(urls_not_scraped) + "\n"
+            all_scraper += "URLs fallidas:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
     except requests.RequestException as e:
         return JsonResponse(

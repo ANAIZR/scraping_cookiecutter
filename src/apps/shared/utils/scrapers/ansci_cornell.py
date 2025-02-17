@@ -1,7 +1,10 @@
+import time
+from datetime import datetime
+from bson import ObjectId
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException
 from ..functions import (
     initialize_driver,
     connect_to_mongo,
@@ -10,7 +13,6 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-import time
 
 def scraper_ansci_cornell(url, sobrenombre):
     logger = get_logger("ANSCI_CORNELL")
@@ -18,119 +20,129 @@ def scraper_ansci_cornell(url, sobrenombre):
 
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
-    all_scraper = ""
-    visited_urls = set()  
-
+    
+    total_links_found = 0
+    total_scraped_successfully = 0
+    total_failed_scrapes = 0
+    
+    all_scraper = "URLs encontradas:\n"
+    failed_urls = []
+    
     try:
         driver.get(url)
 
-        search_li = WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
-            )
-        )
-
-        links = search_li.find_elements(By.TAG_NAME, "a")
-        if len(links) < 2:
-            logger.error("No hay suficientes enlaces dentro del li[3].")
-            return Response({"message": "No hay suficientes enlaces en el menú"},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        driver.execute_script("arguments[0].click();", links[0])
+        try:
+            search_button = WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "#section-navigation li:nth-of-type(3)")
+                )
+            ).find_elements(By.TAG_NAME, "a")[1]
+            driver.execute_script("arguments[0].click();", search_button)
+        except Exception as e:
+            logger.error(f"No se encontró el botón de búsqueda: {str(e)}")
+            return Response({"message": "No se encontró el botón de búsqueda."}, status=status.HTTP_400_BAD_REQUEST)
 
         target_divs = WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
             )
         )
-        num_divs = len(target_divs)
 
-        for div_index in range(num_divs):
-            for retry in range(3):  
-                try:
-                    target_divs = WebDriverWait(driver, 30).until(
-                        EC.presence_of_all_elements_located(
-                            (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
-                        )
-                    )
-                    target_div = target_divs[div_index]
+        if not target_divs:
+            logger.warning("No se encontraron secciones de enlaces.")
+            return Response({"message": "No se encontraron secciones de enlaces en la página."}, status=status.HTTP_204_NO_CONTENT)
 
-                    links = target_div.find_elements(By.TAG_NAME, "a")
+        for target_div in target_divs:
+            links = target_div.find_elements(By.TAG_NAME, "a")
+            total_links_found += len(links)
 
-                    link_index = 0
-                    while link_index < len(links):  
-                        try:
-                            links = target_div.find_elements(By.TAG_NAME, "a") 
-                            link = links[link_index]
-                            link_href = link.get_attribute("href")
+            for index, link in enumerate(links):
+                retry = 3 
+                while retry > 0:
+                    try:
+                        links = target_div.find_elements(By.TAG_NAME, "a")
+                        link = links[index]
+                        link_href = link.get_attribute("href")
 
-                            if not link_href or link_href in visited_urls:
-                                link_index += 1
-                                continue  
+                        if not link_href:
+                            break  
 
-                            visited_urls.add(link_href)  
-                            driver.get(link_href)
+                        driver.get(link_href)
+                        content_text = extract_content(driver, link_href, logger)
 
-                            page_body = WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "#pagebody"))
+                        if content_text:
+                            object_id = fs.put(
+                                content_text.encode("utf-8"),
+                                source_url=link_href,
+                                scraping_date=datetime.now(),
+                                Etiquetas=["planta", "plaga"],
+                                contenido=content_text,
+                                url=url
+                            )
+                            total_scraped_successfully += 1
+
+                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                            collection.insert_one(
+                                {
+                                    "_id": object_id,
+                                    "source_url": link_href,
+                                    "scraping_date": datetime.now(),
+                                    "Etiquetas": ["planta", "plaga"],
+                                    "url": url,
+                                }
                             )
 
-                            p_tags = page_body.find_elements(By.TAG_NAME, "p")[:5]
-                            paragraph_text = "\n".join([p.text for p in p_tags])
-                            all_scraper += f"URL: {link_href}\n{paragraph_text}\n"
-
-                            nested_links = page_body.find_elements(By.TAG_NAME, "a")
-                            for nested_link in nested_links:
-                                nested_href = nested_link.get_attribute("href")
-
-                                if nested_href and nested_href not in visited_urls:
-                                    visited_urls.add(nested_href)  
-                                    driver.get(nested_href)
-
-                                    nested_page_body = WebDriverWait(driver, 30).until(
-                                        EC.presence_of_element_located((By.CSS_SELECTOR, "#pagebody"))
-                                    )
-                                    nested_p_tags = nested_page_body.find_elements(By.TAG_NAME, "p")[:5]
-                                    nested_paragraph_text = "\n".join([p.text for p in nested_p_tags])
-
-                                    all_scraper += f"URL: {nested_href}\n{nested_paragraph_text}\n"
-
-                                    driver.back()
-
-                            driver.back()
-
-                            target_divs = WebDriverWait(driver, 30).until(
-                                EC.presence_of_all_elements_located(
-                                    (By.CSS_SELECTOR, "#pagebody div[style*='float: left; width:32%;']")
+                            existing_versions = list(
+                                collection.find({"source_url": link_href}).sort(
+                                    "scraping_date", -1
                                 )
                             )
-                            target_div = target_divs[div_index]
-                            links = target_div.find_elements(By.TAG_NAME, "a")  
 
-                            link_index += 1 
-                        except Exception as e:
-                            logger.error(f"Error inesperado procesando el enlace {link_index + 1}: {str(e)}")
-                            driver.back()
-                            continue
+                            if len(existing_versions) > 2:
+                                oldest_version = existing_versions[-1]
+                                fs.delete(ObjectId(oldest_version["_id"]))
+                                collection.delete_one(
+                                    {"_id": ObjectId(oldest_version["_id"])}
+                                )
+                                logger.info(
+                                    f"Se eliminó la versión más antigua con este enlace: '{link_href}' y object_id: {oldest_version['_id']}"
+                                )
+                        else:
+                            failed_urls.append(link_href)
+                            total_failed_scrapes += 1
+                        
+                        driver.back()
+                        break 
 
-                    break  
-                except StaleElementReferenceException:
-                    logger.warning(f"Se encontró un 'stale element'. Reintentando ({retry + 1}/3)...")
-                    time.sleep(2)
-                except Exception as e:
-                    logger.error(f"Error inesperado durante el scraping: {str(e)}")
-                    raise e
+                    except StaleElementReferenceException:
+                        logger.warning(f"Elemento obsoleto en intento {4 - retry}, reintentando...")
+                        retry -= 1
+                        time.sleep(1)  
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        all_scraper += f"\nTotal enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "\nURLs fallidas:\n" + "\n".join(failed_urls)
+
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
-        return Response(
-            {"message": f"Error: {e}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return Response({"message": f"Error: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     finally:
         driver.quit()
-        logger.info("Navegador cerrado")
 
+def extract_content(driver, link_href, logger):
+    content = ""
+    try:
+        page_body = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#mainContent #pagebody #main"))
+        )
+        p_tags = page_body.find_elements(By.TAG_NAME, "p")[:5]
+        for p in p_tags:
+            content += f"{p.text}\n"
+    except Exception as e:
+        logger.warning(f"No se encontró contenido en {link_href}: {str(e)}")
+    return content

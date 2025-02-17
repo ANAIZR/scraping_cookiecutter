@@ -2,7 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
-import time
+from datetime import datetime
+from bson import ObjectId
 from ..functions import get_logger, connect_to_mongo, process_scraper_data
 
 
@@ -10,10 +11,15 @@ def scraper_gene_affrc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
+
     all_scraper = ""
+    scraped_urls = []
+    total_scraped_links = 0
 
     def fetch_url(record_id):
-        base_detail_url = "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_detail_en.php"
+        base_detail_url = (
+            "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_detail_en.php"
+        )
         detail_url = f"{base_detail_url}?id={record_id}"
         try:
             response = requests.get(detail_url, timeout=random.uniform(3, 7))
@@ -23,7 +29,7 @@ def scraper_gene_affrc(url, sobrenombre):
                 logger.info(f"URL válida encontrada: {detail_url}")
                 return detail_url
             else:
-                logger.warning(f"Página {detail_url} no contiene datos relevantes.")
+                logger.info(f"Página {detail_url} no contiene datos relevantes.")
         except requests.RequestException as e:
             logger.error(f"Error al acceder a {detail_url}: {e}")
         return None
@@ -44,9 +50,47 @@ def scraper_gene_affrc(url, sobrenombre):
                         extracted_data += " ".join(header.text.strip() for header in headers) + ": "
                     extracted_data += " ".join(cell.text.strip() for cell in cells) + "\n"
             else:
-                logger.warning(f"⚠ No se encontró tabla en {link}")
+                logger.info(f"No se encontró tabla en {link}")
 
             extracted_data += f"URL: {link}\n"
+
+            if extracted_data.strip():
+                object_id = fs.put(
+                    extracted_data.encode("utf-8"),
+                    source_url=link,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=extracted_data,
+                    url=url
+                )
+
+                collection.insert_one(
+                    {
+                        "_id": object_id,
+                        "source_url": link,
+                        "scraping_date": datetime.now(),
+                        "Etiquetas": ["planta", "plaga"],
+                        "url": url,
+                    }
+                )
+
+                scraped_urls.append(link)
+                global total_scraped_links
+                total_scraped_links += 1
+
+                existing_versions = list(
+                    collection.find({"source_url": link}).sort("scraping_date", -1)
+                )
+
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(ObjectId(oldest_version["_id"]))
+                    collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+
+                    logger.info(
+                        f"Se eliminó la versión más antigua con este enlace: '{link}' y object_id: {oldest_version['_id']}"
+                    )
+
             return extracted_data
 
         except requests.RequestException as e:
@@ -54,50 +98,36 @@ def scraper_gene_affrc(url, sobrenombre):
             return ""
 
     try:
-        start_time = time.time()  
-
         start_id = 1
         max_attempts = 15000
-        logger.info(f"Generando y verificando URLs desde {start_id} hasta {start_id + max_attempts - 1}.")
+        logger.info(f"Generando URLs desde {start_id} hasta {start_id + max_attempts - 1}.")
 
         all_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [executor.submit(fetch_url, record_id) for record_id in range(start_id, start_id + max_attempts)]
-            for i, future in enumerate(as_completed(futures), start=1):
+            for future in as_completed(futures):
                 result = future.result()
                 if result:
                     all_links.append(result)
-                if i % 100 == 0:
-                    logger.info(f"Progreso: {i}/{max_attempts} URLs verificadas.")
 
         logger.info(f"Total de enlaces válidos encontrados: {len(all_links)}")
 
-        if not all_links:
-            logger.warning("No se encontraron enlaces válidos. Finalizando proceso.")
-            return
-
-        processed_count = 0
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [executor.submit(process_link, link) for link in all_links]
             for future in as_completed(futures):
-                all_scraper += future.result()
-                all_scraper += "**************************\n"
-                processed_count += 1
-                if processed_count % 50 == 0:
-                    logger.info(f"Progreso: {processed_count}/{len(all_links)} enlaces procesados.")
+                future.result()
 
-        summary = f"Total URLs procesadas: {processed_count}/{len(all_links)}\n"
-        logger.info(summary)
-        all_scraper += summary
+        all_scraper = (
+            f"Total URLs generadas: {max_attempts}\n"
+            f"Total URLs válidas encontradas: {len(all_links)}\n"
+            f"Total URLs scrapeadas y almacenadas: {total_scraped_links}\n\n"
+            "Lista de URLs scrapeadas:\n"
+            + "\n".join(scraped_urls)
+        )
 
-        end_time = time.time() 
-        elapsed_time = round(end_time - start_time, 2)
-        logger.info(f"Scraping completado en {elapsed_time} segundos.")
-
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
         logger.error(f"Ocurrió un error durante el scraping: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        return None

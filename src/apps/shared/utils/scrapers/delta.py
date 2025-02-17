@@ -10,7 +10,8 @@ from ..functions import (
     get_logger,
     initialize_driver,
 )
-
+from datetime import datetime
+from bson import ObjectId
 
 def scraper_delta(url, sobrenombre):
     logger = get_logger("scraper")
@@ -20,6 +21,8 @@ def scraper_delta(url, sobrenombre):
     all_scraper = ""
     processed_links = set()
     base_url = "https://www.delta-intkey.com/"
+    scraped_urls = []
+    non_scraped_urls = []
 
     total_enlaces_encontrados = 0
     total_enlaces_scrapeados = 0
@@ -32,112 +35,174 @@ def scraper_delta(url, sobrenombre):
                 EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
             )
             if body:
-                print("Elemento body encontrado")
                 elementos_p = body.find_elements(By.CSS_SELECTOR, "p")
-                enlaces_disponibles = False  # Bandera para detener el bucle
-
+                enlaces_disponibles = False  
                 for p in elementos_p:
                     try:
-                        enlace = p.find_element(By.CSS_SELECTOR, "a")
-                        if enlace:
-                            href = enlace.get_attribute("href")
-                            if (
-                                href
-                                and href.startswith(f"{base_url}")
-                                and href not in processed_links
-                            ):
-                                enlaces_disponibles = True
-                                processed_links.add(href)
-                                total_enlaces_encontrados += 1
-                                print(f"Enlace encontrado en la URL principal: {href}")
-                                driver.get(href)
+                        enlaces = p.find_elements(By.CSS_SELECTOR, "a")
+                        if enlaces:
+                            for enlace in enlaces:
+                                href = enlace.get_attribute("href")
+                                if (
+                                    href
+                                    and href.startswith(f"{base_url}")
+                                    and href not in processed_links
+                                ):
+                                    enlaces_disponibles = True
+                                    processed_links.add(href)
+                                    total_enlaces_encontrados += 1
+                                    driver.get(href)
 
-                                body_url = WebDriverWait(driver, 30).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "body")
-                                    )
-                                )
-                                if body_url:
-                                    elementos_p_url = body_url.find_elements(
-                                        By.CSS_SELECTOR, "p"
-                                    )
-                                    for p_url in elementos_p_url:
-                                        try:
-                                            enlace_url = p_url.find_element(
-                                                By.CSS_SELECTOR, "a"
+                                    try:
+                                        body_url = WebDriverWait(driver, 30).until(
+                                            EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+                                        )
+                                    except Exception as e:
+                                        non_scraped_urls.append(href)
+                                        driver.back()
+                                        continue
+
+                                    if body_url:
+                                        content_text = body_url.text.strip()
+                                        if content_text:
+                                            object_id = fs.put(
+                                                content_text.encode("utf-8"),
+                                                source_url=href,
+                                                scraping_date=datetime.now(),
+                                                Etiquetas=["planta", "plaga"],
+                                                contenido=content_text,
+                                                url=url
                                             )
-                                            if enlace_url:
-                                                href_url = enlace_url.get_attribute(
-                                                    "href"
+                                            total_enlaces_scrapeados += 1
+                                            scraped_urls.append(href)
+                                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                            collection.insert_one(
+                                                {
+                                                    "_id": object_id,
+                                                    "source_url": href,
+                                                    "scraping_date": datetime.now(),
+                                                    "Etiquetas": ["planta", "plaga"],
+                                                    "url": url,
+                                                }
+                                            )
+
+                                            existing_versions = list(
+                                                collection.find({"source_url": href}).sort(
+                                                "scraping_date", -1
                                                 )
-                                                if (
-                                                    href_url
-                                                    and href_url.startswith(
-                                                        f"{base_url}"
-                                                    )
-                                                    and href_url.endswith(".htm")
-                                                    and href_url not in processed_links
-                                                ):
-                                                    processed_links.add(href_url)
-                                                    total_enlaces_encontrados += 1
-                                                    driver.get(href_url)
+                                            )
 
-                                                    body = WebDriverWait(
-                                                        driver, 30
-                                                    ).until(
-                                                        EC.presence_of_element_located(
-                                                            (By.CSS_SELECTOR, "body")
-                                                        )
-                                                    )
-                                                    if body:
-                                                        total_enlaces_scrapeados += 1
-                                                        all_scraper += f"{href_url}\n"
-                                                        all_scraper += (
-                                                            f"{body.text}\n\n"
-                                                        )
-                                                        all_scraper += f"{'='*50}\n\n"
-                                                    driver.back()
-                                        except Exception as e:
-                                            print(f"Error al procesar sub enlace: {e}")
-                                            continue
+                                            if len(existing_versions) > 1:
+                                                oldest_version = existing_versions[-1]
+                                                fs.delete(ObjectId(oldest_version["_id"]))
+                                                collection.delete_one(
+                                                {"_id": ObjectId(oldest_version["_id"])}
+                                                )
+                                                logger.info(
+                                                f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
+                                                )
 
-                                total_enlaces_scrapeados += 1
-                                driver.back()
 
-                                body = WebDriverWait(driver, 30).until(
-                                    EC.presence_of_element_located(
-                                        (By.CSS_SELECTOR, "body")
+                                        elementos_p_url = body_url.find_elements(By.CSS_SELECTOR, "p")
+                                        for p_url in elementos_p_url:
+                                            try:
+                                                enlaces_url = p_url.find_elements(By.CSS_SELECTOR, "a")
+                                                if enlaces_url:
+                                                    for enlace_url in enlaces_url:
+                                                        href_url = enlace_url.get_attribute("href")
+                                                        if (
+                                                            href_url
+                                                            and href_url.startswith(f"{base_url}")
+                                                            and href_url.endswith(".htm")
+                                                            and href_url not in processed_links
+                                                        ):
+                                                            processed_links.add(href_url)
+                                                            total_enlaces_encontrados += 1
+                                                            driver.get(href_url)
+
+                                                            try:
+                                                                body = WebDriverWait(driver, 30).until(
+                                                                    EC.presence_of_element_located(
+                                                                        (By.CSS_SELECTOR, "body")
+                                                                    )
+                                                                )
+                                                                if body:
+                                                                    total_enlaces_scrapeados += 1
+                                                                    scraped_urls.append(href_url)
+                                                                    content_text = body.text.strip()
+                                                                    if content_text:
+                                                                        object_id = fs.put(
+                                                                            content_text.encode("utf-8"),
+                                                                            source_url=href_url,
+                                                                            scraping_date=datetime.now(),
+                                                                            Etiquetas=["planta", "plaga"],
+                                                                            contenido=content_text,
+                                                                            url=url
+                                                                        )
+                                                                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                                                        collection.insert_one(
+                                                                            {
+                                                                                "_id": object_id,
+                                                                                "source_url": href_url,
+                                                                                "scraping_date": datetime.now(),
+                                                                                "Etiquetas": ["planta", "plaga"],
+                                                                                "url": url,
+                                                                            }
+                                                                        )
+                                                                        existing_versions = list(
+                                                                            collection.find({"source_url": href_url}).sort(
+                                                                                "scraping_date", -1
+                                                                            )
+                                                                        )
+
+                                                                        if len(existing_versions) > 1:
+                                                                            oldest_version = existing_versions[-1]
+                                                                            fs.delete(ObjectId(oldest_version["_id"]))
+                                                                            collection.delete_one(
+                                                                                {"_id": ObjectId(oldest_version["_id"])}
+                                                                            )
+                                                                            logger.info(
+                                                                                f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
+                                                                            )
+
+                                                            except Exception as e:
+                                                                print(f"Error cargando {href_url}: {e}")
+                                                            driver.back()
+                                            except Exception as e:
+                                                print(f"Error al procesar sub enlace: {e}")
+                                                continue
+
+                                    driver.back()
+                                    body = WebDriverWait(driver, 30).until(
+                                        EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
                                     )
-                                )
-                                break
+                                    break
                     except StaleElementReferenceException:
-                        print("Referencia obsoleta al elemento <p>, saltando...")
                         continue
                     except Exception as e:
-                        print(f"Error al procesar enlace en <p>: {e}")
+                        non_scraped_urls.append(href)
                         continue
 
                 if not enlaces_disponibles:
                     break
 
-            else:
-                print("Elemento body no encontrado")
-                break
+        all_scraper += (
+            f"Total de enlaces encontrados: {total_enlaces_encontrados}\n"
+            f"Total de enlaces scrapeados: {total_enlaces_scrapeados}\n"
+            f"Enlaces scrapeados:\n" + "\n".join(scraped_urls) + "\n"
+            f"Enlaces no scrapeados:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
 
-        logger.info(f"Total de enlaces encontrados: {total_enlaces_encontrados}")
-        logger.info(f"Total de enlaces scrapeados: {total_enlaces_scrapeados}")
-
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
-        print(f"Error general en el proceso de scraping: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         try:
             driver.quit()
-            logger.info("Navegador cerrado")
-
         except Exception as e:
-            print(f"Error al cerrar el navegador: {e}")
+            logger.error(f"Error al cerrar el navegador: {e}")
