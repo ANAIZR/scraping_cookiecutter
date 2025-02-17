@@ -4,15 +4,18 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
+from bson import ObjectId
+from rest_framework.response import Response
+from rest_framework import status
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
 )
-from rest_framework.response import Response
-from rest_framework import status
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger("INICIANDO EL SCRAPER")
 
@@ -21,8 +24,10 @@ class ScraperState:
         self.all_scraper = ""
         self.processed_links = set()
         self.extracted_hrefs = []  
+        self.scraped_urls = []  
         self.skipped_count = 0
         self.extracted_count = 0
+        self.failed_links = []  
 
 def wait_for_element(driver, wait_time, locator):
     try:
@@ -32,6 +37,23 @@ def wait_for_element(driver, wait_time, locator):
     except TimeoutException as e:
         logger.error(f"Elemento no encontrado: {locator} - {str(e)}")
         raise
+
+def process_table_rows(driver, state):
+    rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
+    logger.info(f"{len(rows)} filas encontradas en la tabla.")
+    
+    for row in rows:
+        try:
+            link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
+            if link not in state.processed_links:
+                state.processed_links.add(link)
+                logger.info(f"Ingresando al href de la tabla: {link}")
+                driver.get(link)  
+                extract_internal_hrefs(driver, state)  
+                driver.back()  
+                wait_for_element(driver, 10, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
+        except Exception as e:
+            logger.error(f"Error procesando fila de la tabla: {str(e)}")
 
 def extract_internal_hrefs(driver, state):
     try:
@@ -47,21 +69,6 @@ def extract_internal_hrefs(driver, state):
     except Exception as e:
         logger.error(f"Error al extraer los hrefs internos: {str(e)}")
 
-def process_table_rows(driver, state):
-    rows = driver.find_elements(By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody tr")
-    logger.info(f"{len(rows)} filas encontradas en la tabla.")
-    for row in rows:
-        try:
-            link = row.find_element(By.CSS_SELECTOR, "td a").get_attribute("href")
-            if link not in state.processed_links:
-                state.processed_links.add(link)
-                logger.info(f"Ingresando al href de la tabla: {link}")
-                driver.get(link)  
-                extract_internal_hrefs(driver, state)  
-                driver.back()  
-                wait_for_element(driver, 10, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
-        except Exception as e:
-            logger.error(f"Error procesando fila de la tabla: {str(e)}")
 def get_current_page_number(driver):
     try:
         page_number_element = driver.find_element(By.CSS_SELECTOR, ".pagination .active a")
@@ -98,7 +105,7 @@ def click_next_page(driver, wait_time):
         logger.error(f"Error al intentar ir a la siguiente página: {str(e)}")
         return False
 
-def scrape_content_from_links(state):
+def scrape_content_from_links(state, collection, fs, main_url):
     def process_link(link):
         try:
             response = requests.get(link, timeout=10)
@@ -106,36 +113,72 @@ def scrape_content_from_links(state):
                 soup = BeautifulSoup(response.content, "html.parser")
                 content = soup.find("div", class_="parteesq")
                 if content:
-                    text = content.get_text(strip=True)
+                    content_text = content.get_text(strip=True)
                     logger.info(f"Contenido extraído de: {link}")
-                    return link, text, None  # Devuelve el enlace y el contenido
-                else:
-                    logger.warning(f"No se encontró contenido en: {link}")
-                    return link, None, "No se encontró contenido"
-            else:
-                logger.warning(f"Error al solicitar {link}: Status {response.status_code}")
-                return link, None, f"Status {response.status_code}"
-        except Exception as e:
-            logger.error(f"Error al procesar {link}: {str(e)}")
-            return link, None, str(e)
 
-    results = []
+                    # Guardar en MongoDB y GridFS con la URL PRINCIPAL
+                    object_id = fs.put(
+                        content_text.encode("utf-8"),
+                        source_url=link,  # URL del contenido scrapeado
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=content_text,
+                        url=main_url  # URL principal pasada en scraper_aguiar_hvr()
+                    )
+
+                    collection.insert_one(
+                        {
+                            "_id": object_id,
+                            "source_url": link,
+                            "scraping_date": datetime.now(),
+                            "Etiquetas": ["planta", "plaga"],
+                            "url": main_url,  # Guardar la URL principal
+                        }
+                    )
+                    state.scraped_urls.append(link)
+
+                    # Control de versiones: eliminar duplicados antiguos
+                    existing_versions = list(
+                        collection.find({"source_url": link}).sort("scraping_date", -1)
+                    )
+
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version["_id"]))
+                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+
+                    return link, True, None  # Éxito
+                else:
+                    return link, False, "No se encontró contenido"
+            else:
+                return link, False, f"Status {response.status_code}"
+        except Exception as e:
+            return link, False, str(e)
+
     with ThreadPoolExecutor(max_workers=4) as executor:
         future_to_link = {executor.submit(process_link, link): link for link in state.extracted_hrefs}
 
         for future in as_completed(future_to_link):
             link = future_to_link[future]
             try:
-                link, text, error = future.result()
-                if text:
-                    state.all_scraper += f"URL: {link}\nContenido: {text}\n\n"
+                link, success, error = future.result()
+                if success:
                     state.extracted_count += 1
-                elif error:
-                    logger.warning(f"Error procesando {link}: {error}")
+                else:
                     state.skipped_count += 1
+                    state.failed_links.append((link, error))
             except Exception as e:
-                logger.error(f"Error desconocido al procesar {link}: {str(e)}")
                 state.skipped_count += 1
+                state.failed_links.append((link, str(e)))
+
+    state.all_scraper = (
+        f"Total enlaces extraídos: {len(state.extracted_hrefs)}\n"
+        f"Enlaces exitosos: {state.extracted_count}\n"
+        f"Enlaces fallidos: {state.skipped_count}\n\n"
+        "Lista de enlaces fallidos:\n"
+        + "\n".join([f"{link} - Error: {error}" for link, error in state.failed_links])
+    )
 
 def scraper_aguiar_hvr(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
@@ -152,9 +195,11 @@ def scraper_aguiar_hvr(url, sobrenombre):
                 break
 
         logger.info(f"Se recolectaron {len(state.extracted_hrefs)} enlaces. Procesando contenido...")
-        scrape_content_from_links(state) 
-
-        response = process_scraper_data(state.all_scraper, url, sobrenombre, collection, fs)
+        scrape_content_from_links(state, collection, fs, url)  # 🔹 Pasamos la URL principal
+        state.all_scraper +=(
+            "\n\nLista de enlaces scrapeados:\n" + "\n".join(state.scraped_urls)
+        )
+        response = process_scraper_data_v2(state.all_scraper, url, sobrenombre)
         return response
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

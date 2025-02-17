@@ -45,3 +45,4 @@ redis
 python-dotenv
 pypdf
 pyPDF2
+chardet
