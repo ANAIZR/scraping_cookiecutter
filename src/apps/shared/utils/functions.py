@@ -238,7 +238,7 @@ def delete_old_documents(url, collection, fs, limit=2):
         raise
 
 
-def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
+def save_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
         folder_path = generate_directory(sobrenombre, OUTPUT_DIR)
@@ -246,32 +246,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
 
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(all_scraper)
-
-        with open(file_path, "rb") as file_data:
-            file_content = file_data.read()  
-        object_id = fs.put(file_content, 
-                           filename=os.path.basename(file_path), 
-                           metadata={
-                               "url": url,
-                               "sobrenombre": sobrenombre,
-                               "fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                               "content": all_scraper  
-                           })
-
-        data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "content": all_scraper,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-
-        collection.insert_one(data)
-        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
-
-        delete_old_documents(url, collection, fs)
-
         response_data = {
                 "Tipo": "WEB",
                 "Url": url,
@@ -280,8 +254,6 @@ def save_scraper_data(all_scraper, url, sobrenombre, collection, fs):
                 "Mensaje": "Los datos han sido scrapeados correctamente.",
             }
         logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
-
-
         return response_data
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
@@ -340,12 +312,12 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
         
 
 
-def process_scraper_data(all_scraper, url, sobrenombre, collection, fs):
+def process_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
         if all_scraper.strip():
             response_data = save_scraper_data(
-                all_scraper, url, sobrenombre, collection, fs
+                all_scraper, url, sobrenombre
             )
             return response_data
         else:
