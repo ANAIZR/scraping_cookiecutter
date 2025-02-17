@@ -12,15 +12,22 @@ import random
 from django.utils import timezone
 from src.apps.users.models import User
 from django.conf import settings
-
+from src.apps.users.permissions import IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 
 class UsuarioView(viewsets.ModelViewSet):
     queryset = User.all_objects.all()
+    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.request.method in ["POST", "PUT", "PATCH"]:
             return UsuarioPOSTSerializer
         return UsuarioGETSerializer
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "destroy", "partial_update"]:
+            return [IsAuthenticated(), IsAdminUser()]
+        return [IsAuthenticated()]
 
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
@@ -28,10 +35,10 @@ class UsuarioView(viewsets.ModelViewSet):
         user.deleted_at = timezone.now()
         user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
     def update(self, request, *args, **kwargs):
         user = self.get_object()
-        is_active_new = request.data.get('is_active', None)
+        is_active_new = request.data.get("is_active", None)
 
         serializer = self.get_serializer(user, data=request.data, partial=True)
         if serializer.is_valid():
