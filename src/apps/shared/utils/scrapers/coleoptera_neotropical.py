@@ -1,20 +1,22 @@
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
-import os
+import logging
+from bson import ObjectId
 from rest_framework.response import Response
 from rest_framework import status
 
 from ..functions import (
+    process_scraper_data,
     connect_to_mongo,
-    initialize_driver,
-    save_scraper_data,
-    get_logger
+    initialize_driver
 )
 
-def scraper_coleoptera_neotropical(url, sobrenombre):    
-    logger = get_logger("Inciando scraper")
+logger = logging.getLogger(__name__)
+
+def scraper_coleoptera_neotropical(url, sobrenombre):
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
 
@@ -27,26 +29,65 @@ def scraper_coleoptera_neotropical(url, sobrenombre):
         content = driver.find_element(By.CSS_SELECTOR, "body tbody")
 
         rows = content.find_elements(By.TAG_NAME, "tr")
-        total_rows = len(rows)
 
-        all_scraper = f"Total de filas encontradas: {total_rows}\n"
-
-        scrape_count = 0
+        scraped_rows = 0
+        failed_rows = 0
+        all_scraper_data = []
 
         for row in rows:
             cols = row.find_elements(By.TAG_NAME, "td")
-            row_data = [col.text.strip() for col in cols]  
-            all_scraper += ", ".join(row_data) + "\n"  # Concatenar fila al texto acumulado
-            scrape_count += 1  
+            row_data = [col.text.strip() for col in cols]
 
-        all_scraper = f"{all_scraper}Filas scrapeadas: {scrape_count}\n"
-        response_data = save_scraper_data(all_scraper,url,sobrenombre,collection,fs)
-        return response_data
+            if row_data:
+                all_scraper_data.append(", ".join(row_data))
+                scraped_rows += 1
+            else:
+                failed_rows += 1
+
+        scraped_text = "\n".join(all_scraper_data)
+
+        if scraped_text:
+            object_id = fs.put(
+            scraped_text.encode("utf-8"),
+            source_url=url,
+            scraping_date=datetime.now(),
+            Etiquetas=["planta", "plaga"],
+            contenido=scraped_text,
+            url=url
+            )
+            collection.insert_one(
+                {
+                    "_id": object_id,
+                    "source_url": url,
+                    "scraping_date": datetime.now(),
+                    "Etiquetas": ["planta", "plaga"],
+                    "contenido": scraped_text,
+                    "url": url,
+                }
+            )
+            existing_versions = list(
+            collection.find({"source_url": url}).sort("scraping_date", -1)
+            )
+            if len(existing_versions) > 1:
+                oldest_version = existing_versions[-1]
+                fs.delete(ObjectId(oldest_version["_id"]))
+                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+
+
+
+        report_text = f"Total filas encontradas: {len(rows)}\n"
+        report_text += f"Filas scrapeadas: {scraped_rows}\n"
+        report_text += f"Filas no scrapeadas: {failed_rows}\n"
+
+        logger.info(f"Contenido almacenado en MongoDB con object_id: {object_id}, filas scrapeadas: {scraped_rows}, filas fallidas: {failed_rows}")
+
+        
+        response = process_scraper_data(report_text, url, sobrenombre)
+        return response
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         driver.quit()
-        logger.info("Navegador cerrado")
-

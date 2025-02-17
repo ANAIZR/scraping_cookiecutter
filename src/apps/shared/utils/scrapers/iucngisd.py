@@ -1,4 +1,3 @@
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -10,6 +9,8 @@ from rest_framework.response import Response
 from rest_framework import status
 import time
 import requests
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -19,20 +20,54 @@ from ..functions import (
 
 lock = Lock()
 
-
-def fetch_content(href, logger, scraped_count, failed_hrefs):
+def fetch_content(href, logger, scraped_count, failed_hrefs, collection, fs, url):
     try:
         response = requests.get(href, timeout=10)
+        logger.info(f"Accediendo al enlace: {href}")
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
         inner_content = soup.find(id="inner-content")
         if inner_content:
             content_text = inner_content.get_text(strip=True)
-            
+            logger.info(
+                f"Contenido obtenido del enlace: {href}, Longitud: {len(content_text)} caracteres"
+            )
             with lock:
                 scraped_count[0] += 1
-            return f"URL: {href}\n{content_text}"
+
+            object_id = fs.put(
+                content_text.encode("utf-8"),
+                source_url=href,
+                scraping_date=datetime.now(),
+                Etiquetas=["planta", "plaga"],
+                contenido=content_text,
+                url=url
+            )
+            
+            collection.insert_one(
+                {
+                    "_id": object_id,
+                    "source_url": href,
+                    "scraping_date": datetime.now(),
+                    "Etiquetas": ["planta", "plaga"],
+                    "url": url,
+                }
+            )
+            
+            existing_versions = list(
+                collection.find({"source_url": href}).sort("scraping_date", -1)
+            )
+            
+            if len(existing_versions) > 1:
+                oldest_version = existing_versions[-1]
+                fs.delete(ObjectId(oldest_version["_id"]))
+                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                logger.info(
+                    f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
+                )
+            
+            return href
         else:
             logger.warning(f"No se encontró contenido interno en la página: {href}")
             failed_hrefs.append(href)
@@ -44,19 +79,23 @@ def fetch_content(href, logger, scraped_count, failed_hrefs):
 
 def scraper_iucngisd(url, sobrenombre):
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo()
-    all_scraper = f"Iniciando scraping para URL: {url}\n"
+    logger.info(f"Iniciando scraping para URL: {url}")
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    all_scraper = ""
     scraped_count = [0]
     failed_hrefs = []
+    scraped_urls = []
 
     try:
         driver = initialize_driver()
         driver.get(url)
+        logger.info(f"Abriendo URL con Selenium: {url}")
 
         search_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "go"))
         )
         search_button.click()
+        logger.info("Botón de búsqueda clicado con Selenium.")
 
         time.sleep(5)
 
@@ -78,40 +117,29 @@ def scraper_iucngisd(url, sobrenombre):
             if a_tag and a_tag.get("href"):
                 hrefs.append(urljoin(url, a_tag["href"]))
 
-        all_scraper += f"Total de enlaces encontrados: {len(hrefs)}\n"
+        logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
 
         with ThreadPoolExecutor(max_workers=4) as executor:
             results = list(
                 executor.map(
                     lambda href: fetch_content(
-                        href, logger, scraped_count, failed_hrefs
+                        href, logger, scraped_count, failed_hrefs, collection, fs, url
                     ),
                     hrefs,
                 )
             )
 
-        for content in results:
-            if content:
-                all_scraper += content + "\n\n"
+        scraped_urls = [res for res in results if res]
 
-        all_scraper += f"Enlaces encontrados: {len(hrefs)}\n"
-        all_scraper += f"Enlaces scrapeados exitosamente: {scraped_count[0]}\n"
-        all_scraper += f"Enlaces fallidos: {len(failed_hrefs)}\n"
-        all_scraper += f"HREFs fallidos: {', '.join(failed_hrefs) if failed_hrefs else 'Ninguno'}\n"
+        all_scraper += (
+            f"Total enlaces encontrados: {len(hrefs)}\n"
+            f"Total enlaces scrapeados exitosamente: {scraped_count[0]}\n"
+            f"Enlaces scrapeados:\n" + "\n".join(scraped_urls) + "\n"
+            f"Total enlaces fallidos: {len(failed_hrefs)}\n"
+            f"Enlaces fallidos:\n" + "\n".join(failed_hrefs) + "\n"
+        )
 
-        if not all_scraper.strip():
-            logger.error(
-                "No se pudo obtener contenido de los enlaces. Proceso terminado con errores."
-            )
-            return Response(
-                {
-                    "error": "No se pudo obtener contenido de los enlaces. Revisa los logs para más detalles."
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:

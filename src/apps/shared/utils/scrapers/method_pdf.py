@@ -22,15 +22,17 @@ def extract_text_with_pypdf(pdf_file, start_page=1, end_page=None):
             raise ValueError("El PDF está cifrado y no se puede extraer texto.")
 
         total_pages = len(reader.pages)
-        start = max(0, start_page - 1)
+
+        start = max(0, start_page - 1)  
         end = min(total_pages, end_page) if end_page else total_pages
 
         if start >= total_pages:
             raise ValueError(f"El número de página inicial ({start_page}) excede el total de páginas ({total_pages}).")
 
         for i in range(start, end):
-            page_text = reader.pages[i].extract_text() or ""
-            text += page_text
+            page_text = reader.pages[i].extract_text()
+            if page_text:
+                text += page_text
 
         return text.strip()
     except Exception as e:
@@ -55,7 +57,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
     logger = get_logger("Extrayendo texto de PDF")
 
     try:
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
+        collection, fs = connect_to_mongo()
 
         headers = {"User-Agent": get_random_user_agent()}
         response = requests.get(url, verify=False, headers=headers, timeout=10)
