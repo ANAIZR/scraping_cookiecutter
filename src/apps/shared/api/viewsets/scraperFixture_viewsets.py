@@ -77,7 +77,8 @@ from ...utils.scrapers import (
     scraper_doaj_org,
     scraper_cdnsciencepub,
     scraper_scienceopen,
-    scraper_agresearchmag
+    scraper_agresearchmag,
+    scraper_acir_aphis_usda
 )
 
 SCRAPER_FUNCTIONS = {
@@ -151,7 +152,8 @@ SCRAPER_FUNCTIONS = {
     68: scraper_doaj_org,
     69: scraper_cdnsciencepub,
     70: scraper_scienceopen,
-    71: scraper_agresearchmag
+    71: scraper_agresearchmag,
+    72: scraper_acir_aphis_usda
 }
 
 class ScraperAPIView(APIView):
