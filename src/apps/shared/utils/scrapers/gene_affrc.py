@@ -125,8 +125,7 @@ def scraper_gene_affrc(url, sobrenombre):
             + "\n".join(scraped_urls)
         )
 
-        logger.info("Scraping completado exitosamente.")
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
