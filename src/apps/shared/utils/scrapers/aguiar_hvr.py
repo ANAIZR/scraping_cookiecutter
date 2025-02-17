@@ -11,7 +11,7 @@ from rest_framework import status
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
@@ -24,6 +24,7 @@ class ScraperState:
         self.all_scraper = ""
         self.processed_links = set()
         self.extracted_hrefs = []  
+        self.scraped_urls = []  
         self.skipped_count = 0
         self.extracted_count = 0
         self.failed_links = []  
@@ -134,6 +135,7 @@ def scrape_content_from_links(state, collection, fs, main_url):
                             "url": main_url,  # Guardar la URL principal
                         }
                     )
+                    state.scraped_urls.append(link)
 
                     # Control de versiones: eliminar duplicados antiguos
                     existing_versions = list(
@@ -194,8 +196,10 @@ def scraper_aguiar_hvr(url, sobrenombre):
 
         logger.info(f"Se recolectaron {len(state.extracted_hrefs)} enlaces. Procesando contenido...")
         scrape_content_from_links(state, collection, fs, url)  # 🔹 Pasamos la URL principal
-
-        response = process_scraper_data(state.all_scraper, url, sobrenombre, collection, fs)
+        state.all_scraper +=(
+            "\n\nLista de enlaces scrapeados:\n" + "\n".join(state.scraped_urls)
+        )
+        response = process_scraper_data_v2(state.all_scraper, url, sobrenombre)
         return response
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
