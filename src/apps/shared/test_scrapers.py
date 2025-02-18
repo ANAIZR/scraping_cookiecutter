@@ -27,8 +27,8 @@ class TestScraperAPIView:
             mode_scrapeo=1,
         )
 
-    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
-    @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict)
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async") 
+    @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict) 
     def test_scraper_runs_successfully(self, mock_scraper_functions, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
 
@@ -38,10 +38,11 @@ class TestScraperAPIView:
 
         response = self.client.post(API_URL, {"url": "https://example.com"})
 
-        mock_apply_async.assert_called_once_with(args=("https://example.com",), kwargs={})
+        mock_apply_async.assert_called_once_with(("https://example.com",))
 
         assert response.status_code == 200
         assert response.json() == {"data": "Scraper exitoso"}
+
 
 
 
