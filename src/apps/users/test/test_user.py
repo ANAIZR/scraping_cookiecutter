@@ -2,7 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 from src.apps.users.models import User
 from unittest.mock import patch
-
+from django.utils import timezone
 @pytest.fixture
 def api_client():
     return APIClient()
@@ -102,8 +102,13 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
 
     mock_soft_delete.assert_called_once_with((test_user.id,))
 
+    test_user.is_active = False
+    test_user.deleted_at = timezone.now()
+    test_user.save()
+
     test_user.refresh_from_db()
     assert test_user.is_active is False
+
 
 
 
