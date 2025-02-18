@@ -2,9 +2,10 @@ from rest_framework import serializers
 from src.apps.users.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from src.apps.users.utils.services import UserService, EmailService
+from src.apps.users.utils.services import UserService
 import logging
 from django.db import transaction
+from src.apps.users.utils.tasks import send_welcome_email_task
 
 logger = logging.getLogger(__name__)
 class UsuarioGETSerializer(serializers.ModelSerializer):
@@ -65,7 +66,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
 
         UserService.update_system_role(user)
 
-        EmailService.send_welcome_email(user.email, user.username)
+        send_welcome_email_task.apply_async((user.email,user.username))
 
         return user
 
