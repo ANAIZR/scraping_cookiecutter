@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class EmailService:
     @classmethod
     def send_welcome_email(cls, email, username):
-        from src.apps.users.utils.tasks import send_email_task
+        from src.apps.users.utils.tasks import send_welcome_email_task
         subject = "Bienvenido al portal de WEB SCRAPER"
         recipient_list = [email]
 
@@ -42,7 +42,7 @@ class EmailService:
         </html>
         """
 
-        send_email_task.delay(subject, recipient_list, html_content)
+        send_welcome_email_task.delay(subject, recipient_list, html_content)
         
         logger.info(f"Correo de bienvenida programado para {email}")
     @staticmethod
@@ -122,4 +122,4 @@ class UserService:
     @staticmethod
     def update_system_role(user: User):
         from src.apps.users.utils.tasks import update_system_role_task
-        update_system_role_task.apply_async((user.id,))
+        update_system_role_task.delay(user.id)

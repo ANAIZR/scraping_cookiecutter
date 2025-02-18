@@ -2,7 +2,7 @@ from celery import shared_task
 from src.apps.users.utils.services import UserService, EmailService
 from src.apps.users.models import User
 import logging
-
+from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
@@ -27,12 +27,14 @@ def reset_password_task(self, email, token, new_password):
 
 
 @shared_task(bind=True)
-def soft_delete_user_task(self, user_id):
+def soft_delete_user_task(user_id):
     from src.apps.users.models import User
 
     try:
         user = User.objects.get(id=user_id)
-        UserService.soft_delete_user(user)
+        user.is_active = False
+        user.deleted_at = timezone.now()
+        user.save()
     except User.DoesNotExist:
         logger.error(f"Usuario con ID {user_id} no encontrado.")
 
