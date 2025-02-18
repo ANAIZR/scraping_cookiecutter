@@ -85,11 +85,11 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 
                 user.set_password(password)  
 
-            UserService.update_system_role(user)
+            if "is_active" not in validated_data or validated_data["is_active"] == instance.is_active:
+                UserService.update_system_role(user)
 
-            user.save() 
+            user.save()
 
-        return user
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
