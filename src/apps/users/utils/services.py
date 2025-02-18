@@ -121,14 +121,11 @@ class UserService:
 
     @staticmethod
     def restore_user(user):
-        if user.is_active:
-            logger.warning(f"Usuario {user.username} ya está activo.")
-            return
-
-        user.is_active = True
-        user.deleted_at = None
-        user.save()
-        logger.info(f"Usuario {user.username} restaurado correctamente.")
+        if user.deleted_at is not None:  
+            user.restore()
+            logger.info(f"Usuario {user.username} restaurado correctamente.")
+        else:
+            logger.warning(f"El usuario {user.username} ya estaba activo.")
     @staticmethod
     def update_system_role(user: User):
         from src.apps.users.utils.tasks import update_system_role_task
