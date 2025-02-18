@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 class EmailService:
     @classmethod
     def send_welcome_email(cls, email, username):
-        from src.apps.users.utils.tasks import send_welcome_email_task
         subject = "Bienvenido al portal de WEB SCRAPER"
         recipient_list = [email]
 
@@ -42,7 +41,7 @@ class EmailService:
         </html>
         """
 
-        send_welcome_email_task.delay(subject, recipient_list, html_content)
+        cls.send_email(subject, recipient_list, html_content)
         
         logger.info(f"Correo de bienvenida programado para {email}")
     @staticmethod
