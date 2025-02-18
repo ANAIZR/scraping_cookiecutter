@@ -187,6 +187,8 @@ class ScraperService:
     def save_species_to_postgres(self, structured_data, source_url, url):
 
         try:
+            print(f"Intentando guardar en PostgreSQL: {structured_data}")
+            scraper_source, created = ScraperURL.objects.get_or_create(url=url, defaults={"Sobrenombre":"Fuente desconocida"})
             species_obj = Species.objects.create(
                 scientific_name=structured_data.get("nombre_cientifico", ""),
                 common_names=structured_data.get("nombres_comunes", ""),
@@ -208,7 +210,7 @@ class ScraperService:
                 prevention_control=structured_data.get("prevencion_control", {}),
                 uses=structured_data.get("usos", ""),
                 source_url=source_url,
-                url=url,
+                scraper_source=scraper_source,
             )
             logger.info(f"Especie guardada en PostgreSQL con ID: {species_obj.id}")
         except Exception as e:
