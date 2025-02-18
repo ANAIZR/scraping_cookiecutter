@@ -8,6 +8,8 @@ from django.db import transaction
 from src.apps.users.utils.tasks import send_welcome_email_task
 
 logger = logging.getLogger(__name__)
+
+
 class UsuarioGETSerializer(serializers.ModelSerializer):
     system_role_description = serializers.SerializerMethodField()
 
@@ -53,8 +55,8 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             )
 
         password = validated_data.pop("password", None)
-        
-        with transaction.atomic(): 
+
+        with transaction.atomic():
             user = super().create(validated_data)
 
             if password:
@@ -65,23 +67,24 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 user.set_password(password)
                 user.save()
 
-        transaction.on_commit(lambda: UserService.update_system_role(user))
-        transaction.on_commit(lambda: send_welcome_email_task.apply_async((user.email, user.username)))
+            def post_commit_tasks():
+                UserService.update_system_role(user)
+                send_welcome_email_task.apply_async((user.email, user.username))
+
+            transaction.on_commit(post_commit_tasks)
 
         return user
-
-
-
-
 
     def update(self, instance, validated_data):
         email = validated_data.get("email", None)
         password = validated_data.pop("password", None)
 
         if email and User.objects.filter(email=email).exclude(id=instance.id).exists():
-            raise serializers.ValidationError({"email": "Este correo ya está en uso por otro usuario."})
+            raise serializers.ValidationError(
+                {"email": "Este correo ya está en uso por otro usuario."}
+            )
 
-        old_role = instance.system_role  
+        old_role = instance.system_role
 
         with transaction.atomic():
             user = super().update(instance, validated_data)
@@ -91,23 +94,21 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                     validate_password(password, user=user)
                 except ValidationError as e:
                     raise serializers.ValidationError({"password": list(e.messages)})
-                
+
                 user.set_password(password)
 
             if validated_data.get("is_active", False) and user.deleted_at is not None:
                 UserService.restore_user(user)
 
-            if "system_role" in validated_data and validated_data["system_role"] != old_role:
+            if (
+                "system_role" in validated_data
+                and validated_data["system_role"] != old_role
+            ):
                 UserService.update_system_role(user)
 
             user.save()
 
         return user
-
-
-
-
-
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
