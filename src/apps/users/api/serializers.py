@@ -62,10 +62,11 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 user.set_password(password)
                 user.save()
 
-            UserService.update_system_role(user)
-            EmailService.send_welcome_email(user.email, user.username)
+        UserService.update_system_role(user)
+        EmailService.send_welcome_email(user.email, user.username)
 
         return user
+
 
     def update(self, instance, validated_data):
         email = validated_data.get("email", None)
