@@ -225,3 +225,4 @@ SPECTACULAR_SETTINGS = {
         },
     ],
 }
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")

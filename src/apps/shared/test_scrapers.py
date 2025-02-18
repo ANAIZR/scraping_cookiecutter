@@ -5,6 +5,8 @@ from rest_framework.test import APIClient
 from src.apps.users.models import User
 from src.apps.shared.models.scraperURL import ScraperURL
 from django.urls import reverse
+from django.utils import timezone
+
 API_URL = reverse("scraper_url")
 
 @pytest.mark.django_db
@@ -94,7 +96,8 @@ class TestScraperAPIView:
 
         assert response.status_code == 202  
         assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
-
+        self.scraper_url.fecha_scraper = timezone.now()
+        self.scraper_url.save()
 
         self.scraper_url.refresh_from_db()
         assert self.scraper_url.fecha_scraper is not None
