@@ -38,8 +38,10 @@ def scraper_ala_org(url, sobrenombre):
         except Exception as e:
             logger.error(f"No se pudo hacer clic en el botón de búsqueda: {e}")
             return {"error": "No se encontró el botón de búsqueda"}
+        
         object_ids = []
         failed_urls = []
+
         while True:
             try:
                 WebDriverWait(driver, 30).until(
@@ -47,7 +49,7 @@ def scraper_ala_org(url, sobrenombre):
                 )
 
                 lis = driver.find_elements(By.CSS_SELECTOR, "ol li.search-result")
-
+                
                 if not lis:
                     logger.warning("No se encontraron resultados en la búsqueda.")
                     break  
@@ -103,18 +105,6 @@ def scraper_ala_org(url, sobrenombre):
                                             "url": url,
                                         }
                                     )
-
-                                    existing_versions = list(
-                                        collection.find({"source_url": href}).sort("scraping_date", -1)
-                                    )
-
-                                    if len(existing_versions) > 2:
-                                        oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version["_id"]))
-                                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])});
-                                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}'")
-                                    
-                                    logger.info(f"Contenido extraído de {href}.")
                             except Exception as e:
                                 logger.warning(f"No se pudo extraer contenido de {href}: {e}")
                                 total_failed_scrapes += 1
@@ -149,6 +139,10 @@ def scraper_ala_org(url, sobrenombre):
             except Exception as e:
                 logger.error(f"Error al cargar los resultados: {e}")
                 break
+        
+        if total_scraped_successfully == 0:
+            return {"error": "No se pudieron scrapeear datos correctamente."}
+        
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
         all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
