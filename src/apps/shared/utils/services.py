@@ -7,7 +7,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import requests
 import json
-
+import re
 logger = logging.getLogger(__name__)
 
 
@@ -131,6 +131,9 @@ class ScraperService:
         }}
 
         **Instrucciones:**
+        Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
+        2. **No uses comillas triples , ni bloques de código (`'''`).**
+
         1. Extrae el nombre científico y los nombres comunes de la especie.
         2. Lista los sinónimos científicos si están disponibles.
         3. Proporciona una descripción de la invasividad de la especie.
@@ -150,7 +153,7 @@ class ScraperService:
         response = requests.post(
             "http://127.0.0.1:11434/api/chat",
             json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
-            stream=True  # Permitir la lectura línea por línea
+            stream=True  
         )
 
         full_response = ""
@@ -165,11 +168,18 @@ class ScraperService:
 
         print("🔍 Respuesta completa de Ollama:", full_response)
 
-        try:
-            parsed_json = json.loads(full_response)
-            return parsed_json
-        except json.JSONDecodeError:
-            print("⚠️ Ollama devolvió una respuesta inválida. Reintentando...")
+        match = re.search(r"\{.*\}", full_response, re.DOTALL)
+        if match:
+            json_text = match.group(0) 
+            try:
+                parsed_json = json.loads(json_text)
+                return parsed_json
+            except json.JSONDecodeError as e:
+                print(f"❌ Error al convertir JSON después de limpiar: {str(e)}")
+                print("📌 JSON detectado:", json_text)
+                return None
+        else:
+            print("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
 
 
