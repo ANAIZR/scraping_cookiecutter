@@ -71,7 +71,7 @@ class ScraperService:
         documents = self.collection.find({"processed": {"$ne": True}})
 
         for doc in documents:
-            content = doc.get("content", "")
+            content = doc.get("contenido", "")
             source_url = doc.get("source_url", "")
             scraper_source = doc.get("url", "")
 
