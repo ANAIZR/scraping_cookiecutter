@@ -41,7 +41,7 @@ class TestScraperAPIView:
         mock_apply_async.assert_called_once_with(("https://example.com",))
 
         assert response.status_code == 202
-        assert response.json() == {"data": "Scraper exitoso"}
+        assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
 
 
 
@@ -93,7 +93,8 @@ class TestScraperAPIView:
         response = self.client.post(API_URL, {"url": "https://example.com"})
 
         assert response.status_code == 202  
-        assert response.json() == {"status": "Scraper ejecutado exitosamente"}
+        assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
+
 
         self.scraper_url.refresh_from_db()
         assert self.scraper_url.fecha_scraper is not None

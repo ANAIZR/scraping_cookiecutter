@@ -1,33 +1,50 @@
 from celery import shared_task
-from django.core.mail import EmailMultiAlternatives
-from email.mime.image import MIMEImage
-import os
-from django.conf import settings
+from src.apps.users.utils.services import UserService, EmailService
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True)
+def send_password_reset_email_task(self, email):
+    result = UserService.send_password_reset_email(email)
+
+    if "error" in result:
+        logger.error(f"Error en envío de correo: {result['error']}")
+
+    return result
+
+
+@shared_task(bind=True)
+def reset_password_task(self, email, token, new_password):
+    result = UserService.reset_password(email, token, new_password)
+
+    if "error" in result:
+        logger.error(f"Error al restablecer la contraseña: {result['error']}")
+
+    return result
+
+
+@shared_task(bind=True)
+def soft_delete_user_task(self, user_id):
+    from src.apps.users.models import User
+
+    try:
+        user = User.objects.get(id=user_id)
+        UserService.soft_delete_user(user)
+    except User.DoesNotExist:
+        logger.error(f"Usuario con ID {user_id} no encontrado.")
+
+
+@shared_task(bind=True)
+def send_email_task(self, subject, recipient_list, html_content):
+    result = EmailService.send_email(subject, recipient_list, html_content)
+
+    if "error" in result:
+        logger.error(f"Error al enviar correo: {result['error']}")
+
+    return result
 @shared_task
-def send_email_task(subject, recipient_list, html_content):
-    from_email = settings.EMAIL_HOST_USER
-
-    email = EmailMultiAlternatives(subject, "", from_email, recipient_list)
-    email.attach_alternative(html_content, "text/html")
-    email.mixed_subtype = "related"
-
-    img_path = os.path.join(
-        settings.BASE_DIR,
-        "src",
-        "apps",
-        "core",
-        "static",
-        "images",
-        "Logo_STDF_S_H.png",
-    )
-
-    with open(img_path, "rb") as img:
-        mime_image = MIMEImage(img.read())
-        mime_image.add_header("Content-ID", "<logo_stdf>")
-        mime_image.add_header(
-            "Content-Disposition", "inline", filename="Logo_STDF_S_H.png"
-        )
-        email.attach(mime_image)
-
-    email.send()
+def send_welcome_email_task(email):
+    UserService.send_welcome_email(email)
