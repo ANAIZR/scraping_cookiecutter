@@ -3,9 +3,10 @@ from src.apps.users.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from src.apps.users.utils.services import UserService, EmailService
-
+import logging
 from django.db import transaction
 
+logger = logging.getLogger(__name__)
 class UsuarioGETSerializer(serializers.ModelSerializer):
     system_role_description = serializers.SerializerMethodField()
 
@@ -53,6 +54,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password", None)
         with transaction.atomic():
             user = super().create(validated_data)
+            logger.info(f"✅ Usuario {user.id} creado correctamente")
 
             if password:
                 try:
@@ -62,19 +64,26 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 user.set_password(password)
                 user.save()
 
-        UserService.update_system_role(user)
-        EmailService.send_welcome_email(user.email, user.username)
+            if user.id:
+                logger.info(f"🔄 Llamando a update_system_role para el usuario {user.id}")
+                UserService.update_system_role(user)
+            else:
+                logger.error(f"❌ No se pudo crear el usuario antes de llamar update_system_role")
+
+            EmailService.send_welcome_email(user.email, user.username)
 
         return user
+
 
 
     def update(self, instance, validated_data):
         email = validated_data.get("email", None)
         password = validated_data.pop("password", None)
-        new_role = validated_data.get("system_role", instance.system_role) 
 
         if email and User.objects.filter(email=email).exclude(id=instance.id).exists():
             raise serializers.ValidationError({"email": "Este correo ya está en uso por otro usuario."})
+
+        old_role = instance.system_role  
 
         with transaction.atomic():
             user = super().update(instance, validated_data)
@@ -90,7 +99,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             if validated_data.get("is_active", False) and user.deleted_at is not None:
                 UserService.restore_user(user)
 
-            if new_role != instance.system_role:
+            if "system_role" in validated_data and validated_data["system_role"] != old_role:
                 UserService.update_system_role(user)
 
             user.save()
