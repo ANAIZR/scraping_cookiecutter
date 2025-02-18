@@ -1,162 +1,152 @@
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from ..functions import (
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-    get_next_versioned_pdf_filename,
-    process_scraper_data,
-    load_keywords
+    load_keywords,
+    extract_text_from_pdf,
 )
-from rest_framework.response import Response
-from rest_framework import status
-import os
-from datetime import datetime
-import random
-import json
 import time
-from bs4 import BeautifulSoup
+import random
+from datetime import datetime
+from bson import ObjectId
+from urllib.parse import urljoin
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-
-
-logger = get_logger("scraper")
+from bs4 import BeautifulSoup
 
 def scraper_agriculture_gov(url, sobrenombre):
+    logger = get_logger("AGRICULTURE_GOV")
+    logger.info(f"Iniciando scraping para URL: {url}")
+    driver = initialize_driver()
+    collection, fs = connect_to_mongo()
+    total_links_found = 0
+    total_scraped_successfully = 0
+    total_failed_scrapes = 0
+    all_scraper = ""
+    scraped_urls = set()
+    failed_urls = set()
+    object_ids = []
+    
     try:
-        driver = initialize_driver()
-        object_id = None
-
-        main_folder = generate_directory(sobrenombre)
-        print(f"*********** La carpeta principal es: {main_folder} ***********")
-
-        all_urls = []
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
-        keywords = load_keywords("plants.txt")
-        scraping_failed = False
-        visited_urls = set()
-        urls_not_scraped = []
-        total_urls_found = 0
-        total_urls_scraped = 0
-
         driver.get(url)
+        logger.info("Página cargada correctamente.")
         domain = "https://www.agriculture.gov.au"
+        keywords = load_keywords("plants.txt")
 
         for keyword in keywords:
             try:
-                keyword_folder = generate_directory(keyword, main_folder)
-                print(f"*********** Creando carpeta para la palabra clave: {keyword_folder} ***********")
-
-                file_path = get_next_versioned_filename(keyword_folder, keyword)
-                print(f"/////////////////////////////////////////////// Se está creando el txt para {keyword}")
-
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "input#edit-search-api-fulltext--3"))
                 )
                 search_input.clear()
                 search_input.send_keys(keyword)
-
+                
                 search_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "button#edit-submit-all-site-search--3"))
                 )
                 search_button.click()
-
                 time.sleep(random.uniform(3, 6))
 
-                hrefs = []
                 while True:
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
                     results_divs = soup.select("div.views-row")
+                    
                     for div in results_divs:
                         link = div.find("a", href=True)
                         if link and link["href"]:
-                            href = link["href"]
-                            if href.endswith((".pdf", ".docx")):
-                                continue  
-                            full_href = domain + href if not href.startswith("http") else href
-                            hrefs.append(full_href)
-                            total_urls_found += 1
-
+                            href = urljoin(domain, link["href"])  
+                            if href not in scraped_urls and href not in failed_urls:
+                                if href.endswith(".docx"):
+                                    failed_urls.add(href)
+                                    total_failed_scrapes += 1
+                                    total_links_found += 1
+                                else:
+                                    scraped_urls.add(href)
+                                    total_links_found += 1
                     try:
-                        next_button = WebDriverWait(driver, 5).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, "li.pager__item.pager__item--next a"))
-                        )
+                        next_button = driver.find_element(By.CSS_SELECTOR, "li.pager__item.pager__item--next a")
                         next_button.click()
-                        time.sleep(random.uniform(3, 6)) 
+                        time.sleep(random.uniform(3, 6))
                     except (TimeoutException, NoSuchElementException):
                         break
 
-                for link in hrefs:
+                for href in scraped_urls:
                     try:
-                        driver.get(link)
-                        time.sleep(random.uniform(3, 6))
-                        soup = BeautifulSoup(driver.page_source, "html.parser")
-                        region_content_div = soup.select_one("div.region-content")
-                        abstract_text = region_content_div.get_text(strip=True) if region_content_div else "No se encontró contenido en div.region-content"
-                        all_urls.append(f"URL: {link}\nTexto: {abstract_text}\n\n" + "-" * 100 + "\n\n")
-                        visited_urls.add(link)
-                        total_urls_scraped += 1
-                        driver.back()
-                        WebDriverWait(driver, 30).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.views-row"))
-                        )
-                        time.sleep(random.uniform(3, 6))
+                        if href.endswith(".pdf"):
+                            print(f"***Extrayendo texto de {href}")
+                            content_text = extract_text_from_pdf(href)
+                        else:
+                            driver.get(href)
+                            WebDriverWait(driver, 30).until(
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "div.region-content"))
+                            )
+                            time.sleep(random.randint(2, 4))
+                            content_text = driver.find_element(By.CSS_SELECTOR, "div.region-content").text.strip()
+                        
+                        if content_text:
+                            object_id = fs.put(
+                                content_text.encode("utf-8"),
+                                source_url=href,
+                                scraping_date=datetime.now(),
+                                Etiquetas=["planta", "plaga"],
+                                contenido=content_text,
+                                url=url
+                            )
+                            object_ids.append(object_id)
+                            total_scraped_successfully += 1
+
+                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                            collection.insert_one(
+                                {
+                                    "_id": object_id,
+                                    "source_url": href,
+                                    "scraping_date": datetime.now(),
+                                    "Etiquetas": ["planta", "plaga"],
+                                    "url": url,
+                                }
+                            )
+
+                            existing_versions = list(
+                                collection.find({"source_url": href}).sort("scraping_date", -1)
+                            )
+
+                            if len(existing_versions) > 2:
+                                oldest_version = existing_versions[-1]
+                                fs.delete(ObjectId(oldest_version["_id"]))
+                                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                                logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
+                            
+                            print(f"Contenido extraído de {href}.")
                     except Exception as e:
-                        logger.error(f"Error procesando {link}: {str(e)}")
-                        urls_not_scraped.append(link)
+                        print(f"No se pudo extraer contenido de {href}: {e}")
+                        total_failed_scrapes += 1
+                        failed_urls.add(href)
+                    finally:
+                        driver.get(url)
 
-                all_urls = (
-                    f"Resumen del scraping:\n"
-                    f"Total de URLs encontradas: {total_urls_found}\n"
-                    f"Total de URLs scrapeadas: {total_urls_scraped}\n"
-                    f"Total de URLs no scrapeadas: {len(urls_not_scraped)}\n\n"
-                    f"{'-'*80}\n\n"
-                ) + "".join(all_urls)
 
-                driver.get(url)
-            except (TimeoutException, NoSuchElementException) as e:
-                logger.error(f"Error al buscar '{keyword}': {e}")
-                scraping_failed = True
+            except Exception as e:
+                logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
+                continue
 
-        print(f"Total de URLs encontradas: {total_urls_found}")
+        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        if scraping_failed:
-            return Response(
-                {"message": "Error durante el scraping. Algunas URLs fallaron."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        else:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
 
-            return Response(
-                {"data": response_data},
-                status=status.HTTP_200_OK,
-            )
     except Exception as e:
-        logger.error(f"Error en el scraper: {str(e)}")
-        return Response(
-            {"message": "Ocurrió un error al procesar los datos."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        logger.error(f"Error general durante el scraping: {str(e)}")
+        return {"error": str(e)}
+
     finally:
         driver.quit()
+        logger.info("Navegador cerrado.")

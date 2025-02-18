@@ -1,14 +1,17 @@
+import requests
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 import time
 import random
 import os
 import logging
 from rest_framework.response import Response
 from rest_framework import status
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
+
 from ..functions import (
     connect_to_mongo,
     get_logger,
@@ -16,35 +19,29 @@ from ..functions import (
     generate_directory,
     load_keywords
 )
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-
 
 logger = get_logger("scraper")
 
 def scraper_cdfa(url, sobrenombre):
     driver = initialize_driver()
-    all_hrefs = []
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     keywords = load_keywords("plants.txt")
+
+    if not keywords:
+        return Response(
+            {"status": "error", "message": "El archivo de palabras clave está vacío o no se pudo cargar."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    main_folder = generate_directory(sobrenombre)
+    all_urls = set()  # Conjunto para evitar duplicados
+    visited_urls = set()
+
     total_urls_found = 0
-    total_urls_scraped = 0
-    urls_not_scraped = []
 
     try:
         driver.get(url)
-        wait = WebDriverWait(driver, 30)
         time.sleep(random.uniform(3, 6))
-        logger.info(f"Iniciando scraping para URL: {url}")
-        main_folder = generate_directory(sobrenombre)
-
-        if not keywords:
-            return Response(
-                {
-                    "status": "error",
-                    "message": "El archivo de palabras clave está vacío o no se pudo cargar."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
@@ -67,62 +64,107 @@ def scraper_cdfa(url, sobrenombre):
 
             while True:
                 try:
-                    wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.gs-title a")))
-                    links = driver.find_elements(By.CSS_SELECTOR, "div.gs-title a")
-                    print("/////Buscando href de la palabra")
-                    hrefs = [
-                        link.get_attribute("href")
-                        for link in links
-                        if link.get_attribute("href") and "staff" not in link.get_attribute("href").lower()
-                    ]
-                    if not hrefs:
-                        print("///No se encontraron hrefs")
-                        break
-                    for href in hrefs:
-                        all_hrefs.append((href, keyword_dir)) 
-                        total_urls_found += 1
-                        print(f"////Enlace encontrado: {href}")
-
-                    paginator = wait.until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.gsc-cursor"))
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.gsc-expansionArea div.gsc-webResult.gsc-result"))
                     )
-                    if paginator:
-                        print("Se encontró paginator")
+                    results = driver.find_elements(By.CSS_SELECTOR, "div.gsc-expansionArea div.gsc-webResult.gsc-result")
 
+                    if not results:
+                        break
+
+                    for result in results:
+                        try:
+                            link_element = result.find_element(By.CSS_SELECTOR, "div.gs-title a")
+                            href = link_element.get_attribute("href") if link_element else None
+
+                            if href and "staff" not in href.lower() and href not in visited_urls:
+                                all_urls.add(href)
+                                total_urls_found += 1
+                                print(f"Enlace encontrado: {href}")
+
+                        except Exception:
+                            continue
+
+                    # Manejo de paginación con verificación de existencia
+                    try:
+                        paginator = WebDriverWait(driver, 5).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.gsc-cursor"))
+                        )
                         pages = paginator.find_elements(By.CSS_SELECTOR, "div.gsc-cursor-page")
-                        
+
                         for i in range(len(pages)):
                             try:
-                                paginator = driver.find_element(By.CSS_SELECTOR, "div.gsc-cursor")
+                                paginator = WebDriverWait(driver, 5).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.gsc-cursor"))
+                                )
                                 pages = paginator.find_elements(By.CSS_SELECTOR, "div.gsc-cursor-page")
-                                
-                                driver.execute_script("arguments[0].scrollIntoView();", pages[i])
-                                time.sleep(1)
-                                driver.execute_script("arguments[0].click();", pages[i])
-                                time.sleep(random.uniform(2, 4)) 
+                                if i >= len(pages):  
+                                    break
 
-                                wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.gs-title a")))
+                                page = pages[i]
+                                driver.execute_script("arguments[0].scrollIntoView();", page)
+                                time.sleep(1)
+                                driver.execute_script("arguments[0].click();", page)
+                                time.sleep(random.uniform(2, 4))
+
+                                WebDriverWait(driver, 10).until(
+                                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.gs-title a"))
+                                )
                                 new_links = driver.find_elements(By.CSS_SELECTOR, "div.gs-title a")
-                                print("Buscando href de la nueva página")
-                                new_hrefs = [
-                                    link.get_attribute("href")
-                                    for link in new_links
-                                    if link.get_attribute("href") and "staff" not in link.get_attribute("href").lower()
-                                ]
-                                for href in new_hrefs:
-                                    all_hrefs.append((href, keyword_dir))
-                                    total_urls_found += 1
-                                    print(f"Enlace encontrado: {href}")
-                            except Exception as e:
-                                print(f"Error al procesar la página: {pages[i].text}. Detalle: {e}")
-                                break
+
+                                for link in new_links:
+                                    new_href = link.get_attribute("href")
+                                    if new_href and "staff" not in new_href.lower() and new_href not in visited_urls:
+                                        all_urls.add(new_href)
+                                        total_urls_found += 1
+                                        print(f"Enlace encontrado en paginación: {new_href}")
+
+                            except Exception:
+                                continue
+
                         break
-                    else:
-                        print("No se encontró paginador")
+                    except TimeoutException:
+                        print("No se encontró la paginación.")
                         break
                 except TimeoutException:
-                    print(f"No se encontraron enlaces para la palabra clave {keyword}.")
+                    print("No se encontraron más resultados en esta página.")
                     break
+
+        # PROCESAR TODAS LAS URLs RECOGIDAS
+        print(f"Total de enlaces encontrados: {len(all_urls)}")
+        new_urls = list(all_urls)  # Convertimos a lista para iterar
+
+        for href in new_urls:
+            if href in visited_urls:
+                continue
+
+            visited_urls.add(href)
+            print(f"Procesando página: {href}")
+
+            try:
+                response = requests.get(href, timeout=10)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, "html.parser")
+                    table = soup.select_one("table.mytable tbody")
+
+                    if table:
+                        table_hrefs = [link.get("href") for link in table.find_all("a", href=True)]
+                        for table_href in table_hrefs:
+                            full_url = requests.compat.urljoin(href, table_href)
+                            if full_url not in visited_urls:
+                                all_urls.add(full_url)
+                                total_urls_found += 1
+                                print(f"Nuevo enlace encontrado en tabla: {full_url}")
+
+                    else:
+                        body_text = soup.body.get_text(strip=True) if soup.body else ""
+                        file_path = os.path.join(main_folder, f"document_{len(visited_urls)}.txt")
+                        with open(file_path, "w", encoding="utf-8") as file:
+                            file.write(f"URL: {href}\n\n{body_text}")
+                        print(f"Contenido guardado en: {file_path}")
+
+            except Exception as e:
+                print(f"Error al procesar {href}: {e}")
 
     finally:
         driver.quit()
@@ -132,9 +174,8 @@ def scraper_cdfa(url, sobrenombre):
             "status": "success",
             "message": "Scraping finalizado",
             "total_urls_found": total_urls_found,
-            "total_urls_scraped": total_urls_scraped,
-            "total_urls_not_scraped": len(urls_not_scraped),
-            "urls_not_scraped": urls_not_scraped
+            "total_urls_scraped": len(visited_urls),
+            "all_urls": list(all_urls)
         },
-        status=status.HTTP_200_OK,
+        status=status.HTTP_200_OK
     )
