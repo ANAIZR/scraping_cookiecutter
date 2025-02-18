@@ -41,13 +41,15 @@ def scraper_agriculture_gov(url, sobrenombre):
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "input#edit-search-api-fulltext--3"))
                 )
+                logger.info(f"Buscando con palabra clave '{keyword}'")
                 search_input.clear()
                 search_input.send_keys(keyword)
                 
                 search_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "button#edit-submit-all-site-search--3"))
                 )
-                search_button.click()
+                driver.execute_script("arguments[0].click();", search_button)
+                logger.info("Botón de búsqueda clickeado.")
                 time.sleep(random.uniform(3, 6))
 
                 while True:
@@ -69,7 +71,7 @@ def scraper_agriculture_gov(url, sobrenombre):
                                     total_links_found += 1
                     try:
                         next_button = driver.find_element(By.CSS_SELECTOR, "li.pager__item.pager__item--next a")
-                        next_button.click()
+                        driver.execute_script("arguments[0].click();", next_button)
                         time.sleep(random.uniform(3, 6))
                     except (TimeoutException, NoSuchElementException):
                         break
