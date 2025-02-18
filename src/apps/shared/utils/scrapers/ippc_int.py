@@ -46,7 +46,6 @@ def scraper_ippc_int(url, sobrenombre):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             visited_urls = set()
-            scraping_failed = False
         except Exception as e:
             logger.error(f"Error al inicializar el scraper: {str(e)}")
 

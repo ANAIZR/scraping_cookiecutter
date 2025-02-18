@@ -11,7 +11,6 @@ from datetime import datetime
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
-    delete_old_documents,
     initialize_driver,
     get_logger,
     connect_to_mongo,

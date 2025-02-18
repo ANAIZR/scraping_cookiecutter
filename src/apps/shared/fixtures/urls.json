@@ -1317,5 +1317,18 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 99,
+    "fields": {
+      "url": "https://www.aphis.usda.gov/publications",
+      "sobrenombre": "notification_aphis",
+      "time_choices": 1,
+      "mode_scrapeo": 73,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
   }
 ]
