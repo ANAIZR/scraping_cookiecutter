@@ -27,7 +27,7 @@ class TestScraperAPIView:
             mode_scrapeo=1,
         )
 
-    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")  
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
     @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict)
     def test_scraper_runs_successfully(self, mock_scraper_functions, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
@@ -38,10 +38,12 @@ class TestScraperAPIView:
 
         response = self.client.post(API_URL, {"url": "https://example.com"})
 
-        mock_apply_async.assert_called_once_with(("https://example.com",), eta=None)
+        mock_apply_async.assert_called_once_with(args=("https://example.com",), kwargs={})
 
         assert response.status_code == 200
         assert response.json() == {"data": "Scraper exitoso"}
+
+
 
     @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")  
     def test_scraper_requires_authentication(self, mock_apply_async):
@@ -61,20 +63,15 @@ class TestScraperAPIView:
         response = self.client.post(API_URL, {"url": "https://example.com"})
         assert response.status_code == 403
 
-    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
-    @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict)
-    def test_scraper_function_raises_exception(self, mock_scraper_functions, mock_apply_async):
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async", side_effect=Exception("Error en Celery"))
+    def test_scraper_function_raises_exception(self, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
-
-        def mock_scraper_function(**kwargs):
-            raise ValueError("Error en el scraper")
-
-        mock_scraper_functions[1] = mock_scraper_function
 
         response = self.client.post(API_URL, {"url": "https://example.com"})
 
         assert response.status_code == 500
-        assert response.json() == {"error": "Error durante el scrapeo: Error en el scraper"}
+        assert response.json() == {"error": "Error al encolar tarea: Error en Celery"}
+
 
     @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
     def test_scraper_fails_with_unknown_url(self, mock_apply_async):
@@ -85,18 +82,18 @@ class TestScraperAPIView:
         assert response.status_code == 404
         assert response.json() == {"error": "No se encontraron parámetros para la URL: https://unknown.com"}
 
+        mock_apply_async.assert_not_called()
+
+
     @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
-    @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict)
-    def test_scraper_updates_database(self, mock_scraper_functions, mock_apply_async):
+    def test_scraper_updates_database(self, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
 
-        def mock_scraper_function(**kwargs):
-            return Response({"data": "Scraper exitoso"}, status=200)
-
-        mock_scraper_functions[1] = mock_scraper_function
-
         response = self.client.post(API_URL, {"url": "https://example.com"})
-        assert response.status_code == 200
+
+        assert response.status_code == 200  
+        assert response.json() == {"status": "Scraper ejecutado exitosamente"}
 
         self.scraper_url.refresh_from_db()
         assert self.scraper_url.fecha_scraper is not None
+
