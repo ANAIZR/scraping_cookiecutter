@@ -21,14 +21,13 @@ from ..functions import (
 )
 
 def scraper_notification_aphis(url, sobrenombre):
-    headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("NOTIFICATION APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
-    hrefs = set() 
+    hrefs = [] #set() 
 
     def scrape_page(href):
         nonlocal total_scraped_links, non_scraped_urls
@@ -82,12 +81,10 @@ def scraper_notification_aphis(url, sobrenombre):
                     logger.info(
                         f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
                     )
-                
-
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al procesar el enlace {url}: {e}")
-            non_scraped_urls.append(url)  
+            non_scraped_urls.append(href)  
 
         return new_links
 
@@ -128,7 +125,7 @@ def scraper_notification_aphis(url, sobrenombre):
                         segundo_td = tds[1]  # Índice 1 para el segundo td
                         link = segundo_td.find_element(By.CSS_SELECTOR,"a").get_attribute("href")
                         if link:
-                            hrefs.add(link)
+                            hrefs.append(link)
                         
             else:
                 logger.info("No se encontró el div#contents en la página principal.")
