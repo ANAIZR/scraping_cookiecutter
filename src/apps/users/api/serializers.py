@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from src.apps.users.utils.services import UserService
 import logging
 from django.db import transaction
-from src.apps.users.utils.tasks import send_welcome_email_task, update_system_role_task
+from src.apps.users.utils.tasks import send_welcome_email_task, update_system_role_task, restore_user_task
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +64,16 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                     validate_password(password, user=user)
                 except ValidationError as e:
                     raise serializers.ValidationError({"password": list(e.messages)})
+
                 user.set_password(password)
                 user.save()
 
-            # 🔥 **Ejecutar las tareas en segundo plano solo después de la transacción**
-            transaction.on_commit(lambda: update_system_role_task.apply_async((user.id,)))
-            transaction.on_commit(lambda: send_welcome_email_task.apply_async((user.email, user.username)))
+            def post_commit_tasks():
+                if user.id and user.email:  #
+                    update_system_role_task.apply_async(args=[user.id])
+                    send_welcome_email_task.apply_async(args=[user.email, user.username])
+
+            transaction.on_commit(post_commit_tasks)
 
         return user
 
@@ -84,6 +88,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             )
 
         old_role = instance.system_role
+        old_deleted_at = instance.deleted_at  
 
         with transaction.atomic():
             user = super().update(instance, validated_data)
@@ -96,18 +101,19 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
 
                 user.set_password(password)
 
-            if validated_data.get("is_active", False) and user.deleted_at is not None:
-                UserService.restore_user(user)
-
-            if (
-                "system_role" in validated_data
-                and validated_data["system_role"] != old_role
-            ):
-                UserService.update_system_role(user)
-
             user.save()
 
+            def post_commit_tasks():
+                if validated_data.get("is_active", False) and old_deleted_at is not None:
+                    restore_user_task.apply_async(args=[user.id])
+
+                if "system_role" in validated_data and validated_data["system_role"] != old_role:
+                    update_system_role_task.apply_async(args=[user.id])
+
+            transaction.on_commit(post_commit_tasks)
+
         return user
+
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
