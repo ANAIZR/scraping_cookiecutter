@@ -34,16 +34,15 @@ class UsuarioView(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         user = self.get_object()
-        is_active_new = request.data.get("is_active", None)
-
         serializer = self.get_serializer(user, data=request.data, partial=True)
+        
         if serializer.is_valid():
-            serializer.save()
+            serializer.save()  
 
-        if is_active_new is not None and is_active_new is True:
-            UserService.reactivate_user(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(status=status.HTTP_200_OK)
 
 
 class PasswordResetRequestView(generics.GenericAPIView):
