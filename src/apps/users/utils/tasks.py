@@ -58,8 +58,8 @@ def send_email_task(self, subject, recipient_list, html_content):
 
     return result
 @shared_task
-def send_welcome_email_task(email):
-    EmailService.send_welcome_email(email)
+def send_welcome_email_task(email, username):
+    EmailService.send_welcome_email(email, username)
 @shared_task
 def update_system_role_task(user_id):
     try:
