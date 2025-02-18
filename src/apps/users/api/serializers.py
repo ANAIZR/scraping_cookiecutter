@@ -69,24 +69,25 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         email = validated_data.get("email", None)
+        password = validated_data.pop("password", None)
+
         if email and User.objects.filter(email=email).exclude(id=instance.id).exists():
-            raise serializers.ValidationError(
-                {"email": "Este correo ya está en uso por otro usuario."}
-            )
+            raise serializers.ValidationError({"email": "Este correo ya está en uso por otro usuario."})
 
-        password = validated_data.get("password", None)
-        user = super().update(instance, validated_data)
+        with transaction.atomic():
+            user = super().update(instance, validated_data)
 
-        if password:
-            try:
-                validate_password(password, user=user)
-            except ValidationError as e:
-                raise serializers.ValidationError({"password": list(e.messages)})
-            user.set_password(password)
+            if password:
+                try:
+                    validate_password(password, user=user)
+                except ValidationError as e:
+                    raise serializers.ValidationError({"password": list(e.messages)})
+                
+                user.set_password(password)  
 
-        user.save()
+            UserService.update_system_role(user)
 
-        UserService.update_system_role(user)
+            user.save() 
 
         return user
 

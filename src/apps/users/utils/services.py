@@ -13,8 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class EmailService:
-    @staticmethod
-    def send_welcome_email(email,username):
+    @classmethod
+    def send_welcome_email(cls, email, username):
+
         subject = "Bienvenido al portal de WEB SCRAPER"
         recipient_list = [email]
 
@@ -41,11 +42,10 @@ class EmailService:
             </body>
         </html>
         """
-        try:
-            send_email_task.delay(subject, recipient_list, html_content)
-            logger.info(f"Correo de bienvenida enviado a {email}")
-        except Exception as e:
-            logger.error(f"Error enviando correo de bienvenida a {email}: {str(e)}")
+
+        send_email_task.delay(subject, recipient_list, html_content)
+        
+        logger.info(f"Correo de bienvenida programado para {email}")
     @staticmethod
     def send_email(subject, recipient_list, html_content):
         from_email = settings.EMAIL_HOST_USER
