@@ -65,8 +65,8 @@ class ScraperURL(CoreModel):
         super().save(*args, **kwargs)
 
         if is_new or self.is_time_expired():
-            from ..utils.tasks import (
-                scrape_url,
+            from src.apps.shared.utils.tasks import (
+                scraper_url_task,
             )  
 
-            scrape_url.apply_async((self.url,), eta=self.get_time_limit())
+            scraper_url_task.apply_async((self.url,), eta=self.get_time_limit())
