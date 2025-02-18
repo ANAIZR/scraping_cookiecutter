@@ -100,10 +100,11 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
 
     assert response.status_code == 204
 
-    mock_soft_delete.assert_called_once_with(args=(test_user.id,))
+    mock_soft_delete.assert_called_once_with((test_user.id,))
 
     test_user.refresh_from_db()
     assert test_user.is_active is False
+
 
 
 @pytest.mark.django_db

@@ -25,18 +25,18 @@ def reset_password_task(self, email, token, new_password):
 
     return result
 
-
-@shared_task(bind=True)
-def soft_delete_user_task(self,user_id):
-    from src.apps.users.models import User
-
+@shared_task
+def soft_delete_user_task(user_id):
     try:
         user = User.objects.get(id=user_id)
         user.is_active = False
         user.deleted_at = timezone.now()
         user.save()
+        logger.info(f"Usuario {user.username} desactivado correctamente.")
     except User.DoesNotExist:
         logger.error(f"Usuario con ID {user_id} no encontrado.")
+    except Exception as e:
+        logger.error(f"Error en soft_delete_user_task: {str(e)}")
 
 
 @shared_task(bind=True)
