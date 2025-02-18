@@ -128,5 +128,11 @@ class UserService:
             logger.warning(f"El usuario {user.username} ya estaba activo.")
     @staticmethod
     def update_system_role(user: User):
+        logger.info(f"🔄 Actualizando rol del usuario {user.id}")
+        user.system_role = 1 if user.system_role == 2 else 2
+        user.save()
+
+    @staticmethod
+    def update_system_role_async(user: User):
         from src.apps.users.utils.tasks import update_system_role_task
         update_system_role_task.delay(user.id)

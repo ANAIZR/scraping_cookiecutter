@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from src.apps.users.utils.services import UserService
 import logging
 from django.db import transaction
-from src.apps.users.utils.tasks import send_welcome_email_task
+from src.apps.users.utils.tasks import send_welcome_email_task, update_system_role_task
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +67,12 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 user.set_password(password)
                 user.save()
 
-            def post_commit_tasks():
-                UserService.update_system_role(user)
-                send_welcome_email_task.apply_async((user.email, user.username))
-
-            transaction.on_commit(post_commit_tasks)
+            # 🔥 **Ejecutar las tareas en segundo plano solo después de la transacción**
+            transaction.on_commit(lambda: update_system_role_task.apply_async((user.id,)))
+            transaction.on_commit(lambda: send_welcome_email_task.apply_async((user.email, user.username)))
 
         return user
+
 
     def update(self, instance, validated_data):
         email = validated_data.get("email", None)
