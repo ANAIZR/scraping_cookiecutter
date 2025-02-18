@@ -4,7 +4,6 @@ from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from email.mime.image import MIMEImage
 from src.apps.users.models import User
-from src.apps.users.utils.tasks import send_email_task
 from django.utils import timezone
 from django.core.cache import cache
 import random
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 class EmailService:
     @classmethod
     def send_welcome_email(cls, email, username):
-
+        from src.apps.users.utils.tasks import send_email_task
         subject = "Bienvenido al portal de WEB SCRAPER"
         recipient_list = [email]
 
