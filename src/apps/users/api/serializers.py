@@ -52,9 +52,8 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             )
 
         password = validated_data.pop("password", None)
-        with transaction.atomic():
+        with transaction.atomic(): 
             user = super().create(validated_data)
-            logger.info(f"✅ Usuario {user.id} creado correctamente")
 
             if password:
                 try:
@@ -64,15 +63,12 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 user.set_password(password)
                 user.save()
 
-            if user.id:
-                logger.info(f"🔄 Llamando a update_system_role para el usuario {user.id}")
-                UserService.update_system_role(user)
-            else:
-                logger.error(f"❌ No se pudo crear el usuario antes de llamar update_system_role")
+        UserService.update_system_role(user)
 
-            EmailService.send_welcome_email(user.email, user.username)
+        EmailService.send_welcome_email(user.email, user.username)
 
         return user
+
 
 
 

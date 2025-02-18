@@ -29,27 +29,25 @@ def reset_password_task(self, email, token, new_password):
 def soft_delete_user_task(user_id):
     try:
         user = User.objects.get(id=user_id)
-        user.is_active = False
-        user.deleted_at = timezone.now()
-        user.save()
-        logger.info(f"Usuario {user.username} desactivado correctamente.")
+        UserService.soft_delete_user(user) 
+        logger.info(f"✅ Usuario {user.username} desactivado correctamente.")
     except User.DoesNotExist:
-        logger.error(f"Usuario con ID {user_id} no encontrado.")
+        logger.error(f"❌ Usuario con ID {user_id} no encontrado.")
     except Exception as e:
-        logger.error(f"Error en soft_delete_user_task: {str(e)}")
+        logger.error(f"❌ Error en soft_delete_user_task: {str(e)}")
 
 
+@shared_task
 def restore_user_task(user_id):
     try:
         user = User.objects.get(id=user_id)
-        user.is_active = True
-        user.deleted_at = None
-        user.save()
-        logger.info(f"Usuario {user.username} restaurado correctamente.")
+        UserService.restore_user(user) 
+        logger.info(f"✅ Usuario {user.username} restaurado correctamente.")
     except User.DoesNotExist:
-        logger.error(f"Usuario con ID {user_id} no encontrado.")
+        logger.error(f"❌ Usuario con ID {user_id} no encontrado.")
     except Exception as e:
-        logger.error(f"Error en restore_user_task: {str(e)}")
+        logger.error(f"❌ Error en restore_user_task: {str(e)}")
+
 
 @shared_task(bind=True)
 def send_email_task(self, subject, recipient_list, html_content):
@@ -62,21 +60,12 @@ def send_email_task(self, subject, recipient_list, html_content):
 @shared_task
 def send_welcome_email_task(email):
     EmailService.send_welcome_email(email)
-@shared_task(bind=True)
-def update_system_role_task(self, user_id):
+@shared_task
+def update_system_role_task(user_id):
     try:
         user = User.objects.get(id=user_id)
-
-        if user.system_role == 1:
-            user.is_superuser = True
-            user.is_staff = True
-        else:
-            user.is_superuser = False
-            user.is_staff = False
-
-        user.save()
-        logger.info(f"Rol del usuario {user.username} actualizado correctamente.")
+        UserService.update_system_role(user)
     except User.DoesNotExist:
-        logger.error(f"Usuario con ID {user_id} no encontrado.")
+        logger.error(f"❌ Usuario con ID {user_id} no encontrado. Cancelando tarea.")
     except Exception as e:
-        logger.error(f"Error al actualizar rol del usuario {user_id}: {str(e)}")
+        logger.error(f"❌ Error en update_system_role_task: {str(e)}")
