@@ -121,11 +121,5 @@ class UserService:
 
     @staticmethod
     def update_system_role(user: User):
-        if user.system_role == 1:
-            user.is_superuser = True
-            user.is_staff = True
-        else:
-            user.is_superuser = False
-            user.is_staff = False
-
-        user.save()
+        from src.apps.users.utils.tasks import update_system_role_task
+        update_system_role_task.apply_async((user.id,))

@@ -1,6 +1,6 @@
 from celery import shared_task
 from src.apps.users.utils.services import UserService, EmailService
-
+from src.apps.users.models import User
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,4 +47,22 @@ def send_email_task(self, subject, recipient_list, html_content):
     return result
 @shared_task
 def send_welcome_email_task(email):
-    UserService.send_welcome_email(email)
+    EmailService.send_welcome_email(email)
+@shared_task(bind=True)
+def update_system_role_task(self, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+
+        if user.system_role == 1:
+            user.is_superuser = True
+            user.is_staff = True
+        else:
+            user.is_superuser = False
+            user.is_staff = False
+
+        user.save()
+        logger.info(f"Rol del usuario {user.username} actualizado correctamente.")
+    except User.DoesNotExist:
+        logger.error(f"Usuario con ID {user_id} no encontrado.")
+    except Exception as e:
+        logger.error(f"Error al actualizar rol del usuario {user_id}: {str(e)}")
