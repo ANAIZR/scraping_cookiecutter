@@ -4,15 +4,13 @@ from rest_framework.response import Response
 from rest_framework.test import APIClient
 from src.apps.users.models import User
 from src.apps.shared.models.scraperURL import ScraperURL
-
-API_URL = "http://127.0.0.1:8000/api/v1/scraper-url/"
-
+from django.urls import reverse
+API_URL = reverse("scraper_url")
 
 @pytest.mark.django_db
-@patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async") 
 class TestScraperAPIView:
 
-    def setup_method(self, mock_apply_async):
+    def setup_method(self):
         self.client = APIClient()
         self.admin = User.objects.create_user(
             username="admin_user",
@@ -29,8 +27,7 @@ class TestScraperAPIView:
             mode_scrapeo=1,
         )
 
-        mock_apply_async.return_value = None
-
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")  
     @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict)
     def test_scraper_runs_successfully(self, mock_scraper_functions, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
@@ -46,10 +43,12 @@ class TestScraperAPIView:
         assert response.status_code == 200
         assert response.json() == {"data": "Scraper exitoso"}
 
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")  
     def test_scraper_requires_authentication(self, mock_apply_async):
         response = self.client.post(API_URL, {"url": "https://example.com"})
         assert response.status_code == 401
 
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async") 
     def test_scraper_requires_admin_permissions(self, mock_apply_async):
         funcionario = User.objects.create_user(
             username="funcionario_user",
@@ -62,13 +61,14 @@ class TestScraperAPIView:
         response = self.client.post(API_URL, {"url": "https://example.com"})
         assert response.status_code == 403
 
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
     @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict)
     def test_scraper_function_raises_exception(self, mock_scraper_functions, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
 
         def mock_scraper_function(**kwargs):
             raise ValueError("Error en el scraper")
-        
+
         mock_scraper_functions[1] = mock_scraper_function
 
         response = self.client.post(API_URL, {"url": "https://example.com"})
@@ -76,6 +76,7 @@ class TestScraperAPIView:
         assert response.status_code == 500
         assert response.json() == {"error": "Error durante el scrapeo: Error en el scraper"}
 
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
     def test_scraper_fails_with_unknown_url(self, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
 
@@ -84,6 +85,7 @@ class TestScraperAPIView:
         assert response.status_code == 404
         assert response.json() == {"error": "No se encontraron parámetros para la URL: https://unknown.com"}
 
+    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
     @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict)
     def test_scraper_updates_database(self, mock_scraper_functions, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
