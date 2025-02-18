@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from src.apps.users.utils.services import UserService
 import logging
 from django.db import transaction
-from src.apps.users.utils.tasks import send_welcome_email_task, update_system_role_task, restore_user_task
+from src.apps.users.utils.tasks import send_welcome_email_task, update_system_role_task, restore_user_task, soft_delete_user_task
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,8 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             )
 
         old_role = instance.system_role
-        old_deleted_at = instance.deleted_at  
+        old_is_active = instance.is_active  
+        old_deleted_at = instance.deleted_at
 
         with transaction.atomic():
             user = super().update(instance, validated_data)
@@ -104,8 +105,11 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             user.save()
 
             def post_commit_tasks():
-                if validated_data.get("is_active", False) and old_deleted_at is not None:
-                    restore_user_task.apply_async(args=[user.id])
+                if "is_active" in validated_data:
+                    if validated_data["is_active"] is False and old_is_active is True:
+                        soft_delete_user_task.apply_async(args=[user.id])
+                    elif validated_data["is_active"] is True and old_deleted_at is not None:
+                        restore_user_task.apply_async(args=[user.id])
 
                 if "system_role" in validated_data and validated_data["system_role"] != old_role:
                     update_system_role_task.apply_async(args=[user.id])
@@ -113,6 +117,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             transaction.on_commit(post_commit_tasks)
 
         return user
+
 
 
 
