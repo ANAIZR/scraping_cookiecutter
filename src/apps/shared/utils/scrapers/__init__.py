@@ -50,7 +50,7 @@ from .nal_usda import scraper_nal_usda
 from .hort_purdue import scraper_hort_purdue
 from .ers_usda import scraper_ers_usda
 from .ars_usda import scraper_ars_usda
-
+from .agriculture_gov import scraper_agriculture
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
