@@ -145,7 +145,7 @@ class ScraperService:
             Devuelve solo el JSON con los datos extraídos, sin texto adicional.
         """
 
-        response = chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+        response = chat(model="llama3:8b", messages=[{"role": "user", "content": prompt}])
 
         try:
             return json.loads(response["message"]["content"])
