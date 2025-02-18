@@ -64,7 +64,7 @@ class ScraperService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
-        self.collection = self.db["files.fs"]
+        self.collection = self.db["fs.files"]
 
     def extract_and_save_species(self):
 
