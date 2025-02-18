@@ -2,10 +2,8 @@ import requests
 import time
 import random
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from rest_framework.response import Response
-from rest_framework import status
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
