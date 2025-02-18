@@ -70,3 +70,30 @@ class ScraperURL(CoreModel):
             )  
 
             scraper_url_task.apply_async((self.url,), eta=self.get_time_limit())
+class Species(models.Model):
+    scientific_name = models.CharField(max_length=255, unique=True)
+    common_names = models.TextField(blank=True, null=True)
+    synonyms = models.TextField(blank=True, null=True)
+    invasiveness_description = models.TextField(blank=True, null=True)
+    distribution = models.TextField(blank=True, null=True)
+    impact = models.JSONField(blank=True, null=True)
+    habitat = models.TextField(blank=True, null=True)
+    life_cycle = models.TextField(blank=True, null=True)
+    reproduction = models.TextField(blank=True, null=True)
+    hosts = models.TextField(blank=True, null=True)
+    symptoms = models.TextField(blank=True, null=True)
+    affected_organs = models.TextField(blank=True, null=True)
+    environmental_conditions = models.TextField(blank=True, null=True)
+    prevention_control = models.JSONField(blank=True, null=True)
+    uses = models.TextField(blank=True, null=True)
+    source_url = models.URLField(max_length=500)
+    scraper_source = models.ForeignKey(
+        ScraperURL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="species",
+    )
+
+    def __str__(self):
+        return self.scientific_name

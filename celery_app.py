@@ -24,6 +24,10 @@ app.conf.beat_schedule = {
             hour=1, minute=55, day_of_week=0
         ),  
     },
+    "run-mongo-scraper-tuesday-10am": {
+        "task": "src.apps.shared.tasks.run_scraper_task",
+        "schedule": crontab(hour=10, minute=0, day_of_week=2), 
+    },
 }
 
 

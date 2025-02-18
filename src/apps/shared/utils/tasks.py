@@ -1,5 +1,5 @@
 from celery import shared_task
-from src.apps.shared.utils.services import WebScraperService
+from src.apps.shared.utils.services import WebScraperService, ScraperService
 from src.apps.shared.models.scraperURL import ScraperURL
 from datetime import datetime
 import logging
@@ -25,3 +25,8 @@ def scraper_url_task(self, url):
     if "error" in result:
         logger.error(f"Scraping fallido para {url}: {result['error']}")
     return result
+
+@shared_task
+def run_scraper_task():
+    scraper = ScraperService()
+    scraper.extract_and_save_species()
