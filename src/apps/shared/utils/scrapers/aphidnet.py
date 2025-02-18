@@ -82,6 +82,7 @@ def scraper_aphidnet(url, sobrenombre):
                         "source_url": current_url,
                         "scraping_date": datetime.now(),
                         "Etiquetas": ["planta", "plaga"],
+                        "contenido": full_content,
                         "url": url,
                     }
                 )

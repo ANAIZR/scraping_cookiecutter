@@ -83,6 +83,7 @@ def scraper_delta(url, sobrenombre):
                                                     "source_url": href,
                                                     "scraping_date": datetime.now(),
                                                     "Etiquetas": ["planta", "plaga"],
+                                                    "contenido": content_text,
                                                     "url": url,
                                                 }
                                             )

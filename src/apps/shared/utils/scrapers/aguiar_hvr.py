@@ -131,6 +131,7 @@ def scrape_content_from_links(state, collection, fs, main_url):
                             "source_url": link,
                             "scraping_date": datetime.now(),
                             "Etiquetas": ["planta", "plaga"],
+                            "contenido": content_text,
                             "url": main_url, 
                         }
                     )

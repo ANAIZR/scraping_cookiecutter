@@ -128,6 +128,7 @@ def scraper_aphis_usda(url, sobrenombre):
                                 "source_url": full_url,
                                 "scraping_date": datetime.now(),
                                 "Etiquetas": ["planta", "plaga"],
+                                "contenido": content_text,
                                 "url": url,
                             }
                         )

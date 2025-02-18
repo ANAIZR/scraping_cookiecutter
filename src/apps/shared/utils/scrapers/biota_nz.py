@@ -119,6 +119,7 @@ def scraper_biota_nz(url, sobrenombre):
                                             "source_url": full_url,
                                             "scraping_date": datetime.now(),
                                             "Etiquetas": ["planta", "plaga"],
+                                            "contenido": content_text,
                                             "url": url,
                                         }
                                     )

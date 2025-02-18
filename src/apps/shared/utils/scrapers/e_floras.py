@@ -109,6 +109,7 @@ def scraper_e_floras(
                                                 "source_url": page,
                                                 "scraping_date": datetime.now(),
                                                 "Etiquetas": ["planta", "plaga"],
+                                                "contenido": cleaned_text,
                                                 "url": url,
                                             }
                                         )

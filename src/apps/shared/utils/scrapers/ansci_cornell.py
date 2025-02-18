@@ -88,6 +88,7 @@ def scraper_ansci_cornell(url, sobrenombre):
                                     "_id": object_id,
                                     "source_url": link_href,
                                     "scraping_date": datetime.now(),
+                                    "contenido": content_text,
                                     "Etiquetas": ["planta", "plaga"],
                                     "url": url,
                                 }

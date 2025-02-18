@@ -306,7 +306,6 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
             "Url": url,
             "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Etiquetas": ["planta", "plaga"],
-            "Contenido": content_text,  # Se devuelve el contenido en la respuesta
             "Mensaje": "Los datos han sido scrapeados y guardados correctamente en MongoDB.",
         }
 
