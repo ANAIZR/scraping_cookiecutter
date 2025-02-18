@@ -73,17 +73,17 @@ class ScraperService:
         for doc in documents:
             content = doc.get("contenido", "")
             source_url = doc.get("source_url", "")
-            scraper_source = doc.get("url", "")
+            url = doc.get("url", "")
 
             if not content:
                 logger.warning(f"Documento {doc['_id']} no tiene contenido.")
                 continue
 
-            structured_data = self.text_to_json(content, source_url, scraper_source)
+            structured_data = self.text_to_json(content, source_url, url)
 
             if structured_data:
                 self.save_species_to_postgres(
-                    structured_data, source_url, scraper_source
+                    structured_data, source_url, url
                 )
 
                 self.collection.update_one(
@@ -92,7 +92,7 @@ class ScraperService:
                 )
                 logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
 
-    def text_to_json(self, content, source_url, scraper_source):
+    def text_to_json(self, content, source_url, url):
 
         prompt = f"""
         Organiza el siguiente contenido en el formato JSON especificado.
@@ -126,7 +126,7 @@ class ScraperService:
           "usos": "",
           "url": "{source_url}",
           "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-          "fuente": "{scraper_source}",
+          "fuente": "{url}"
         }}
     **Instrucciones:**
         1. Extrae el nombre científico y los nombres comunes de la especie.
@@ -147,13 +147,16 @@ class ScraperService:
 
         response = chat(model="llama3:8b", messages=[{"role": "user", "content": prompt}])
 
+        json_output = response["message"]["content"]
+
         try:
-            return json.loads(response["message"]["content"])
-        except json.JSONDecodeError:
-            logger.error("Error al convertir la respuesta de `ollama` a JSON.")
+            parsed_json = json.loads(json_output)
+            return parsed_json
+        except json.JSONDecodeError as e:
+            print("Error al convertir a JSON:", json_output)  # Muestra la respuesta cruda
             return None
 
-    def save_species_to_postgres(self, structured_data, source_url, scraper_source):
+    def save_species_to_postgres(self, structured_data, source_url, url):
 
         try:
             species_obj = Species.objects.create(
@@ -177,7 +180,7 @@ class ScraperService:
                 prevention_control=structured_data.get("prevencion_control", {}),
                 uses=structured_data.get("usos", ""),
                 source_url=source_url,
-                scraper_source=scraper_source,
+                url=url,
             )
             logger.info(f"Especie guardada en PostgreSQL con ID: {species_obj.id}")
         except Exception as e:
