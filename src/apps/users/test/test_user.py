@@ -100,8 +100,9 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
     assert response.status_code == 204
     mock_soft_delete.assert_called_once_with((test_user.id,))  
 
-    with pytest.raises(User.DoesNotExist):
-        User.objects.get(id=test_user.id)
+    test_user.refresh_from_db()
+    assert test_user.is_active is False
+    assert test_user.deleted_at is not None 
 
 
 @pytest.mark.django_db
