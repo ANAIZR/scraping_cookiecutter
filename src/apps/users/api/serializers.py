@@ -53,6 +53,7 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             )
 
         password = validated_data.pop("password", None)
+        
         with transaction.atomic(): 
             user = super().create(validated_data)
 
@@ -64,11 +65,11 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 user.set_password(password)
                 user.save()
 
-        UserService.update_system_role(user)
-
-        send_welcome_email_task.apply_async((user.email,user.username))
+        transaction.on_commit(lambda: UserService.update_system_role(user))
+        transaction.on_commit(lambda: send_welcome_email_task.apply_async((user.email, user.username)))
 
         return user
+
 
 
 
