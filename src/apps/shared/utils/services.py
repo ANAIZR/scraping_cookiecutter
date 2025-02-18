@@ -5,7 +5,7 @@ import logging
 from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
-from ollama import chat
+import requests
 import json
 
 logger = logging.getLogger(__name__)
@@ -92,8 +92,9 @@ class ScraperService:
                 )
                 logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
 
-    def text_to_json(self, content, source_url, url):
 
+
+    def text_to_json(self, content, source_url, url):
         prompt = f"""
         Organiza el siguiente contenido en el formato JSON especificado.
 
@@ -102,33 +103,34 @@ class ScraperService:
 
         **Estructura esperada en JSON:**
         {{
-          "nombre_cientifico": "",
-          "nombres_comunes": "",
-          "sinonimos": "",
-          "descripcion_invasividad": "",
-          "distribucion": "",
-          "impacto": {{
+        "nombre_cientifico": "",
+        "nombres_comunes": "",
+        "sinonimos": "",
+        "descripcion_invasividad": "",
+        "distribucion": "",
+        "impacto": {{
             "Económico": "",
             "Ambiental": "",
             "Social": ""
-          }},
-          "habitat": "",
-          "ciclo_vida": "",
-          "reproduccion": "",
-          "hospedantes": "",
-          "sintomas": "",
-          "organos_afectados": "",
-          "condiciones_ambientales": "",
-          "prevencion_control": {{
+        }},
+        "habitat": "",
+        "ciclo_vida": "",
+        "reproduccion": "",
+        "hospedantes": "",
+        "sintomas": "",
+        "organos_afectados": "",
+        "condiciones_ambientales": "",
+        "prevencion_control": {{
             "Prevención": "",
             "Control": ""
-          }},
-          "usos": "",
-          "url": "{source_url}",
-          "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-          "fuente": "{url}"
+        }},
+        "usos": "",
+        "url": "{source_url}",
+        "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "fuente": "{url}"
         }}
-    **Instrucciones:**
+
+        **Instrucciones:**
         1. Extrae el nombre científico y los nombres comunes de la especie.
         2. Lista los sinónimos científicos si están disponibles.
         3. Proporciona una descripción de la invasividad de la especie.
@@ -145,16 +147,32 @@ class ScraperService:
             Devuelve solo el JSON con los datos extraídos, sin texto adicional.
         """
 
-        response = chat(model="llama3:8b", messages=[{"role": "user", "content": prompt}])
+        response = requests.post(
+            "http://127.0.0.1:11434/api/chat",
+            json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
+            stream=True  # Permitir la lectura línea por línea
+        )
 
-        json_output = response["message"]["content"]
+        full_response = ""
+
+        for line in response.iter_lines():
+            if line:
+                try:
+                    json_line = json.loads(line.decode("utf-8"))
+                    full_response += json_line.get("message", {}).get("content", "")
+                except json.JSONDecodeError:
+                    print("❌ Error al decodificar JSON:", line)
+
+        print("🔍 Respuesta completa de Ollama:", full_response)
 
         try:
-            parsed_json = json.loads(json_output)
+            parsed_json = json.loads(full_response)
             return parsed_json
-        except json.JSONDecodeError as e:
-            print("Error al convertir a JSON:", json_output)  # Muestra la respuesta cruda
+        except json.JSONDecodeError:
+            print("⚠️ Ollama devolvió una respuesta inválida. Reintentando...")
             return None
+
+
 
     def save_species_to_postgres(self, structured_data, source_url, url):
 
