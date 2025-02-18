@@ -49,3 +49,4 @@ pypdf
 pyPDF2
 chardet
 ollama
+selenium-stealth

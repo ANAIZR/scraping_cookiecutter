@@ -12,7 +12,10 @@ import PyPDF2
 from io import BytesIO
 from rest_framework.response import Response
 from rest_framework import status
+from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium_stealth import stealth
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
@@ -100,7 +103,34 @@ def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
 
     return logger
 
+def driver_init():
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")  # Usa la nueva implementación de headless
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-popup-blocking")
+    #options.add_argument("--window-size=1920,1080")
+    options.add_argument("--start-maximized")
 
+    # Configura el User-Agent para evitar detección
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"
+    options.add_argument(f"user-agent={user_agent}")
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    # Aplicamos selenium-stealth para evitar detección
+    stealth(driver,
+        languages=["en-US", "en"],
+        vendor="Google Inc.",
+        platform="Win32",
+        webgl_vendor="Intel Inc.",
+        renderer="Intel Iris OpenGL Engine",
+        fix_hairline=True,
+    )
+
+    return driver
 
 
 def initialize_driver(retries=3):
