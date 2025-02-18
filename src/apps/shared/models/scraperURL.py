@@ -72,7 +72,7 @@ class ScraperURL(CoreModel):
             scraper_url_task.apply_async((self.url,), eta=self.get_time_limit())
 
 class Species(models.Model):
-    scientific_name = models.CharField(max_length=255)  # Eliminado unique=True
+    scientific_name = models.CharField(max_length=255, null=True, blank=True)
     common_names = models.TextField(blank=True, null=True)
     synonyms = models.TextField(blank=True, null=True)
     invasiveness_description = models.TextField(blank=True, null=True)
