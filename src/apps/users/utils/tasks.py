@@ -39,6 +39,18 @@ def soft_delete_user_task(user_id):
         logger.error(f"Error en soft_delete_user_task: {str(e)}")
 
 
+def restore_user_task(user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        user.is_active = True
+        user.deleted_at = None
+        user.save()
+        logger.info(f"Usuario {user.username} restaurado correctamente.")
+    except User.DoesNotExist:
+        logger.error(f"Usuario con ID {user_id} no encontrado.")
+    except Exception as e:
+        logger.error(f"Error en restore_user_task: {str(e)}")
+
 @shared_task(bind=True)
 def send_email_task(self, subject, recipient_list, html_content):
     result = EmailService.send_email(subject, recipient_list, html_content)

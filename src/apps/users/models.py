@@ -37,15 +37,16 @@ class User(BaseUserModel):
     class Meta:
         db_table = "auth_user"
 
-    def delete(self, *args, **kwargs):
+    def soft_delete(self, *args, **kwargs):
         self.deleted_at = timezone.now()
         self.is_active = False
-        self.save()
+        self.save(update_fields=["deleted_at", "is_active", "updated_at"])
+
 
     def restore(self):
         self.deleted_at = None
         self.is_active = True
-        self.save()
+        self.save(update_fields=["deleted_at", "is_active", "updated_at"])
 
     def is_deleted(self):
         return self.deleted_at is not None

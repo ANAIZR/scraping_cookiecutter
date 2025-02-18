@@ -75,6 +75,12 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"email": "Este correo ya está en uso por otro usuario."})
 
         with transaction.atomic():
+            was_inactive = not instance.is_active  
+            prev_active_state = instance.is_active  
+
+            old_name = instance.first_name  
+            old_last_name = instance.last_name  
+
             user = super().update(instance, validated_data)
 
             if password:
@@ -83,12 +89,24 @@ class UsuarioPOSTSerializer(serializers.ModelSerializer):
                 except ValidationError as e:
                     raise serializers.ValidationError({"password": list(e.messages)})
                 
-                user.set_password(password)  
+                user.set_password(password)
 
-            if "is_active" not in validated_data or validated_data["is_active"] == instance.is_active:
-                UserService.update_system_role(user)
+            if "is_active" in validated_data and validated_data["is_active"] and was_inactive:
+                UserService.restore_user(user)  
+            elif "is_active" in validated_data and not validated_data["is_active"]:
+                UserService.soft_delete_user(user) 
+            else:
+                if (
+                    instance.is_active == prev_active_state  
+                    or instance.first_name != old_name  
+                    or instance.last_name != old_last_name  
+                ):
+                    UserService.update_system_role(user)
 
             user.save()
+
+
+
 
 
 
