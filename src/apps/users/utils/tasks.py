@@ -27,7 +27,7 @@ def reset_password_task(self, email, token, new_password):
 
 
 @shared_task(bind=True)
-def soft_delete_user_task(user_id):
+def soft_delete_user_task(self,user_id):
     from src.apps.users.models import User
 
     try:
