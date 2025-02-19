@@ -215,3 +215,102 @@ class ScraperService:
             logger.info(f"Especie guardada en PostgreSQL con ID: {species_obj.id}")
         except Exception as e:
             logger.error(f"Error al guardar en PostgreSQL: {str(e)}")
+class ScraperComparisonService:
+    def __init__(self):
+        self.client = MongoClient(settings.MONGO_URI)
+        self.db = self.client[settings.MONGO_DB_NAME]
+        self.collection = self.db["collection"] 
+
+    def compare_scraped_content(self, url):
+        
+        documents = list(self.collection.find({"url": url}).sort("scraping_date", -1))
+
+        if len(documents) < 2:
+            logger.info(f"No hay suficientes versiones de la URL {url} para comparar.")
+            return {"status": "no_comparison", "message": "Menos de dos registros encontrados."}
+
+        doc1, doc2 = documents[:2]  
+        content1 = doc1.get("contenido", "")
+        content2 = doc2.get("contenido", "")
+
+        object_id1 = doc1["_id"]
+        object_id2 = doc2["_id"]
+
+        if not content1 or not content2:
+            logger.warning(f"Uno de los documentos ({object_id1}, {object_id2}) no tiene contenido.")
+            return {"status": "missing_content", "message": "Uno de los registros no tiene contenido."}
+
+        comparison_result = self.generate_comparison_with_ollama(content1, content2, url, object_id1, object_id2)
+
+        self.collection.insert_one({
+            "source_url": url,
+            "comparison_date": datetime.utcnow(),
+            "object_id1": object_id1,
+            "object_id2": object_id2,
+            "comparison_result": comparison_result
+        })
+
+        return comparison_result
+
+    def generate_comparison_with_ollama(self, content1, content2, url, object_id1, object_id2):
+  
+        prompt = f"""
+        Compara los siguientes dos reportes extraídos de la misma URL y genera un resumen de los cambios:
+
+        **URL:** {url}
+        
+        **Reporte 1 (ObjectId: {object_id1}):**
+        {content1}
+
+        **Reporte 2 (ObjectId: {object_id2}):**
+        {content2}
+
+        **Instrucciones para el análisis:**
+        1. Identifica las diferencias clave entre los dos reportes.
+        2. Especifica cuánta información nueva se agregó en el segundo reporte.
+        3. Muestra qué se eliminó o modificó en comparación con el primer reporte.
+        4. Indica si la estructura general del reporte ha cambiado.
+        5. Devuelve un resumen en formato JSON con los cambios encontrados.
+
+        **Estructura esperada en JSON:**
+        {{
+            "info_agregada": "",
+            "info_eliminada": "",
+            "info_modificada": "",
+            "estructura_cambio": false
+        }}
+
+        Devuelve solo el JSON, sin texto adicional.
+        """
+
+        response = requests.post(
+            "http://127.0.0.1:11434/api/chat",
+            json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
+            stream=True
+        )
+
+        full_response = ""
+
+        for line in response.iter_lines():
+            if line:
+                try:
+                    json_line = json.loads(line.decode("utf-8"))
+                    full_response += json_line.get("message", {}).get("content", "")
+                except json.JSONDecodeError:
+                    logger.error("Error al decodificar JSON:", line)
+
+        logger.info("🔍 Respuesta completa de Ollama:", full_response)
+
+        match = re.search(r"\{.*\}", full_response, re.DOTALL)
+        if match:
+            json_text = match.group(0)
+            try:
+                parsed_json = json.loads(json_text)
+                return parsed_json
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Error al convertir JSON después de limpiar: {str(e)}")
+                logger.error("📌 JSON detectado:", json_text)
+                return None
+        else:
+            logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
+            return None
