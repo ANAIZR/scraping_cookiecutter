@@ -399,68 +399,7 @@ def process_scraper_data(all_scraper, url, sobrenombre):
 
 
 
-def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
-    try:
-        folder_path = generate_directory(OUTPUT_DIR, url)
 
-        object_id = fs.put(all_scraper.encode("utf-8"), filename=sobrenombre)
-
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
-
-        collection.insert_one(data)
-        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
-
-        delete_old_documents(url, collection, fs)
-
-        response_data = {
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": data["Fecha_scraper"],
-            "Etiquetas": data["Etiquetas"],
-            "Mensaje": "Los datos han sido scrapeados correctamente.",
-        }
-
-        return response_data
-    except Exception as e:
-        logger.error(f"Error al guardar datos del scraper: {str(e)}")
-        raise
-
-
-def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("procesar datos del scraper")
-    try:
-        if all_scraper:
-            response_data = save_scraper_data_without_file(
-                all_scraper, url, sobrenombre, collection, fs
-            )
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
-    except Exception as e:
-        logger.error(f"Error al procesar datos del scraper: {str(e)}")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "Ocurrió un error al procesar los datos.",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
 def extract_text_from_pdf(pdf_url):
     try:
         headers = {"User-Agent": get_random_user_agent()}
