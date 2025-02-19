@@ -51,6 +51,7 @@ from .hort_purdue import scraper_hort_purdue
 from .ers_usda import scraper_ers_usda
 from .ars_usda import scraper_ars_usda
 from .agriculture_gov import scraper_agriculture_gov
+from .notification_aphis import scraper_notification_aphis
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -104,5 +105,6 @@ SCRAPER_FUNCTIONS = {
     51: scraper_nal_usda,
     52: scraper_ers_usda,
     53: scraper_ars_usda,
-    55:scraper_agriculture_gov
+    55:scraper_agriculture_gov,
+    73: scraper_notification_aphis,
 }
