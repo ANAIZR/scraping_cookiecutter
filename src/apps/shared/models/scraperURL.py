@@ -95,6 +95,25 @@ class Species(models.Model):
         blank=True,
         related_name="species",
     )
+    class Meta:
+        db_table = "species"
 
     def __str__(self):
         return self.scientific_name
+class ReportComparison(models.Model):
+    scraper_source = models.ForeignKey(
+        ScraperURL, on_delete=models.CASCADE, related_name="comparisons"
+    )
+    object_id1 = models.CharField(max_length=50)  
+    object_id2 = models.CharField(max_length=50) 
+    comparison_date = models.DateTimeField(auto_now_add=True)
+    info_agregada = models.TextField(blank=True, null=True)
+    info_eliminada = models.TextField(blank=True, null=True)
+    info_modificada = models.TextField(blank=True, null=True)
+    estructura_cambio = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "report_comparison"
+
+    def __str__(self):
+        return f"Comparación {self.id} - {self.scraper_source.url}"

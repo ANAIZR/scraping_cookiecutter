@@ -1,6 +1,6 @@
 from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS
-from src.apps.shared.models.scraperURL import Species
+from src.apps.shared.models.scraperURL import Species, ReportComparison
 import logging
 from django.conf import settings
 from pymongo import MongoClient
@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 import json
 import re
+from django.db import transaction
 logger = logging.getLogger(__name__)
 
 
@@ -219,10 +220,9 @@ class ScraperComparisonService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
-        self.collection = self.db["collection"] 
-
+        self.collection = self.db["collection"]  
     def compare_scraped_content(self, url):
-        
+
         documents = list(self.collection.find({"url": url}).sort("scraping_date", -1))
 
         if len(documents) < 2:
@@ -233,27 +233,31 @@ class ScraperComparisonService:
         content1 = doc1.get("contenido", "")
         content2 = doc2.get("contenido", "")
 
-        object_id1 = doc1["_id"]
-        object_id2 = doc2["_id"]
+        object_id1 = str(doc1["_id"])  
+        object_id2 = str(doc2["_id"])  
 
         if not content1 or not content2:
             logger.warning(f"Uno de los documentos ({object_id1}, {object_id2}) no tiene contenido.")
             return {"status": "missing_content", "message": "Uno de los registros no tiene contenido."}
 
+        existing_report = ReportComparison.objects.filter(scraper_source__url=url).first()
+
+        if existing_report:
+            if existing_report.object_id1 == object_id1 and existing_report.object_id2 == object_id2:
+                logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe y no ha cambiado.")
+                return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
+
+            logger.info(f"Detectado cambio en ObjectId. Reprocesando comparación para {url}.")
+        
         comparison_result = self.generate_comparison_with_ollama(content1, content2, url, object_id1, object_id2)
 
-        self.collection.insert_one({
-            "source_url": url,
-            "comparison_date": datetime.utcnow(),
-            "object_id1": object_id1,
-            "object_id2": object_id2,
-            "comparison_result": comparison_result
-        })
+        if comparison_result:
+            self.save_or_update_comparison_to_postgres(url, object_id1, object_id2, comparison_result)
 
         return comparison_result
 
     def generate_comparison_with_ollama(self, content1, content2, url, object_id1, object_id2):
-  
+
         prompt = f"""
         Compara los siguientes dos reportes extraídos de la misma URL y genera un resumen de los cambios:
 
@@ -283,11 +287,16 @@ class ScraperComparisonService:
         Devuelve solo el JSON, sin texto adicional.
         """
 
-        response = requests.post(
-            "http://127.0.0.1:11434/api/chat",
-            json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
-            stream=True
-        )
+        try:
+            response = requests.post(
+                "http://127.0.0.1:11434/api/chat",
+                json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
+                timeout=30,  
+                stream=True
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error en la solicitud a Ollama: {str(e)}")
+            return None
 
         full_response = ""
 
@@ -314,3 +323,25 @@ class ScraperComparisonService:
         else:
             logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
+
+    def save_or_update_comparison_to_postgres(self, url, object_id1, object_id2, comparison_result):
+
+        try:
+            scraper_source, created = ScraperURL.objects.get_or_create(url=url, defaults={"sobrenombre": "Fuente desconocida"})
+
+            with transaction.atomic(): 
+                report, created = ReportComparison.objects.update_or_create(
+                    scraper_source=scraper_source,
+                    defaults={
+                        "object_id1": object_id1,
+                        "object_id2": object_id2,
+                        "info_agregada": comparison_result.get("info_agregada", ""),
+                        "info_eliminada": comparison_result.get("info_eliminada", ""),
+                        "info_modificada": comparison_result.get("info_modificada", ""),
+                        "estructura_cambio": comparison_result.get("estructura_cambio", False)
+                    }
+                )
+                action = "creado" if created else "actualizado"
+                logger.info(f"Reporte de comparación {action} en PostgreSQL con ID: {report.id}")
+        except Exception as e:
+            logger.error(f"Error al guardar o actualizar comparación en PostgreSQL: {str(e)}")
