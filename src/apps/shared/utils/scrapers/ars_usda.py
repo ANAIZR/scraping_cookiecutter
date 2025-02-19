@@ -7,13 +7,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rest_framework.response import Response
 from rest_framework import status
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
 )
+from datetime import datetime
+from bson import ObjectId
 
 def scraper_ars_usda(url, sobrenombre):
+    url_padre = url
     logger = get_logger("ARS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
@@ -21,6 +24,7 @@ def scraper_ars_usda(url, sobrenombre):
     processed_links = set()
     urls_to_scrape = [(url, 1)]  
     non_scraped_urls = []  
+    scraped_urls = []
 
     total_found_links = 0
     total_scraped_links = 0
@@ -49,7 +53,46 @@ def scraper_ars_usda(url, sobrenombre):
                 if main_content:
                     nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
-                    all_scraper += f"URL: {url}\n{page_text}\n\n" 
+                    if page_text:
+                        object_id = fs.put(
+                            page_text.encode("utf-8"),
+                            source_url=url,
+                            scraping_date=datetime.now(),
+                            Etiquetas=["planta", "plaga"],
+                            contenido=page_text,
+                            url=url_padre
+                        )
+                        total_scraped_links += 1
+                        scraped_urls.append(url)
+                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                        collection.insert_one(
+                            {
+                                "_id": object_id,
+                                "source_url": url,
+                                "scraping_date": datetime.now(),
+                                "Etiquetas": ["planta", "plaga"],
+                                "url": url_padre,
+                            }
+                        )
+
+                        existing_versions = list(
+                            collection.find({"source_url": url}).sort(
+                                "scraping_date", -1
+                            )
+                        )
+
+                        if len(existing_versions) > 1:
+                            oldest_version = existing_versions[-1]
+                            fs.delete(ObjectId(oldest_version["_id"]))
+                            collection.delete_one(
+                                {"_id": ObjectId(oldest_version["_id"])}
+                            )
+                            logger.info(
+                                f"Se eliminó la versión más antigua con este enlace: '{url}' y object_id: {oldest_version['_id']}"
+                            )
+                    else:
+                        non_scraped_urls.append(url)
 
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
@@ -81,6 +124,7 @@ def scraper_ars_usda(url, sobrenombre):
         return new_links
 
     def scrape_pages_in_parallel(url_list):
+        nonlocal total_non_scraped_links
         new_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_url = {
@@ -102,13 +146,14 @@ def scraper_ars_usda(url, sobrenombre):
             urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
             time.sleep(random.uniform(1, 3))  
 
-        all_scraper += f"\n\nTotal links found: {total_found_links}\n"
-        all_scraper += f"Total links scraped: {total_scraped_links}\n"
-        all_scraper += f"Total links not scraped: {total_non_scraped_links}\n"
-        all_scraper += "\n\nURLs no scrapeadas:\n"
-        all_scraper += "\n".join(non_scraped_urls)  
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        print('respuesta por analizar',response)
+        all_scraper = (
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:

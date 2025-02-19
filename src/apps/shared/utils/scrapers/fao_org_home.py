@@ -157,7 +157,7 @@ def scraper_fao_org_home(url, sobrenombre):
 
 
         all_scraper = (
-            f"Total enlaces scrapeados: {len(total_scraped_links)}\n"
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
             f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
             f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
