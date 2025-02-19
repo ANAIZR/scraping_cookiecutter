@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 def scraper_agriculture_gov(url, sobrenombre):
     logger = get_logger("AGRICULTURE_GOV")
     logger.info(f"Iniciando scraping para URL: {url}")
+    
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
     total_links_found = 0
@@ -32,22 +33,38 @@ def scraper_agriculture_gov(url, sobrenombre):
     
     try:
         driver.get(url)
+        
+        driver.execute_script("document.body.style.zoom='100%'")
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+        time.sleep(5)
+        
         logger.info("Página cargada correctamente.")
+
         domain = "https://www.agriculture.gov.au"
         keywords = load_keywords("plants.txt")
 
         for keyword in keywords:
             try:
-                search_input = WebDriverWait(driver, 10).until(
+                search_input = WebDriverWait(driver, 15).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "input#edit-search-api-fulltext--3"))
                 )
                 search_input.clear()
                 search_input.send_keys(keyword)
                 
-                search_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button#edit-submit-all-site-search--3"))
-                )
-                search_button.click()
+                try:
+                    search_button = WebDriverWait(driver, 15).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "button#edit-submit-all-site-search--3"))
+                    )
+                    logger.info("✅ Se encontró el botón de búsqueda con Selenium")
+                except TimeoutException:
+                    logger.error("❌ No se encontró el botón con Selenium después de la espera")
+                    continue
+                
+                try:
+                    search_button.click()
+                except:
+                    driver.execute_script("arguments[0].click();", search_button)
+                
                 time.sleep(random.uniform(3, 6))
 
                 while True:
@@ -68,8 +85,10 @@ def scraper_agriculture_gov(url, sobrenombre):
                                     scraped_urls.add(href)
                                     total_links_found += 1
                     try:
-                        next_button = driver.find_element(By.CSS_SELECTOR, "li.pager__item.pager__item--next a")
-                        next_button.click()
+                        next_button = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, "li.pager__item.pager__item--next a"))
+                        )
+                        driver.execute_script("arguments[0].click();", next_button)
                         time.sleep(random.uniform(3, 6))
                     except (TimeoutException, NoSuchElementException):
                         break
@@ -77,10 +96,15 @@ def scraper_agriculture_gov(url, sobrenombre):
                 for href in scraped_urls:
                     try:
                         if href.endswith(".pdf"):
-                            print(f"***Extrayendo texto de {href}")
+                            logger.info(f"***Extrayendo texto de {href}")
                             content_text = extract_text_from_pdf(href)
                         else:
                             driver.get(href)
+                            
+                            driver.execute_script("document.body.style.zoom='100%'")
+                            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                            time.sleep(5)
+
                             WebDriverWait(driver, 30).until(
                                 EC.presence_of_element_located((By.CSS_SELECTOR, "div.region-content"))
                             )
@@ -121,14 +145,13 @@ def scraper_agriculture_gov(url, sobrenombre):
                                 collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
                                 logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
                             
-                            print(f"Contenido extraído de {href}.")
+                            logger.info(f"Contenido extraído de {href}.")
                     except Exception as e:
-                        print(f"No se pudo extraer contenido de {href}: {e}")
+                        logger.error(f"No se pudo extraer contenido de {href}: {e}")
                         total_failed_scrapes += 1
                         failed_urls.add(href)
                     finally:
                         driver.get(url)
-
 
             except Exception as e:
                 logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
