@@ -6,7 +6,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    process_scraper_data_v2,
+    process_scraper_data,
     load_keywords
 )
 from rest_framework.response import Response
@@ -143,7 +143,7 @@ def scraper_apsnet(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        return process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
