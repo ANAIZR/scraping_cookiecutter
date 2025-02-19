@@ -298,6 +298,7 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
             content_text.encode("utf-8"),
             source_url=url,
             scraping_date=datetime.now(),
+            contenido =all_scraper,
             Etiquetas=["planta", "plaga"],
             url=url
         )
