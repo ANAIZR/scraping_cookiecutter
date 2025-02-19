@@ -53,6 +53,7 @@ from .ars_usda import scraper_ars_usda
 from .agriculture_gov import scraper_agriculture_gov
 from .notification_aphis import scraper_notification_aphis
 from .fao_org_home import scraper_fao_org_home
+from .apsnet import scraper_apsnet
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -108,5 +109,6 @@ SCRAPER_FUNCTIONS = {
     53: scraper_ars_usda,
     55:scraper_agriculture_gov,
     60: scraper_fao_org_home,
+    63: scraper_apsnet,
     73: scraper_notification_aphis,
 }
