@@ -85,32 +85,18 @@ def scraper_plant_ifas(url, sobrenombre):
                                 url=url
                             )
 
-                            collection.insert_one(
-                                {
-                                    "_id": object_id,
-                                    "source_url": page,
-                                    "scraping_date": datetime.now(),
-                                    "Etiquetas": ["planta", "plaga"],
-                                    "contenido": cleaned_text,
-                                    "url": url,
-                                }
-                            )
+                            
 
                             scraped_urls.append(page)
                             total_scraped_links += 1
-
-                            existing_versions = list(
-                                collection.find({"source_url": page}).sort("scraping_date", -1)
-                            )
+                            existing_versions = list(fs.find({"source_url": page}).sort("scraping_date", -1))
 
                             if len(existing_versions) > 1:
                                 oldest_version = existing_versions[-1]
                                 fs.delete(ObjectId(oldest_version["_id"]))
-                                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
-                                logger.info(
-                                    f"Se eliminó la versión más antigua con este enlace: '{page}' y object_id: {oldest_version['_id']}"
-                                )
+                            
 
                         else:
                             logger.warning(f"No se encontró contenido en {page}")

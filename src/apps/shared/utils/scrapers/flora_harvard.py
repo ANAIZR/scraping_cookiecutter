@@ -81,32 +81,18 @@ def scraper_flora_harvard(url, sobrenombre):
                     url=url  
                 )
 
-                collection.insert_one(
-                    {
-                        "_id": object_id,
-                        "source_url": current_url,
-                        "scraping_date": datetime.now(),
-                        "Etiquetas": ["planta", "plaga"],
-                        "contenido": content_text,
-                        "url": url,
-                    }
-                )
+                
 
                 scraped_urls.append(current_url)
                 total_scraped_links += 1
-
-                existing_versions = list(
-                    collection.find({"source_url": current_url}).sort("scraping_date", -1)
-                )
+                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
 
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
                     fs.delete(ObjectId(oldest_version["_id"]))
-                    collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
-                    logger.info(
-                        f"Se eliminó la versión más antigua con este enlace: '{current_url}' y object_id: {oldest_version['_id']}"
-                    )
+                
 
             links = extract_hrefs_from_ul(html_content, url)
 
@@ -124,32 +110,17 @@ def scraper_flora_harvard(url, sobrenombre):
                             url=url
                         )
 
-                        collection.insert_one(
-                            {
-                                "_id": object_id,
-                                "source_url": link,
-                                "scraping_date": datetime.now(),
-                                "Etiquetas": ["planta", "plaga"],
-                                "contenido": pdf_content,
-                                "url": url,
-                            }
-                        )
+                        
 
                         scraped_urls.append(link)
                         total_scraped_links += 1
 
-                        existing_versions = list(
-                            collection.find({"source_url": link}).sort("scraping_date", -1)
-                        )
+                        existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
 
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
                             fs.delete(ObjectId(oldest_version["_id"]))
-                            collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-
-                            logger.info(
-                                f"Se eliminó la versión más antigua con este enlace: '{link}' y object_id: {oldest_version['_id']}"
-                            )
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
         except Exception as e:
             logger.error(f"Error al procesar la URL {current_url}: {str(e)}")

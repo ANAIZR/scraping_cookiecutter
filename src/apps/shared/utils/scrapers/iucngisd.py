@@ -44,28 +44,16 @@ def fetch_content(href, logger, scraped_count, failed_hrefs, collection, fs, url
                 contenido=content_text,
                 url=url
             )
-            
-            collection.insert_one(
-                {
-                    "_id": object_id,
-                    "source_url": href,
-                    "scraping_date": datetime.now(),
-                    "Etiquetas": ["planta", "plaga"],
-                    "url": url,
-                }
-            )
-            
-            existing_versions = list(
-                collection.find({"source_url": href}).sort("scraping_date", -1)
-            )
-            
+            existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+
             if len(existing_versions) > 1:
                 oldest_version = existing_versions[-1]
                 fs.delete(ObjectId(oldest_version["_id"]))
-                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-                logger.info(
-                    f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
-                )
+                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                        
+                        
+                        
+            
             
             return href
         else:

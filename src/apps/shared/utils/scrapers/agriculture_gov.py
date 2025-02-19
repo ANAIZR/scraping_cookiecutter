@@ -51,6 +51,8 @@ def scraper_agriculture_gov(url, sobrenombre):
                 search_input.clear()
                 search_input.send_keys(keyword)
                 
+                logger.info(f"Buscando con la palabra clave '{keyword}'")
+                
                 try:
                     search_button = WebDriverWait(driver, 15).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "button#edit-submit-all-site-search--3"))
@@ -125,25 +127,13 @@ def scraper_agriculture_gov(url, sobrenombre):
 
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                            collection.insert_one(
-                                {
-                                    "_id": object_id,
-                                    "source_url": href,
-                                    "scraping_date": datetime.now(),
-                                    "Etiquetas": ["planta", "plaga"],
-                                    "contenido": content_text,
-                                    "url": url,
-                                }
-                            )
-
                             existing_versions = list(
-                                collection.find({"source_url": href}).sort("scraping_date", -1)
+                                fs.find({"source_url": href}).sort("scraping_date", -1)
                             )
 
                             if len(existing_versions) > 2:
                                 oldest_version = existing_versions[-1]
                                 fs.delete(ObjectId(oldest_version["_id"]))
-                                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
                                 logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
                             
                             logger.info(f"Contenido extraído de {href}.")

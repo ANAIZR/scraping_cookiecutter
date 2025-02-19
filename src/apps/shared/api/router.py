@@ -4,11 +4,12 @@ from django.urls import path
 from .viewsets.login_viewsets import LoginView
 from .viewsets import get_viewset_scraper, scraperURL_viewsets
 from .viewsets.scraperFixture_viewsets import ScraperAPIView
-from .viewsets.scraperURL_viewsets import SpeciesViewSet
+from .viewsets.scraperURL_viewsets import SpeciesViewSet, ReportComparisonViewSet
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 router.register(r"urls", scraperURL_viewsets.ScraperURLViewSet, basename="urls")
 router.register(r'species', SpeciesViewSet, basename='species')
+router.register(r'comparisons', ReportComparisonViewSet, basename='comparisons')
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),

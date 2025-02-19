@@ -28,6 +28,10 @@ app.conf.beat_schedule = {
         "task": "src.apps.shared.utils.tasks.run_scraper_task",
         "schedule": crontab(hour=5, minute=0, day_of_week=3), 
     },
+    "run-compare-reports":{
+        "task":"src.apps.shared.utils.tasks.compare_all_scraped_urls_task",
+        "schedule":crontab(hour=5, minute=0, day_of_week=4)
+    }
 }
 
 

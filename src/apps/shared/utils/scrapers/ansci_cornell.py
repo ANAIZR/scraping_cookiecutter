@@ -83,32 +83,14 @@ def scraper_ansci_cornell(url, sobrenombre):
 
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                            collection.insert_one(
-                                {
-                                    "_id": object_id,
-                                    "source_url": link_href,
-                                    "scraping_date": datetime.now(),
-                                    "contenido": content_text,
-                                    "Etiquetas": ["planta", "plaga"],
-                                    "url": url,
-                                }
-                            )
+                            
+                            existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
 
-                            existing_versions = list(
-                                collection.find({"source_url": link_href}).sort(
-                                    "scraping_date", -1
-                                )
-                            )
 
-                            if len(existing_versions) > 2:
+                            if len(existing_versions) > 1:
                                 oldest_version = existing_versions[-1]
                                 fs.delete(ObjectId(oldest_version["_id"]))
-                                collection.delete_one(
-                                    {"_id": ObjectId(oldest_version["_id"])}
-                                )
-                                logger.info(
-                                    f"Se eliminó la versión más antigua con este enlace: '{link_href}' y object_id: {oldest_version['_id']}"
-                                )
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
                         else:
                             failed_urls.append(link_href)
                             total_failed_scrapes += 1

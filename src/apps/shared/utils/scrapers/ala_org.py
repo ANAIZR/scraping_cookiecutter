@@ -94,17 +94,13 @@ def scraper_ala_org(url, sobrenombre):
                                     total_scraped_successfully += 1
 
                                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                                    if len(existing_versions) > 1:
+                                        oldest_version = existing_versions[-1]
+                                        fs.delete(ObjectId(oldest_version["_id"]))
+                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
-                                    collection.insert_one(
-                                        {
-                                            "_id": object_id,
-                                            "source_url": href,
-                                            "scraping_date": datetime.now(),
-                                            "Etiquetas": ["planta", "plaga"],
-                                            "contenido": content_text,
-                                            "url": url,
-                                        }
-                                    )
+                                    
                             except Exception as e:
                                 logger.warning(f"No se pudo extraer contenido de {href}: {e}")
                                 total_failed_scrapes += 1

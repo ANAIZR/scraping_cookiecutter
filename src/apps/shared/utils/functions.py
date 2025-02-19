@@ -273,23 +273,19 @@ def delete_old_documents(url, collection, fs, limit=2):
 def save_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
-        folder_path = generate_directory(sobrenombre, OUTPUT_DIR)
-        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(all_scraper)
         response_data = {
-                "Tipo": "WEB",
-                "Url": url,
-                "Fecha_scraper": datetime.now(),
-                "Etiquetas": ["planta", "plaga"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data_pdf: {type(response_data)}")
+            "Tipo": "WEB",
+            "Url": url,
+            "Fecha_scraper": datetime.now(),
+            "Etiquetas": ["planta", "plaga"],
+            "Mensaje": "Los datos han sido scrapeados correctamente.",
+        }
+        logger.info(f"DEBUG - Tipo de respuesta de save_scraper_data: {type(response_data)}")
         return response_data
     except Exception as e:
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
+
 def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
@@ -350,11 +346,27 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
 def process_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
+        collection,fs = connect_to_mongo()
         if all_scraper.strip():
-            response_data = save_scraper_data(
-                all_scraper, url, sobrenombre
+            response_data = save_scraper_data(all_scraper, url, sobrenombre)
+
+            collection.insert_one(
+                {
+                    "scraping_date": datetime.now(),
+                    "Etiquetas": ["planta", "plaga"],
+                    "contenido": all_scraper,
+                    "url": url,
+                }
             )
+
+            existing_versions = list(collection.find({"url": url}).sort("scraping_date", -1))
+            if len(existing_versions) > 2:
+                oldest_version = existing_versions[-1]
+                collection.delete_one({"_id": oldest_version["_id"]})
+                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+
             return response_data
+
         else:
             logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
             return {
@@ -384,6 +396,7 @@ def process_scraper_data(all_scraper, url, sobrenombre):
             "message": "Ocurrió un error al procesar los datos.",
             "error": str(e),
         }
+
 
 
 def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):

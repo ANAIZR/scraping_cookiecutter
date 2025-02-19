@@ -69,31 +69,15 @@ def scraper_aphis_usda(url, sobrenombre):
                 scraped_urls.append(current_url)
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                collection.insert_one(
-                    {
-                        "_id": object_id,
-                        "source_url": current_url,
-                        "scraping_date": datetime.now(),
-                        "Etiquetas": ["planta", "plaga"],
-                        "url": url,
-                    }
-                )
+                
 
-                existing_versions = list(
-                    collection.find({"source_url": current_url}).sort(
-                        "scraping_date", -1
-                    )
-                )
+                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
+
 
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
                     fs.delete(ObjectId(oldest_version["_id"]))
-                    collection.delete_one(
-                        {"_id": ObjectId(oldest_version["_id"])}
-                    )
-                    logger.info(
-                        f"Se eliminó la versión más antigua con este enlace: '{current_url}' y object_id: {oldest_version['_id']}"
-                    )
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
@@ -120,32 +104,15 @@ def scraper_aphis_usda(url, sobrenombre):
                         scraped_urls.append(full_url)
                         logger.info(f"Archivo PDF almacenado en MongoDB con object_id: {object_id}")
 
-                        collection.insert_one(
-                            {
-                                "_id": object_id,
-                                "source_url": full_url,
-                                "scraping_date": datetime.now(),
-                                "Etiquetas": ["planta", "plaga"],
-                                "contenido": content_text,
-                                "url": url,
-                            }
-                        )
+                        
 
-                        existing_versions = list(
-                            collection.find({"source_url": full_url}).sort(
-                                "scraping_date", -1
-                            )
-                        )
+                        existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
+
 
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
                             fs.delete(ObjectId(oldest_version["_id"]))
-                            collection.delete_one(
-                                {"_id": ObjectId(oldest_version["_id"])}
-                            )
-                            logger.info(
-                                f"Se eliminó la versión más antigua con este enlace: '{full_url}' y object_id: {oldest_version['_id']}"
-                            )
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
                     else:
                         total_non_scraped_links += 1
                         non_scraped_urls.append(full_url)
