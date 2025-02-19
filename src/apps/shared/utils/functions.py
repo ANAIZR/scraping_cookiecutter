@@ -451,7 +451,7 @@ def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection,
 def extract_text_from_pdf(pdf_url):
     try:
         headers = {"User-Agent": get_random_user_agent()}
-        response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
+        response = requests.get(pdf_url, headers=headers, stream=True, timeout=50)
         response.raise_for_status() 
 
         pdf_buffer = BytesIO(response.content)
