@@ -11,6 +11,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 from datetime import datetime
 from bson import ObjectId
@@ -49,7 +50,13 @@ def scraper_ars_usda(url, sobrenombre):
             soup = BeautifulSoup(response.content, "html.parser")
 
             if depth >= 2:
-                main_content = soup.find("main", id="main-content")
+
+                if url.lower().endswith(".pdf"):
+                    logger.info(f"Extrayendo texto de PDF: {url}")
+                    main_content = extract_text_from_pdf(url)
+                else:
+                    main_content = soup.find("main", id="main-content")
+                    
                 if main_content:
                     nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
