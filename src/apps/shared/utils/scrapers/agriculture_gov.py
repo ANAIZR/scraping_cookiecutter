@@ -51,6 +51,8 @@ def scraper_agriculture_gov(url, sobrenombre):
                 search_input.clear()
                 search_input.send_keys(keyword)
                 
+                logger.info(f"Buscando con la palabra clave '{keyword}'")
+                
                 try:
                     search_button = WebDriverWait(driver, 15).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "button#edit-submit-all-site-search--3"))
