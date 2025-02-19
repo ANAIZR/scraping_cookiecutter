@@ -45,6 +45,8 @@ class SpeciesSerializer(serializers.ModelSerializer):
 
 class ReportComparisonSerializer(serializers.ModelSerializer):
     url = serializers.CharField(source='scraper_source.url', read_only=True)
+    scraper_source_id = serializers.IntegerField(source='scraper_source.id', read_only=True)
+
 
     class Meta:
         model = ReportComparison
