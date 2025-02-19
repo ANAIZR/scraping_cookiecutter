@@ -16,12 +16,12 @@ from datetime import datetime
 from bson import ObjectId
 
 def scraper_fao_org_home(url, sobrenombre):
+    url_padre = url
     logger = get_logger("FAO_ORG_HOME")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     processed_links = set()
-    urls_to_scrape = [(url, 1)]  
     urls_to_scrape = [(url, 1)]  
     non_scraped_urls = []  
     scraped_urls = []
@@ -64,28 +64,28 @@ def scraper_fao_org_home(url, sobrenombre):
                     if page_text:
                         object_id = fs.put(
                             page_text.encode("utf-8"),
-                            source_url=full_url,
+                            source_url=url,
                             scraping_date=datetime.now(),
                             Etiquetas=["planta", "plaga"],
                             contenido=page_text,
-                            url=url
+                            url=url_padre
                         )
                         total_scraped_links += 1
-                        scraped_urls.append(full_url)
+                        scraped_urls.append(url)
                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                         collection.insert_one(
                             {
                                 "_id": object_id,
-                                "source_url": full_url,
+                                "source_url": url,
                                 "scraping_date": datetime.now(),
                                 "Etiquetas": ["planta", "plaga"],
-                                "url": url,
+                                "url": url_padre,
                             }
                         )
 
                         existing_versions = list(
-                            collection.find({"source_url": full_url}).sort(
+                            collection.find({"source_url": url}).sort(
                                 "scraping_date", -1
                             )
                         )
@@ -97,8 +97,10 @@ def scraper_fao_org_home(url, sobrenombre):
                                 {"_id": ObjectId(oldest_version["_id"])}
                             )
                             logger.info(
-                                f"Se eliminó la versión más antigua con este enlace: '{full_url}' y object_id: {oldest_version['_id']}"
+                                f"Se eliminó la versión más antigua con este enlace: '{url}' y object_id: {oldest_version['_id']}"
                             )
+                    else:
+                        non_scraped_urls.append(url)
 
             # ... (resto del código original de procesamiento de links)
             for link in soup.find_all("a", href=True):
