@@ -40,4 +40,5 @@ class SpeciesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Species
-        fields = '__all__' + ('sobrenombre',)  
+        fields = '__all__' 
+        extra_fields = ['sobrenombre']
