@@ -65,32 +65,13 @@ def scraper_ars_usda(url, sobrenombre):
                         total_scraped_links += 1
                         scraped_urls.append(url)
                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                        collection.insert_one(
-                            {
-                                "_id": object_id,
-                                "source_url": url,
-                                "scraping_date": datetime.now(),
-                                "Etiquetas": ["planta", "plaga"],
-                                "url": url_padre,
-                            }
-                        )
-
-                        existing_versions = list(
-                            collection.find({"source_url": url}).sort(
-                                "scraping_date", -1
-                            )
-                        )
-
+ 
+                        existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
                             fs.delete(ObjectId(oldest_version["_id"]))
-                            collection.delete_one(
-                                {"_id": ObjectId(oldest_version["_id"])}
-                            )
-                            logger.info(
-                                f"Se eliminó la versión más antigua con este enlace: '{url}' y object_id: {oldest_version['_id']}"
-                            )
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                       
                     else:
                         non_scraped_urls.append(url)
 
@@ -99,8 +80,10 @@ def scraper_ars_usda(url, sobrenombre):
                 full_url = urljoin(url, inner_href)
 
                 if full_url.lower().endswith(".pdf"):
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
+                    print("PDF encontrado:", full_url)
+                    urls_to_scrape.append((full_url, depth + 1))
+                    # total_non_scraped_links += 1  
+                    # non_scraped_urls.append(full_url)  
                     continue
 
                 if "forms" in full_url or "":  
