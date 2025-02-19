@@ -290,7 +290,6 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
         content_text = all_scraper.strip()
-
         if not content_text:
             logger.warning("El contenido está vacío, no se guardará en MongoDB.")
             return {"error": "El contenido del scraper está vacío."}
@@ -300,32 +299,33 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
             source_url=url,
             scraping_date=datetime.now(),
             Etiquetas=["planta", "plaga"],
-            contenido=content_text, 
             url=url
         )
 
-        logger.info(f"Archivo almacenado en MongoDB con ObjectId: {object_id}")
+        logger.info(f"Archivo almacenado en MongoDB GridFS con ObjectId: {object_id}")
 
         collection.insert_one({
             "_id": object_id,
             "source_url": url,
             "scraping_date": datetime.now(),
+            "contenido": f"Se scrapeo 1 url: {url}", 
             "Etiquetas": ["planta", "plaga"],
-            "contenido": content_text, 
             "url": url,
         })
 
-        existing_versions = list(
-            collection.find({"source_url": url}).sort("scraping_date", -1)
-        )
+        existing_files = list(fs.find({"source_url": url}).sort("uploadDate", -1))
 
-        if len(existing_versions) > 1:
-            oldest_version = existing_versions[-1]
-            fs.delete(ObjectId(oldest_version["_id"]))
-            collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-            logger.info(
-                f"Se eliminó la versión más antigua con este enlace: '{url}' y ObjectId: {oldest_version['_id']}'"
-            )
+        if len(existing_files) > 1:  
+            oldest_file = existing_files[-1]
+            fs.delete(oldest_file._id)
+            logger.info(f"Se eliminó el archivo más antiguo en fs con ObjectId: {oldest_file._id}")
+
+        existing_records = list(collection.find({"source_url": url}).sort("scraping_date", -1))
+
+        if len(existing_records) > 2: 
+            oldest_record = existing_records[-1]
+            collection.delete_one({"_id": oldest_record["_id"]})
+            logger.info(f"Se eliminó la versión más antigua en collection con ObjectId: {oldest_record['_id']}")
 
         response_data = {
             "Tipo": "Documento",
