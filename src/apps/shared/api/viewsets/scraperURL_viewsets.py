@@ -7,5 +7,5 @@ class ScraperURLViewSet(viewsets.ModelViewSet):
     queryset = ScraperURL.objects.all()
     serializer_class = ScraperURLSerializer
 class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):  
-    queryset = Species.objects.all()
+    queryset = Species.objects.select_related('scraper_source').all()
     serializer_class = SpeciesSerializer

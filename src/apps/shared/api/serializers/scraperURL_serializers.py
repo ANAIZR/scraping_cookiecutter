@@ -36,9 +36,8 @@ class ScraperURLSerializer(serializers.ModelSerializer):
 
         return value
 class SpeciesSerializer(serializers.ModelSerializer):
-    sobrenombre = serializers.CharField(source='scraper_source.sobrenombre', read_only=True)  # Acceder al sobrenombre
+    sobrenombre = serializers.CharField(source='scraper_source.sobrenombre', read_only=True)  
 
     class Meta:
         model = Species
-        fields = '__all__' 
-        extra_fields = ['sobrenombre']
+        fields = '__all__' + ('sobrenombre',)  
