@@ -108,12 +108,15 @@ class ScraperService:
         if not datos or not isinstance(datos, dict):
             return False
 
+        if not datos.get("nombre_cientifico") or not datos["nombre_cientifico"].strip():
+            return False  
+
         campos_con_datos = 0  
 
         for clave, valor in datos.items():
             if isinstance(valor, list) and valor:  
                 campos_con_datos += 1
-            elif isinstance(valor, dict): 
+            elif isinstance(valor, dict):  
                 for subvalor in valor.values():
                     if subvalor:
                         campos_con_datos += 1
@@ -125,6 +128,7 @@ class ScraperService:
                 return True
 
         return False  
+
 
 
     def text_to_json(self, content, source_url, url):
@@ -217,6 +221,7 @@ class ScraperService:
 
 
 
+    
     def save_species_to_postgres(self, structured_data_list, source_url, url, batch_size=250):
         try:
             if not structured_data_list:
@@ -239,13 +244,24 @@ class ScraperService:
 
             species_objects = []
             for structured_data in structured_data_list:
+                if isinstance(structured_data, str):
+                    try:
+                        structured_data = json.loads(structured_data)  # Convertir JSON string a dict
+                    except json.JSONDecodeError:
+                        logger.error(f"Error al convertir JSON: {structured_data}")
+                        continue  
+
+                if not isinstance(structured_data, dict):
+                    logger.error(f"structured_data no es un diccionario: {structured_data}")
+                    continue  
+
                 species_obj = Species(
                     scientific_name=structured_data.get("nombre_cientifico", ""),
                     common_names=structured_data.get("nombres_comunes", ""),
-                    synonyms=json.dumps(structured_data.get("sinonimos", [])),  # Convertir listas a JSON
+                    synonyms=json.dumps(structured_data.get("sinonimos", [])),  
                     invasiveness_description=structured_data.get("descripcion_invasividad", ""),
                     distribution=structured_data.get("distribucion", ""),
-                    impact=json.dumps(structured_data.get("impacto", {})),  # Convertir diccionarios a JSON
+                    impact=json.dumps(structured_data.get("impacto", {})),  
                     habitat=structured_data.get("habitat", ""),
                     life_cycle=structured_data.get("ciclo_vida", ""),
                     reproduction=structured_data.get("reproduccion", ""),

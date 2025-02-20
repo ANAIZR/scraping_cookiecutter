@@ -95,6 +95,8 @@ class Species(models.Model):
         blank=True,
         related_name="species",
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = "species"
 
