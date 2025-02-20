@@ -7,7 +7,6 @@ from src.apps.shared.utils.services import (
 from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.notify_change import check_new_species_and_notify
 import logging
-from src.apps.shared.utils.notify_change import notify_users_of_changes
 from django.utils import timezone
 from datetime import datetime, date
 
@@ -16,8 +15,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
-    from datetime import datetime, date
-    from django.utils import timezone
+
 
     scraper_service = WebScraperService()
 
@@ -90,23 +88,20 @@ def generate_comparison_report_task(self, url):
     if result.get("status") == "no_comparison":
         logger.info(f"No hay suficientes registros para comparación en la URL: {url}")
         return None
+
     elif result.get("status") == "missing_content":
-        logger.warning(
-            f"Uno de los registros de {url} no tiene contenido para comparar."
-        )
-        return None
-    elif result.get("status") == "duplicate":
-        logger.info(
-            f"La comparación entre las versiones ya existe y no ha cambiado para la URL {url}"
-        )
+        logger.warning(f"Uno de los registros de {url} no tiene contenido para comparar.")
         return None
 
+    elif result.get("status") == "duplicate":
+        logger.info(f"La comparación entre las versiones ya existe y no ha cambiado para la URL {url}")
+        return None
+
+    # Si hay cambios, devolver el resultado sin notificar a los usuarios
     logger.info(f"Reporte de comparación generado o actualizado para {url}: {result}")
 
-    if result.get("status") == "changed":
-        notify_users_of_changes(url, result)
+    return result  # ✅ Solo devolver los cambios detectados
 
-    return result
 
 
 @shared_task(bind=True)
@@ -132,7 +127,11 @@ def scraper_expired_urls_task(self):
 
 @shared_task(bind=True)
 def check_species_for_selected_urls_task(self):
-    urls_para_revisar = ["https://www.aphis.usda.gov/publications"]
+    urls_para_revisar = list(ScraperURL.objects.filter(is_active=True).values_list("url", flat=True))
+
+    if not urls_para_revisar:
+        logger.info("No hay URLs activas para verificar.")
+        return
 
     for url in urls_para_revisar:
         process_scraped_data_task.delay(url)

@@ -248,42 +248,39 @@ class ScraperService:
         print("⚠️ No se encontró un JSON válido después de múltiples intentos.")
         return None
 
-    def save_species_to_postgres(
-        self, structured_data_list, source_url, url, batch_size=250
-    ):
+    def save_species_to_postgres(self, structured_data_list, source_url, url, batch_size=250):
         try:
             if not structured_data_list:
-                logger.warning(
-                    "⚠️ Lista de datos estructurados vacía, no se guardará en PostgreSQL."
-                )
+                logger.warning("⚠️ Lista de datos estructurados vacía, no se guardará en PostgreSQL.")
                 return
 
-            print(
-                f"🔍 Intentando guardar {len(structured_data_list)} especies en PostgreSQL"
-            )
+            print(f"🔍 Intentando guardar {len(structured_data_list)} especies en PostgreSQL")
 
             scraper_source, created = ScraperURL.objects.get_or_create(
-                url=url, defaults={"Sobrenombre": "Fuente desconocida"}
-            )
-            logger.info(
-                f"🗂️ Fuente asignada: {scraper_source.id} ({scraper_source.url})"
+                url=url, defaults={"sobrenombre": "Fuente desconocida"}
             )
 
             species_objects = []
 
             for structured_data in structured_data_list:
                 try:
-                    scientific_name = (
-                        structured_data.get("nombre_cientifico") or ""
-                    ).strip()
+                    scientific_name = structured_data.get("nombre_cientifico", "").strip()
                     if not scientific_name:
-                        logger.warning(
-                            "⚠️ Se descartó una especie sin nombre científico."
-                        )
+                        logger.warning("⚠️ Se descartó una especie sin nombre científico.")
                         continue
 
+                    # Validar impacto
+                    impact_data = structured_data.get("impacto", {})
+                    if not isinstance(impact_data, dict):
+                        impact_data = {} 
+
+                    # Validar prevención y control
+                    prevencion_control_data = structured_data.get("prevencion_control", {})
+                    if not isinstance(prevencion_control_data, dict):
+                        prevencion_control_data = {}
+
                     species_obj = Species(
-                        scientific_name=structured_data.get("nombre_cientifico", "").strip(),
+                        scientific_name=scientific_name,
                         common_names=", ".join(structured_data.get("nombres_comunes", [])) 
                         if isinstance(structured_data.get("nombres_comunes"), list) 
                         else structured_data.get("nombres_comunes", "") or "",
@@ -293,62 +290,57 @@ class ScraperService:
                         else "[]",
 
                         invasiveness_description=structured_data.get("descripcion_invasividad", "") or "",
+                        
+                        distribution=json.dumps(structured_data.get("distribucion", [])) 
+                        if isinstance(structured_data.get("distribucion"), list) 
+                        else "[]",
 
-                        impact=json.dumps(structured_data["impacto"]) 
-                        if isinstance(structured_data.get("impacto"), dict) 
-                        else "{}",
+                        impact=json.dumps(impact_data),  # Ahora siempre es un dict válido
 
                         habitat=structured_data.get("habitat", "") or "",
                         life_cycle=structured_data.get("ciclo_vida", "") or "",
                         reproduction=structured_data.get("reproduccion", "") or "",
 
-                        hosts=json.dumps(structured_data["hospedantes"]) 
+                        hosts=json.dumps(structured_data.get("hospedantes", [])) 
                         if isinstance(structured_data.get("hospedantes"), list) 
                         else "[]",
 
-                        symptoms=json.dumps(structured_data["sintomas"]) 
+                        symptoms=json.dumps(structured_data.get("sintomas", [])) 
                         if isinstance(structured_data.get("sintomas"), list) 
                         else "[]",
 
-                        affected_organs=json.dumps(structured_data["organos_afectados"]) 
+                        affected_organs=json.dumps(structured_data.get("organos_afectados", [])) 
                         if isinstance(structured_data.get("organos_afectados"), list) 
                         else "[]",
 
-                        environmental_conditions=json.dumps(structured_data["condiciones_ambientales"]) 
+                        environmental_conditions=json.dumps(structured_data.get("condiciones_ambientales", [])) 
                         if isinstance(structured_data.get("condiciones_ambientales"), list) 
                         else "[]",
 
-                        prevention_control=json.dumps(structured_data["prevencion_control"]) 
-                        if isinstance(structured_data.get("prevencion_control"), dict) 
-                        else "{}",
+                        prevention_control=json.dumps(prevencion_control_data),  # Ahora siempre es un dict válido
 
-                        uses=json.dumps(structured_data["usos"]) 
+                        uses=json.dumps(structured_data.get("usos", [])) 
                         if isinstance(structured_data.get("usos"), list) 
                         else "[]",
 
                         source_url=source_url,
                         scraper_source=scraper_source,
                     )
-
                     species_objects.append(species_obj)
 
                 except Exception as e:
-                    logger.error(
-                        f"❌ Error al procesar especie '{structured_data.get('nombre_cientifico', 'Desconocido')}'"
-                        f" - Detalle: {str(e)}"
-                    )
+                    logger.error(f"❌ Error al procesar especie '{structured_data.get('nombre_cientifico', 'Desconocido')}': {str(e)}")
 
             if species_objects:
                 with transaction.atomic():
                     Species.objects.bulk_create(species_objects, batch_size=batch_size)
-                logger.info(
-                    f"✅ {len(species_objects)} especies guardadas en PostgreSQL en lotes de {batch_size}."
-                )
+                logger.info(f"✅ {len(species_objects)} especies guardadas en PostgreSQL en lotes de {batch_size}.")
             else:
                 logger.warning("⚠️ No se guardaron especies, todas fueron descartadas.")
 
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
+
 
 
 class ScraperComparisonService:

@@ -35,6 +35,9 @@ class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = SpeciesSerializer
 
 
+
+
+
 class ReportComparisonDetailView(generics.RetrieveAPIView):
     serializer_class = ReportComparisonSerializer
 
@@ -50,54 +53,21 @@ class ReportComparisonDetailView(generics.RetrieveAPIView):
         )
 
         if not comparison:
-            logger.info(
-                f"No se encontró comparación para el ScraperURL ID: {scraper_id}"
-            )
+            logger.info(f"No se encontró comparación para el ScraperURL ID: {scraper_id}")
             return Response(
                 {"message": "No se encontró comparación para esta URL"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = ReportComparisonSerializer(comparison)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class ToggleNotificationAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-
-        scraper_url_id = request.data.get("scraper_url_id")
-
-        if not scraper_url_id:
+        if not comparison.info_agregada and not comparison.info_eliminada and not comparison.info_modificada:
             return Response(
-                {"success": False, "message": "ID de URL no proporcionado"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            scraper_url = ScraperURL.objects.get(id=scraper_url_id)
-        except ScraperURL.DoesNotExist:
-            return Response(
-                {"success": False, "message": "URL no encontrada"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        subscription, created = NotificationSubscription.objects.get_or_create(
-            user=request.user, scraper_url=scraper_url
-        )
-
-        if not created:
-            subscription.delete()
-            return Response(
-                {"success": True, "message": "Notificación desactivada"},
+                {"message": "No se detectaron cambios nuevos en la comparación."},
                 status=status.HTTP_200_OK,
             )
 
-        return Response(
-            {"success": True, "message": "Notificación activada"},
-            status=status.HTTP_201_CREATED,
-        )
+        serializer = ReportComparisonSerializer(comparison)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
