@@ -13,25 +13,17 @@ logger = logging.getLogger(__name__)
 
 
 class WebScraperService:
-    def scraper_expired_urls(self):
-        from src.apps.shared.utils.tasks import scraper_url_task
+    def get_expired_urls(self):
+        return ScraperURL.objects.filter(
+                is_active=True, 
+                fecha_scraper__lt=datetime.now()
+            ).values_list("url", flat=True)
 
-        urls = ScraperURL.objects.filter(is_active=True)
-
-        for scraper_url in urls:
-            if scraper_url.is_time_expired():
-                try:
-                    scraper_url_task.delay(scraper_url.url)
-
-                    logger.info(f"Tarea encolada para URL: {scraper_url.url}")
-                except Exception as e:
-                    logger.error(
-                        f"Error al encolar scraping para {scraper_url.url}: {str(e)}"
-                    )
 
     def scraper_one_url(self, url):
         try:
             scraper_url = ScraperURL.objects.get(url=url)
+
             mode_scrapeo = scraper_url.mode_scrapeo
             scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
 
@@ -39,27 +31,20 @@ class WebScraperService:
                 logger.error(f"Modo de scrapeo no reconocido para URL: {url}")
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
-            kwargs = {"url": url, "sobrenombre": scraper_url.sobrenombre}
-            if mode_scrapeo == 7:
-                parameters = scraper_url.parameters or {}
-                kwargs["start_page"] = parameters.get("start_page", 1)
-                kwargs["end_page"] = parameters.get("end_page", None)
+            if mode_scrapeo == "method_pdf":
+                logger.info(f"La URL {url} será procesada como PDF.")
+                return {"success": f"La URL {url} se manejará como PDF."}
 
-            response = scraper_function(**kwargs)
+            logger.info(f"La URL {url} está lista para el scraping.")
+            return {"success": f"La URL {url} está lista para el scraping."}
 
-            if isinstance(response, dict):
-                logger.info(f"Scraping completado para URL: {url}")
-                return response
-            else:
-                logger.error(f"Respuesta no serializable para URL: {url}")
-                return {"error": f"Respuesta no serializable para URL: {url}"}
         except ScraperURL.DoesNotExist:
-            logger.error(f"No se encontraron parámetros para la URL: {url}")
-            return {"error": f"No se encontraron parámetros para la URL: {url}"}
-        except Exception as e:
-            logger.error(f"Error durante el scraping para {url}: {str(e)}")
-            return {"error": f"Error durante el scraping para {url}: {str(e)}"}
+            logger.error(f"La URL {url} no se encuentra en la base de datos.")
+            return {"error": f"La URL {url} no existe en la base de datos."}
 
+        except Exception as e:
+            logger.error(f"Error al verificar la URL {url}: {str(e)}")
+            return {"error": f"Error al verificar la URL {url}: {str(e)}"}
 
 class ScraperService:
     def __init__(self):
@@ -67,14 +52,14 @@ class ScraperService:
         self.db = self.client[settings.MONGO_DB_NAME]
         self.collection = self.db["fs.files"]
 
-    def extract_and_save_species(self):
+    def extract_and_save_species(self, url):
+        """Procesa y guarda en PostgreSQL solo la URL específica desde MongoDB."""
 
-        documents = self.collection.find({"processed": {"$ne": True}})
+        documents = self.collection.find({"url": url, "processed": {"$ne": True}})
 
         for doc in documents:
             content = doc.get("contenido", "")
             source_url = doc.get("source_url", "")
-            url = doc.get("url", "")
 
             if not content:
                 logger.warning(f"Documento {doc['_id']} no tiene contenido.")
@@ -83,13 +68,12 @@ class ScraperService:
             structured_data = self.text_to_json(content, source_url, url)
 
             if structured_data:
-                self.save_species_to_postgres(
-                    structured_data, source_url, url
-                )
+                self.save_species_to_postgres(structured_data, source_url, url)
 
+                # Marcar como procesado en MongoDB
                 self.collection.update_one(
                     {"_id": doc["_id"]},
-                    {"$set": {"processed": True, "processed_at": datetime.utcnow()}},
+                    {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
                 )
                 logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
 
@@ -220,8 +204,10 @@ class ScraperComparisonService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
-        self.collection = self.db["collection"]  
-    def compare_scraped_content(self, url):
+        self.collection = self.db["collection"]
+
+    def get_comparison_for_url(self, url):
+        """Verifica si la comparación ya está almacenada y si los ObjectId cambiaron."""
 
         documents = list(self.collection.find({"url": url}).sort("scraping_date", -1))
 
@@ -229,32 +215,37 @@ class ScraperComparisonService:
             logger.info(f"No hay suficientes versiones de la URL {url} para comparar.")
             return {"status": "no_comparison", "message": "Menos de dos registros encontrados."}
 
-        doc1, doc2 = documents[:2]  
+        doc1, doc2 = documents[:2]  # Tomar las dos versiones más recientes
+        object_id1 = str(doc1["_id"])
+        object_id2 = str(doc2["_id"])
+
+        existing_report = ReportComparison.objects.filter(scraper_source__url=url).first()
+
+        if existing_report and existing_report.object_id1 == object_id1 and existing_report.object_id2 == object_id2:
+            logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe y no ha cambiado.")
+            return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
+
+        # 🔹 Si los ObjectId han cambiado, proceder con la comparación
+        return self.compare_and_save(url, doc1, doc2)
+
+    def compare_and_save(self, url, doc1, doc2):
+        object_id1 = str(doc1["_id"])
+        object_id2 = str(doc2["_id"])
         content1 = doc1.get("contenido", "")
         content2 = doc2.get("contenido", "")
-
-        object_id1 = str(doc1["_id"])  
-        object_id2 = str(doc2["_id"])  
 
         if not content1 or not content2:
             logger.warning(f"Uno de los documentos ({object_id1}, {object_id2}) no tiene contenido.")
             return {"status": "missing_content", "message": "Uno de los registros no tiene contenido."}
 
-        existing_report = ReportComparison.objects.filter(scraper_source__url=url).first()
-
-        if existing_report:
-            if existing_report.object_id1 == object_id1 and existing_report.object_id2 == object_id2:
-                logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe y no ha cambiado.")
-                return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
-
-            logger.info(f"Detectado cambio en ObjectId. Reprocesando comparación para {url}.")
-        
         comparison_result = self.generate_comparison_with_ollama(content1, content2, url, object_id1, object_id2)
 
         if comparison_result:
             self.save_or_update_comparison_to_postgres(url, object_id1, object_id2, comparison_result)
 
         return comparison_result
+    
+
 
     def generate_comparison_with_ollama(self, content1, content2, url, object_id1, object_id2):
 
@@ -291,7 +282,7 @@ class ScraperComparisonService:
             response = requests.post(
                 "http://127.0.0.1:11434/api/chat",
                 json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
-                timeout=30,  
+                timeout=30,
                 stream=True
             )
         except requests.exceptions.RequestException as e:
@@ -329,7 +320,7 @@ class ScraperComparisonService:
         try:
             scraper_source, created = ScraperURL.objects.get_or_create(url=url, defaults={"sobrenombre": "Fuente desconocida"})
 
-            with transaction.atomic(): 
+            with transaction.atomic():
                 report, created = ReportComparison.objects.update_or_create(
                     scraper_source=scraper_source,
                     defaults={
