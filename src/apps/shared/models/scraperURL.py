@@ -55,39 +55,20 @@ class ScraperURL(CoreModel):
         return self.deleted_at is not None
 
     def get_time_limit(self):
-        # Use fecha_scraper or updated_at as the reference date
         reference_date = self.fecha_scraper or self.updated_at
 
-        # Handle None reference date
-        if reference_date is None:
-            logger.warning("No reference date found. Using current time as fallback.")
-            return timezone.now()
-
-        # Convert date to datetime if necessary
-        if isinstance(reference_date, date) and not isinstance(reference_date, datetime):
-            reference_date = datetime.combine(reference_date, datetime.min.time())
-
-        # Ensure the datetime is timezone-aware
         if timezone.is_naive(reference_date):
             reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
 
-        # Map time_choices to the number of days
-        time_mapping = {
-            1: 30,  # 30 days
-            2: 90,  # 90 days
-            3: 180, # 180 days
-            4: 7,   # 7 days
-        }
-
-        # Get the number of days to add (default to 30 if time_choices is invalid)
-        days_to_add = time_mapping.get(self.time_choices, 30)
-
-        # Log a warning if time_choices is invalid
-        if self.time_choices not in time_mapping:
-            logger.warning(f"Invalid time_choices value: {self.time_choices}. Defaulting to 30 days.")
-
-        # Calculate and return the time limit
-        return reference_date + timedelta(days=days_to_add)
+        if self.time_choices == 1: 
+            return reference_date + timedelta(days=30)
+        elif self.time_choices == 2: 
+            return reference_date + timedelta(days=90)
+        elif self.time_choices == 3: 
+            return reference_date + timedelta(days=180)
+        elif self.time_choices == 4: 
+            return reference_date + timedelta(days=7)
+        return reference_date
 
     def is_time_expired(self):
         return timezone.now() > self.get_time_limit()
