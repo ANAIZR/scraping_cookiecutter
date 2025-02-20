@@ -105,9 +105,7 @@ def scraper_expired_urls_task(self):
 @shared_task(bind=True)
 def check_species_for_selected_urls_task(self):
     urls_para_revisar = [
-        "https://ejemplo.com/especie1",
-        "https://ejemplo.com/especie2",
-        "https://otrafuente.com/nueva-plaga"
+        "https://www.aphis.usda.gov/publications"
     ]
 
     for url in urls_para_revisar:
