@@ -82,7 +82,7 @@ class ScraperService:
 
             structured_data = self.text_to_json(content, source_url, url)
 
-            if structured_data:
+            if self.datos_son_validos(structured_data): 
                 self.save_species_to_postgres(structured_data, source_url, url)
 
                 self.collection.update_one(
@@ -90,6 +90,25 @@ class ScraperService:
                     {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
                 )
                 logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
+            else:
+                logger.warning(f"Datos vacíos para {doc['_id']}, no se guardan en PostgreSQL.")
+
+    def datos_son_validos(self, datos):
+
+        if not datos or not isinstance(datos, dict):
+            return False
+
+        for clave, valor in datos.items():
+            if isinstance(valor, list) and valor:  # Lista con elementos
+                return True
+            elif isinstance(valor, dict):  # Diccionario con datos internos
+                for subvalor in valor.values():
+                    if subvalor:
+                        return True
+            elif isinstance(valor, str) and valor.strip():  # String con contenido
+                return True
+
+        return False
 
     def text_to_json(self, content, source_url, url):
         prompt = f"""
