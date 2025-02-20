@@ -5,7 +5,7 @@ from src.apps.shared.utils.notify_change import check_new_species_and_notify
 import logging
 from src.apps.shared.utils.notify_change import notify_users_of_changes
 from django.utils import timezone
-
+from datetime import datetime
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
@@ -15,7 +15,7 @@ def scraper_url_task(self, url):
     try:
         scraper_url = ScraperURL.objects.get(url=url)
         sobrenombre = scraper_url.sobrenombre  
-        scraper_url.fecha_scraper = timezone.now()  
+        scraper_url.fecha_scraper = timezone.now() if isinstance(timezone.now(), datetime) else datetime.combine(timezone.now(), datetime.min.time(), tzinfo=timezone.get_current_timezone())
         scraper_url.save()
     except ScraperURL.DoesNotExist:
         logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
