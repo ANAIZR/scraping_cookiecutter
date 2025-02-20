@@ -292,7 +292,6 @@ class ScraperComparisonService:
             response = requests.post(
                 "http://127.0.0.1:11434/api/chat",
                 json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
-                timeout=30,
                 stream=True
             )
         except requests.exceptions.RequestException as e:
