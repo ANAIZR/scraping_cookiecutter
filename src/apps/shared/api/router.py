@@ -15,7 +15,7 @@ router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 router.register(r"urls", scraperURL_viewsets.ScraperURLViewSet, basename="urls")
 router.register(r"species", SpeciesViewSet, basename="species")
 router.register(
-    r"species-subscription", SpeciesSubscriptionViewSet, basename="subscription"
+    r"subscription", SpeciesSubscriptionViewSet, basename="subscription"
 )
 
 urlpatterns = [
