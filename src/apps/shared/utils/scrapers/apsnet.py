@@ -5,8 +5,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from ..functions import (
     connect_to_mongo,
     get_logger,
-    driver_init,
-    process_scraper_data,
+    initialize_driver,
+    process_scraper_data_v2,
     load_keywords
 )
 from rest_framework.response import Response
@@ -26,12 +26,11 @@ logger = get_logger("scraper")
 def scraper_apsnet(url, sobrenombre):
     driver = None
     try:
-        driver = driver_init()
+        driver = initialize_driver()
         object_id = None
 
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
+        collection, fs = connect_to_mongo()
         keywords = load_keywords("plants.txt")
-        scraping_failed = False
         scraped_urls = set()
         failed_urls = set()
         total_links_found = 0
@@ -113,7 +112,6 @@ def scraper_apsnet(url, sobrenombre):
                                 contenido=content_text,
                                 url=url
                             )
-                            object_ids.append(object_id)
                             total_scraped_successfully += 1
                             scraped_urls.add(link)
 
@@ -132,23 +130,25 @@ def scraper_apsnet(url, sobrenombre):
                         logger.error(f"No se pudo extraer contenido de {link}: {e}")
                         total_failed_scrapes += 1
                         failed_urls.add(link)
+
+                all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+                all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+                all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+                all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+                all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
+
+                return process_scraper_data_v2(all_scraper, url, sobrenombre)
+
             except Exception as e:
-                logger.error(f"Error al buscar '{keyword}': {str(e)}")
-                scraping_failed = True
-                break
-
-        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
-        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
-        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
-        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
-        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
-
-        return process_scraper_data(all_scraper, url, sobrenombre)
-        return response
+                logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
+                continue
 
     except Exception as e:
-        logger.error(f"Error general durante el scraping: {str(e)}")
-        return {"error": str(e)}
+        logger.error(f"Error durante el scrapeo: {str(e)}")
+        return Response(
+            {"error": f"Error durante el scrapeo: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
     finally:
         if driver:
