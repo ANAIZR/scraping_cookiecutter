@@ -36,7 +36,7 @@ class WebScraperService:
                 )
                 scraper_url.estado_scrapeo = "fallido"
                 scraper_url.error_scrapeo = error_msg
-                scraper_url.fecha_scraper = timezone.now().date()
+                scraper_url.fecha_scraper = timezone.now()
                 scraper_url.save()
                 logger.error(error_msg)
                 return {"error": error_msg}
