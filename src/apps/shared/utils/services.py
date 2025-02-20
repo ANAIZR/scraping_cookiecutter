@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 import json
 import re
+import inspect
 from django.db import transaction
 logger = logging.getLogger(__name__)
 
@@ -20,31 +21,34 @@ class WebScraperService:
             ).values_list("url", flat=True)
 
 
-    def scraper_one_url(self, url):
+    def scraper_one_url(self, url, sobrenombre):
         try:
             scraper_url = ScraperURL.objects.get(url=url)
             mode_scrapeo = scraper_url.mode_scrapeo
-            scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
 
+            scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
             if not scraper_function:
-                logger.error(f"Modo de scrapeo no reconocido para URL: {url}")
+                logger.error(f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS")
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
-            if mode_scrapeo == 7:  
+            if mode_scrapeo == 7:
                 parameters = scraper_url.parameters or {}
                 start_page = parameters.get("start_page", 1)
                 end_page = parameters.get("end_page", None)
                 logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
 
                 response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
-
                 if not isinstance(response, dict):
                     return {"error": "Respuesta no serializable en scraper_pdf"}
-
                 return response  
 
             logger.info(f"Ejecutando scraper para {url} con método {mode_scrapeo}")
-            return scraper_function(url, scraper_url.sobrenombre)
+
+            params = inspect.signature(scraper_function).parameters
+            if len(params) == 2:
+                return scraper_function(url, sobrenombre) 
+            else:
+                return scraper_function(url)  
 
         except ScraperURL.DoesNotExist:
             logger.error(f"La URL {url} no se encuentra en la base de datos.")
@@ -53,6 +57,7 @@ class WebScraperService:
         except Exception as e:
             logger.error(f"Error al ejecutar scraper para {url}: {str(e)}")
             return {"error": f"Error al ejecutar scraper para {url}: {str(e)}"}
+
 
 
 
