@@ -36,7 +36,7 @@ class WebScraperService:
                 )
                 scraper_url.estado_scrapeo = "fallido"
                 scraper_url.error_scrapeo = error_msg
-                scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+                scraper_url.fecha_scraper = timezone.now().date()
                 scraper_url.save()
                 logger.error(error_msg)
                 return {"error": error_msg}
@@ -54,13 +54,13 @@ class WebScraperService:
                     error_msg = "Respuesta no serializable en scraper_pdf"
                     scraper_url.estado_scrapeo = "fallido"
                     scraper_url.error_scrapeo = error_msg
-                    scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+                    scraper_url.fecha_scraper = timezone.now().date()
                     scraper_url.save()
                     return {"error": error_msg}
 
                 scraper_url.estado_scrapeo = "exitoso"
                 scraper_url.error_scrapeo = ""
-                scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+                scraper_url.fecha_scraper = timezone.now().date()
                 scraper_url.save()
                 return response
 
@@ -82,7 +82,7 @@ class WebScraperService:
                 scraper_url.estado_scrapeo = "exitoso"
                 scraper_url.error_scrapeo = ""
 
-            scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+            scraper_url.fecha_scraper = timezone.now().date()
             scraper_url.save()
             return response
 
@@ -95,7 +95,7 @@ class WebScraperService:
             error_msg = f"Error al ejecutar scraper para {url}: {str(e)}"
             scraper_url.estado_scrapeo = "fallido"
             scraper_url.error_scrapeo = error_msg
-            scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+            scraper_url.fecha_scraper = timezone.now().date()
             scraper_url.save()
             logger.error(error_msg)
             return {"error": error_msg}

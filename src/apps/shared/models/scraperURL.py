@@ -32,7 +32,7 @@ class ScraperURL(CoreModel):
         max_length=20, choices=ESTADO_CHOICES, default="pendiente"
     )
     error_scrapeo = models.TextField(blank=True, null=True)  
-    ultima_fecha_scrapeo = models.DateTimeField(null=True, blank=True)  
+    fecha_scraper = models.DateTimeField(null=True, blank=True)  
 
     class Meta:
         db_table = "scraper_url"
@@ -51,7 +51,7 @@ class ScraperURL(CoreModel):
         return self.deleted_at is not None
 
     def get_time_limit(self):
-        reference_date = self.ultima_fecha_scrapeo or self.updated_at
+        reference_date = self.fecha_scraper or self.updated_at
 
         if timezone.is_naive(reference_date):
             reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
