@@ -10,7 +10,7 @@ from ..functions import (
     get_logger,
     driver_init,
     process_scraper_data,
-    load_keywords
+    load_keywords,
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -18,17 +18,20 @@ from selenium.common.exceptions import TimeoutException
 
 logger = get_logger("scraper")
 
+
 def scraper_gc_ca(url, sobrenombre):
     driver = driver_init()
     domain = "https://publications.gc.ca"
 
     try:
         driver.get(url)
-        
+
         driver.execute_script("document.body.style.zoom='100%'")
-        WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+        WebDriverWait(driver, 10).until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
         time.sleep(5)
-        
+
         logger.info(f"Iniciando scraping para URL: {url}")
 
         collection, fs = connect_to_mongo()
@@ -36,7 +39,10 @@ def scraper_gc_ca(url, sobrenombre):
 
         if not keywords:
             return Response(
-                {"status": "error", "message": "El archivo de palabras clave está vacío o no se pudo cargar."},
+                {
+                    "status": "error",
+                    "message": "El archivo de palabras clave está vacío o no se pudo cargar.",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -53,7 +59,10 @@ def scraper_gc_ca(url, sobrenombre):
             try:
                 driver.get(url)
                 driver.execute_script("document.body.style.zoom='100%'")
-                WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                WebDriverWait(driver, 10).until(
+                    lambda d: d.execute_script("return document.readyState")
+                    == "complete"
+                )
                 time.sleep(5)
 
                 search_box = WebDriverWait(driver, 10).until(
@@ -73,15 +82,23 @@ def scraper_gc_ca(url, sobrenombre):
             while True:
                 try:
                     WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "ul.pagination"))
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, "ul.pagination")
+                        )
                     )
                     time.sleep(3)
 
                     soup = BeautifulSoup(driver.page_source, "html.parser")
                     main_container = soup.select_one("main.container")
 
-                    print("🔹 HTML del `main.container` después de esperar:\n", 
-                          main_container.prettify() if main_container else "No se encontró `main.container`")
+                    print(
+                        "🔹 HTML del `main.container` después de esperar:\n",
+                        (
+                            main_container.prettify()
+                            if main_container
+                            else "No se encontró `main.container`"
+                        ),
+                    )
 
                     result_links = soup.select("div.col-md-8 ol.list-unstyled li a")
 
@@ -91,12 +108,22 @@ def scraper_gc_ca(url, sobrenombre):
 
                     for link in result_links:
                         if "href" in link.attrs:
-                            full_url = f"{domain}{link['href']}" if link["href"].startswith("/") else link["href"]
+                            full_url = (
+                                f"{domain}{link['href']}"
+                                if link["href"].startswith("/")
+                                else link["href"]
+                            )
                             all_links.add(full_url)
 
-                    logger.info(f"🔹 Página analizada. Total de links acumulados: {len(all_links)}")
+                    logger.info(
+                        f"🔹 Página analizada. Total de links acumulados: {len(all_links)}"
+                    )
 
-                    next_button = main_container.select_one("a[rel='next']") if main_container else None
+                    next_button = (
+                        main_container.select_one("a[rel='next']")
+                        if main_container
+                        else None
+                    )
 
                     if not next_button:
                         next_button = soup.select_one("a[rel='next']")
@@ -109,10 +136,15 @@ def scraper_gc_ca(url, sobrenombre):
                         logger.info(f"✅ Botón 'Next' encontrado: {next_url}")
 
                         driver.get(next_url)
-                        WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                        WebDriverWait(driver, 10).until(
+                            lambda d: d.execute_script("return document.readyState")
+                            == "complete"
+                        )
                         time.sleep(5)
                     else:
-                        logger.info("🚫 No se encontró el botón 'Next'. No hay más páginas disponibles.")
+                        logger.info(
+                            "🚫 No se encontró el botón 'Next'. No hay más páginas disponibles."
+                        )
                         break
 
                 except TimeoutException:
@@ -120,40 +152,51 @@ def scraper_gc_ca(url, sobrenombre):
                     break
 
             logger.info(f"Comenzando a procesar {len(all_links)} enlaces almacenados.")
-            
+
             for link in all_links:
                 try:
                     driver.get(link)
                     driver.execute_script("document.body.style.zoom='100%'")
-                    WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                    WebDriverWait(driver, 10).until(
+                        lambda d: d.execute_script("return document.readyState")
+                        == "complete"
+                    )
                     time.sleep(5)
 
                     soup = BeautifulSoup(driver.page_source, "html.parser")
                     main_container = soup.select_one("main.container")
 
-                    content_text = main_container.get_text("\n", strip=True) if main_container else soup.get_text("\n", strip=True)
+                    content_text = (
+                        main_container.get_text("\n", strip=True)
+                        if main_container
+                        else soup.get_text("\n", strip=True)
+                    )
 
                     if content_text:
                         object_id = fs.put(
                             content_text.encode("utf-8"),
                             source_url=link,
                             scraping_date=datetime.now(),
-                            metadata={
-                                "Etiquetas": ["planta", "plaga"],
-                                "contenido": content_text,
-                                "url": url
-                            }
+                            Etiquetas=["planta", "plaga"],
+                            contenido=content_text,
+                            url=url,
                         )
                         total_scraped_successfully += 1
                         scraped_urls.add(link)
 
-                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                        logger.info(
+                            f"Archivo almacenado en MongoDB con object_id: {object_id}"
+                        )
 
-                        existing_versions = list(fs.find({"source_url": link}).sort("uploadDate", -1))
+                        existing_versions = list(
+                            fs.find({"source_url": link}).sort("uploadDate", -1)
+                        )
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
                             fs.delete(oldest_version._id)
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                            logger.info(
+                                f"Se eliminó la versión más antigua con object_id: {oldest_version._id}"
+                            )
                     else:
                         total_failed_scrapes += 1
                         failed_urls.add(link)
