@@ -1,5 +1,5 @@
 from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS
+from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS, scraper_pdf
 from src.apps.shared.models.scraperURL import Species, ReportComparison
 import logging
 from django.conf import settings
@@ -23,7 +23,6 @@ class WebScraperService:
     def scraper_one_url(self, url):
         try:
             scraper_url = ScraperURL.objects.get(url=url)
-
             mode_scrapeo = scraper_url.mode_scrapeo
             scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
 
@@ -31,20 +30,35 @@ class WebScraperService:
                 logger.error(f"Modo de scrapeo no reconocido para URL: {url}")
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
-            if mode_scrapeo == "method_pdf":
-                logger.info(f"La URL {url} será procesada como PDF.")
-                return {"success": f"La URL {url} se manejará como PDF."}
+            # 🔹 Validar si es PDF (modo_scrapeo = 7)
+            if mode_scrapeo == 7:  
+                parameters = scraper_url.parameters or {}
+                start_page = parameters.get("start_page", 1)
+                end_page = parameters.get("end_page", None)
+                logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
 
-            logger.info(f"La URL {url} está lista para el scraping.")
-            return {"success": f"La URL {url} está lista para el scraping."}
+                # 🔹 Llamar al scraper de PDFs y devolver su resultado como diccionario
+                response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
+
+                # 🔹 Asegurar que la respuesta es serializable
+                if not isinstance(response, dict):
+                    return {"error": "Respuesta no serializable en scraper_pdf"}
+
+                return response  # ✅ Retorna el resultado del procesamiento del PDF
+
+            # 🔹 Para los otros modos de scrapeo
+            logger.info(f"Ejecutando scraper para {url} con método {mode_scrapeo}")
+            return scraper_function(url)
 
         except ScraperURL.DoesNotExist:
             logger.error(f"La URL {url} no se encuentra en la base de datos.")
             return {"error": f"La URL {url} no existe en la base de datos."}
 
         except Exception as e:
-            logger.error(f"Error al verificar la URL {url}: {str(e)}")
-            return {"error": f"Error al verificar la URL {url}: {str(e)}"}
+            logger.error(f"Error al ejecutar scraper para {url}: {str(e)}")
+            return {"error": f"Error al ejecutar scraper para {url}: {str(e)}"}
+
+
 
 class ScraperService:
     def __init__(self):
@@ -53,8 +67,7 @@ class ScraperService:
         self.collection = self.db["fs.files"]
 
     def extract_and_save_species(self, url):
-        """Procesa y guarda en PostgreSQL solo la URL específica desde MongoDB."""
-
+        
         documents = self.collection.find({"url": url, "processed": {"$ne": True}})
 
         for doc in documents:
@@ -70,14 +83,11 @@ class ScraperService:
             if structured_data:
                 self.save_species_to_postgres(structured_data, source_url, url)
 
-                # Marcar como procesado en MongoDB
                 self.collection.update_one(
                     {"_id": doc["_id"]},
                     {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
                 )
                 logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
-
-
 
     def text_to_json(self, content, source_url, url):
         prompt = f"""
@@ -207,7 +217,6 @@ class ScraperComparisonService:
         self.collection = self.db["collection"]
 
     def get_comparison_for_url(self, url):
-        """Verifica si la comparación ya está almacenada y si los ObjectId cambiaron."""
 
         documents = list(self.collection.find({"url": url}).sort("scraping_date", -1))
 
@@ -225,8 +234,8 @@ class ScraperComparisonService:
             logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe y no ha cambiado.")
             return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
 
-        # 🔹 Si los ObjectId han cambiado, proceder con la comparación
         return self.compare_and_save(url, doc1, doc2)
+
 
     def compare_and_save(self, url, doc1, doc2):
         object_id1 = str(doc1["_id"])

@@ -6,31 +6,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from celery import chain
-
-
-@shared_task(bind=True)
-def scraper_expired_urls_task(self):
-
-    scraper_service = WebScraperService()
-    urls = scraper_service.get_expired_urls()
-
-    if not urls:
-        logger.info("No hay URLs expiradas para scrapear.")
-        return
-
-    # 🔹 Ejecuta cada URL en secuencia: Scraping → Guardado en PostgreSQL → Comparación
-    tareas_encadenadas = chain(
-        *[scraper_url_task.s(url) | run_scraper_task.s() | compare_scraped_content_task.s(url) for url in urls]
-    )
-    tareas_encadenadas.apply_async()
-
-    logger.info(f"Scraping en secuencia iniciado para {len(urls)} URLs.")
-
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
-
     scraper_service = WebScraperService()
     result = scraper_service.scraper_one_url(url)
 
@@ -43,32 +21,38 @@ def scraper_url_task(self, url):
 
     if "error" in result:
         logger.error(f"Scraping fallido para {url}: {result['error']}")
-    else:
-        logger.info(f"Scraping exitoso para {url}, iniciando flujo de procesamiento...")
+        return None
 
-        tarea_encadenada = chain(
-            run_scraper_task.s(url),
-            compare_scraped_content_task.s(url)
-        )
-        tarea_encadenada.apply_async()
+    logger.info(f"Scraping exitoso para {url}, iniciando flujo de procesamiento...")
 
-    return result
+    tarea_encadenada = chain(
+        process_scraped_data_task.s(url), 
+        generate_comparison_report_task.s(url)  
+    )
 
+    tarea_encadenada.apply_async()
+
+    return url
+
+
+@shared_task(bind=True)
+def process_scraped_data_task(self, url): 
+    if not url:
+        logger.error("No se recibió una URL válida en process_scraped_data_task")
+        return None
+
+    scraper = ScraperService()
+    scraper.extract_and_save_species()
+
+    return url 
 
 
 @shared_task(bind=True)
-def run_scraper_task(self, url):
+def generate_comparison_report_task(self, url): 
+    if not url:
+        logger.error("No se recibió una URL válida en generate_comparison_report_task")
+        return None
 
-    scraper_service = ScraperService()
-    scraper_service.extract_and_save_species(url)
-
-    logger.info(f"Datos procesados y guardados en PostgreSQL para la URL: {url}")
-
-    return url  # Devuelve la URL para continuar con la comparación
-
-@shared_task(bind=True)
-def compare_scraped_content_task(self, url):
-    
     comparison_service = ScraperComparisonService()
     result = comparison_service.get_comparison_for_url(url)
 
@@ -91,20 +75,11 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
-@shared_task(bind=True)
-def scraper_expired_urls_task(self):
-    scraper_service = WebScraperService()
-    urls = scraper_service.get_expired_urls()
-
-    if not urls:
-        logger.info("No hay URLs expiradas para scrapear.")
-        return
-
-    tarea_encadenada = chain(*[
-    scraper_url_task.s(url) | run_scraper_task.s() | compare_scraped_content_task.s()
-    for url in urls
-    ])
-
-    tarea_encadenada.apply_async()
+    for url in urls:
+        chain(
+            scraper_url_task.s(url),  
+            process_scraped_data_task.s(url),  
+            generate_comparison_report_task.s(url)  
+        ).apply_async()
 
     logger.info(f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs.")
