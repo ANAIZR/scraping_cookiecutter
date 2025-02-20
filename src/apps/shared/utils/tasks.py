@@ -27,7 +27,7 @@ def scraper_url_task(self, url):
 
     tarea_encadenada = chain(
         process_scraped_data_task.s(url), 
-        generate_comparison_report_task.s(url)  
+        generate_comparison_report_task.si(url)  
     )
 
     tarea_encadenada.apply_async()
@@ -79,7 +79,7 @@ def scraper_expired_urls_task(self):
         chain(
             scraper_url_task.s(url),  
             process_scraped_data_task.s(url),  
-            generate_comparison_report_task.s(url)  
+            generate_comparison_report_task.si(url)  
         ).apply_async()
 
     logger.info(f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs.")
