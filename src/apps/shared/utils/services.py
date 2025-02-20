@@ -13,6 +13,7 @@ import inspect
 from django.db import transaction
 from itertools import islice
 import time
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,13 @@ class WebScraperService:
 
             scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
             if not scraper_function:
-                logger.error(f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS")
-                return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
+                error_msg = f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS"
+                scraper_url.estado_scrapeo = "fallido"
+                scraper_url.error_scrapeo = error_msg
+                scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+                scraper_url.save()
+                logger.error(error_msg)
+                return {"error": error_msg}
 
             if mode_scrapeo == 7:
                 parameters = scraper_url.parameters or {}
@@ -43,24 +49,53 @@ class WebScraperService:
 
                 response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
                 if not isinstance(response, dict):
-                    return {"error": "Respuesta no serializable en scraper_pdf"}
+                    error_msg = "Respuesta no serializable en scraper_pdf"
+                    scraper_url.estado_scrapeo = "fallido"
+                    scraper_url.error_scrapeo = error_msg
+                    scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+                    scraper_url.save()
+                    return {"error": error_msg}
+
+                scraper_url.estado_scrapeo = "exitoso"
+                scraper_url.error_scrapeo = ""
+                scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+                scraper_url.save()
                 return response  
 
             logger.info(f"Ejecutando scraper para {url} con método {mode_scrapeo}")
 
             params = inspect.signature(scraper_function).parameters
             if len(params) == 2:
-                return scraper_function(url, sobrenombre) 
+                response = scraper_function(url, sobrenombre)
             else:
-                return scraper_function(url)  
+                response = scraper_function(url)
+
+            # Verificar si el scraping devolvió datos válidos
+            if not response or "error" in response:
+                scraper_url.estado_scrapeo = "fallido"
+                scraper_url.error_scrapeo = response.get("error", "Scraping no devolvió datos válidos.")
+            else:
+                scraper_url.estado_scrapeo = "exitoso"
+                scraper_url.error_scrapeo = ""
+
+            scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+            scraper_url.save()
+            return response
 
         except ScraperURL.DoesNotExist:
-            logger.error(f"La URL {url} no se encuentra en la base de datos.")
-            return {"error": f"La URL {url} no existe en la base de datos."}
+            error_msg = f"La URL {url} no se encuentra en la base de datos."
+            logger.error(error_msg)
+            return {"error": error_msg}
 
         except Exception as e:
-            logger.error(f"Error al ejecutar scraper para {url}: {str(e)}")
-            return {"error": f"Error al ejecutar scraper para {url}: {str(e)}"}
+            error_msg = f"Error al ejecutar scraper para {url}: {str(e)}"
+            scraper_url.estado_scrapeo = "fallido"
+            scraper_url.error_scrapeo = error_msg
+            scraper_url.ultima_fecha_scrapeo = timezone.now().date()
+            scraper_url.save()
+            logger.error(error_msg)
+            return {"error": error_msg}
+
 
 
 
