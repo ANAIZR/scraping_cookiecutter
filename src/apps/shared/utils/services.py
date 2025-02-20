@@ -224,7 +224,7 @@ class ScraperComparisonService:
             logger.info(f"No hay suficientes versiones de la URL {url} para comparar.")
             return {"status": "no_comparison", "message": "Menos de dos registros encontrados."}
 
-        doc1, doc2 = documents[:2]  # Tomar las dos versiones más recientes
+        doc1, doc2 = documents[:2]  
         object_id1 = str(doc1["_id"])
         object_id2 = str(doc2["_id"])
 

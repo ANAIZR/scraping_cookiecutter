@@ -2,7 +2,7 @@ from django.utils import timezone
 from datetime import timedelta
 from ...core.models import CoreModel
 from django.db import models
-
+from src.apps.users.models import User
 
 class ScraperURL(CoreModel):
     TYPE_CHOICES = [
@@ -117,3 +117,16 @@ class ReportComparison(models.Model):
 
     def __str__(self):
         return f"Comparación {self.id} - {self.scraper_source.url}"
+    
+
+
+class NotificationSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    scraper_url = models.ForeignKey("ScraperURL", on_delete=models.CASCADE)  
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "scraper_url")  
+
+    def __str__(self):
+        return f"{self.user.email} -> {self.scraper_url.url}"
