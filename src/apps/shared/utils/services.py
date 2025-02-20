@@ -72,7 +72,7 @@ class ScraperService:
         self.collection = self.db["fs.files"]
 
     def extract_and_save_species(self, url):
-        documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))  
+        documents = list(self.collection.find({"source_url": url, "processed": {"$ne": True}}))  
 
         if not documents:
             logger.info("No hay documentos pendientes de procesar.")
