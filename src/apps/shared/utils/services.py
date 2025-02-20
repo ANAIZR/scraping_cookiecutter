@@ -46,8 +46,8 @@ class WebScraperService:
                 logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
 
                 response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
-                logger.info(f"Type of response: {type(response)}")  
-                logger.info(f"Type of 'dict': {type(dict)}")  
+                logger.info(f"Type of response: {type(response)}")  # Debugging line
+                logger.info(f"Type of 'dict': {type(dict)}")  # Debugging line
 
                 if not isinstance(response, dict):
                     error_msg = f"Respuesta no serializable en scraper_pdf. Tipo recibido: {type(response)}"
