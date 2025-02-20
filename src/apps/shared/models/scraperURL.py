@@ -127,6 +127,8 @@ class NotificationSubscription(models.Model):
 
     class Meta:
         unique_together = ("user", "scraper_url")  
+        db_table = "notifications"  
+
 
     def __str__(self):
         return f"{self.user.email} -> {self.scraper_url.url}"
