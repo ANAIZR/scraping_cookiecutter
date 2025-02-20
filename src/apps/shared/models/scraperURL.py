@@ -132,3 +132,19 @@ class NotificationSubscription(models.Model):
 
     def __str__(self):
         return f"{self.user.email} -> {self.scraper_url.url}"
+    
+class SpeciesSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    scientific_name = models.CharField(max_length=255, blank=True, null=True) 
+    distribution = models.CharField(max_length=255, blank=True, null=True)  
+    hosts = models.CharField(max_length=255, blank=True, null=True)  
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "scientific_name", "distribution", "hosts") 
+        db_table = "species_subscription"  
+
+    def __str__(self):
+        filters = [self.scientific_name, self.distribution, self.hosts]
+        filters = [f for f in filters if f]  # Elimina valores vacíos
+        return f"{self.user.email} -> {', '.join(filters) if filters else 'Todos'}"

@@ -1,7 +1,7 @@
 from celery import shared_task, chain
 from src.apps.shared.utils.services import WebScraperService, ScraperService, ScraperComparisonService
 from src.apps.shared.models.scraperURL import ScraperURL
-from datetime import datetime
+from src.apps.shared.utils.notify_change import check_new_species_and_notify
 import logging
 from src.apps.shared.utils.notify_change import notify_users_of_changes
 logger = logging.getLogger(__name__)
@@ -56,6 +56,9 @@ def process_scraped_data_task(self, url):
 
     scraper = ScraperService()
     scraper.extract_and_save_species(url)
+    check_new_species_and_notify()
+
+    
 
     return url 
 
