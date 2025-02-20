@@ -46,8 +46,8 @@ class WebScraperService:
                 logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
 
                 response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
-                logger.info(f"Type of response: {type(response)}")  # Debugging line
-                logger.info(f"Type of 'dict': {type(dict)}")  # Debugging line
+                logger.info(f"Type of response: {type(response)}")  
+                logger.info(f"Type of 'dict': {type(dict)}")  
 
                 if not isinstance(response, dict):
                     error_msg = f"Respuesta no serializable en scraper_pdf. Tipo recibido: {type(response)}"
@@ -71,6 +71,7 @@ class WebScraperService:
             else:
                 response = scraper_function(url)
 
+            # Debugging: Log the type of response
             logger.info(f"Type of response: {type(response)}")  # Debugging line
             logger.info(f"Type of 'dict': {type(dict)}")  # Debugging line
 
@@ -99,7 +100,6 @@ class WebScraperService:
             scraper_url.save()
             logger.error(error_msg)
             return {"error": error_msg}
-
 class ScraperService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
