@@ -96,7 +96,6 @@ class WebScraperService:
             logger.error(error_msg)
             return {"error": error_msg}
 
-
 class ScraperService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
