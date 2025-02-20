@@ -86,7 +86,7 @@ def scraper_aphis_usda(url, sobrenombre):
                 if not full_url.startswith(allowed_domain):
                     continue
                 
-                if any(substring in full_url.lower() for substring in ["#top", "filter", "media"]):
+                if any(substring in full_url.lower() for substring in ["#top", "filter", "media","forms"]):
                     continue
                 
                 if full_url.lower().endswith(".pdf"):

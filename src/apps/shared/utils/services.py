@@ -1,64 +1,68 @@
 from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS
+from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS, scraper_pdf
 from src.apps.shared.models.scraperURL import Species, ReportComparison
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
 import requests
 import json
 import re
+import inspect
 from django.db import transaction
+from itertools import islice
+
 logger = logging.getLogger(__name__)
 
 
 class WebScraperService:
-    def scraper_expired_urls(self):
-        from src.apps.shared.utils.tasks import scraper_url_task
+    def get_expired_urls(self):
+        return ScraperURL.objects.filter(
+                is_active=True, 
+                fecha_scraper__lt=datetime.now()
+            ).values_list("url", flat=True)
 
-        urls = ScraperURL.objects.filter(is_active=True)
 
-        for scraper_url in urls:
-            if scraper_url.is_time_expired():
-                try:
-                    scraper_url_task.delay(scraper_url.url)
-
-                    logger.info(f"Tarea encolada para URL: {scraper_url.url}")
-                except Exception as e:
-                    logger.error(
-                        f"Error al encolar scraping para {scraper_url.url}: {str(e)}"
-                    )
-
-    def scraper_one_url(self, url):
+    def scraper_one_url(self, url, sobrenombre):
         try:
             scraper_url = ScraperURL.objects.get(url=url)
             mode_scrapeo = scraper_url.mode_scrapeo
-            scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
 
+            scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
             if not scraper_function:
-                logger.error(f"Modo de scrapeo no reconocido para URL: {url}")
+                logger.error(f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS")
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
-            kwargs = {"url": url, "sobrenombre": scraper_url.sobrenombre}
             if mode_scrapeo == 7:
                 parameters = scraper_url.parameters or {}
-                kwargs["start_page"] = parameters.get("start_page", 1)
-                kwargs["end_page"] = parameters.get("end_page", None)
+                start_page = parameters.get("start_page", 1)
+                end_page = parameters.get("end_page", None)
+                logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
 
-            response = scraper_function(**kwargs)
+                response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
+                if not isinstance(response, dict):
+                    return {"error": "Respuesta no serializable en scraper_pdf"}
+                return response  
 
-            if isinstance(response, dict):
-                logger.info(f"Scraping completado para URL: {url}")
-                return response
+            logger.info(f"Ejecutando scraper para {url} con método {mode_scrapeo}")
+
+            params = inspect.signature(scraper_function).parameters
+            if len(params) == 2:
+                return scraper_function(url, sobrenombre) 
             else:
-                logger.error(f"Respuesta no serializable para URL: {url}")
-                return {"error": f"Respuesta no serializable para URL: {url}"}
+                return scraper_function(url)  
+
         except ScraperURL.DoesNotExist:
-            logger.error(f"No se encontraron parámetros para la URL: {url}")
-            return {"error": f"No se encontraron parámetros para la URL: {url}"}
+            logger.error(f"La URL {url} no se encuentra en la base de datos.")
+            return {"error": f"La URL {url} no existe en la base de datos."}
+
         except Exception as e:
-            logger.error(f"Error durante el scraping para {url}: {str(e)}")
-            return {"error": f"Error durante el scraping para {url}: {str(e)}"}
+            logger.error(f"Error al ejecutar scraper para {url}: {str(e)}")
+            return {"error": f"Error al ejecutar scraper para {url}: {str(e)}"}
+
+
+
 
 
 class ScraperService:
@@ -67,31 +71,63 @@ class ScraperService:
         self.db = self.client[settings.MONGO_DB_NAME]
         self.collection = self.db["fs.files"]
 
-    def extract_and_save_species(self):
+    def extract_and_save_species(self, url):
+        documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))  
 
-        documents = self.collection.find({"processed": {"$ne": True}})
+        if not documents:
+            logger.info("No hay documentos pendientes de procesar.")
+            return
 
-        for doc in documents:
-            content = doc.get("contenido", "")
-            source_url = doc.get("source_url", "")
-            url = doc.get("url", "")
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            executor.map(self.process_document, documents) 
 
-            if not content:
-                logger.warning(f"Documento {doc['_id']} no tiene contenido.")
-                continue
+    def process_document(self, doc):
+        content = doc.get("contenido", "")
+        source_url = doc.get("source_url", "")
 
-            structured_data = self.text_to_json(content, source_url, url)
+        if not content:
+            logger.warning(f"Documento {doc['_id']} no tiene contenido.")
+            return
 
-            if structured_data:
-                self.save_species_to_postgres(
-                    structured_data, source_url, url
-                )
+        structured_data = self.text_to_json(content, source_url, doc.get("url", ""))
 
-                self.collection.update_one(
-                    {"_id": doc["_id"]},
-                    {"$set": {"processed": True, "processed_at": datetime.utcnow()}},
-                )
-                logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
+        if self.datos_son_validos(structured_data): 
+            self.save_species_to_postgres(structured_data, source_url, doc.get("url", ""))
+
+            self.collection.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"processed": True, "processed_at": datetime.utcnow()}}
+            )
+            logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
+        else:
+            logger.warning(f"Datos vacíos para {doc['_id']}, no se guardan en PostgreSQL.")
+
+    def datos_son_validos(self, datos, min_campos=3):
+
+
+        if not datos or not isinstance(datos, dict):
+            return False
+
+        if not datos.get("nombre_cientifico") or not datos["nombre_cientifico"].strip():
+            return False  
+
+        campos_con_datos = 0  
+
+        for clave, valor in datos.items():
+            if isinstance(valor, list) and valor:  
+                campos_con_datos += 1
+            elif isinstance(valor, dict):  
+                for subvalor in valor.values():
+                    if subvalor:
+                        campos_con_datos += 1
+                        break  
+            elif isinstance(valor, str) and valor.strip():  
+                campos_con_datos += 1
+
+            if campos_con_datos >= min_campos:
+                return True
+
+        return False  
 
 
 
@@ -185,43 +221,76 @@ class ScraperService:
 
 
 
-    def save_species_to_postgres(self, structured_data, source_url, url):
-
+    
+    def save_species_to_postgres(self, structured_data_list, source_url, url, batch_size=250):
         try:
-            print(f"Intentando guardar en PostgreSQL: {structured_data}")
-            scraper_source, created = ScraperURL.objects.get_or_create(url=url, defaults={"Sobrenombre":"Fuente desconocida"})
-            species_obj = Species.objects.create(
-                scientific_name=structured_data.get("nombre_cientifico", ""),
-                common_names=structured_data.get("nombres_comunes", ""),
-                synonyms=structured_data.get("sinonimos", ""),
-                invasiveness_description=structured_data.get(
-                    "descripcion_invasividad", ""
-                ),
-                distribution=structured_data.get("distribucion", ""),
-                impact=structured_data.get("impacto", {}),
-                habitat=structured_data.get("habitat", ""),
-                life_cycle=structured_data.get("ciclo_vida", ""),
-                reproduction=structured_data.get("reproduccion", ""),
-                hosts=structured_data.get("hospedantes", ""),
-                symptoms=structured_data.get("sintomas", ""),
-                affected_organs=structured_data.get("organos_afectados", ""),
-                environmental_conditions=structured_data.get(
-                    "condiciones_ambientales", ""
-                ),
-                prevention_control=structured_data.get("prevencion_control", {}),
-                uses=structured_data.get("usos", ""),
-                source_url=source_url,
-                scraper_source=scraper_source,
+            if not structured_data_list:
+                logger.warning("Lista de datos estructurados vacía, no se guardará en PostgreSQL.")
+                return
+
+            print(f"Intentando guardar {len(structured_data_list)} especies en PostgreSQL")
+
+            scraper_source, created = ScraperURL.objects.get_or_create(
+                url=url, defaults={"Sobrenombre": "Fuente desconocida"}
             )
-            logger.info(f"Especie guardada en PostgreSQL con ID: {species_obj.id}")
+
+            def chunked_iterator(iterable, size):
+                it = iter(iterable)
+                while True:
+                    chunk = list(islice(it, size))
+                    if not chunk:
+                        break
+                    yield chunk
+
+            species_objects = []
+            for structured_data in structured_data_list:
+                if isinstance(structured_data, str):
+                    try:
+                        structured_data = json.loads(structured_data)  # Convertir JSON string a dict
+                    except json.JSONDecodeError:
+                        logger.error(f"Error al convertir JSON: {structured_data}")
+                        continue  
+
+                if not isinstance(structured_data, dict):
+                    logger.error(f"structured_data no es un diccionario: {structured_data}")
+                    continue  
+
+                species_obj = Species(
+                    scientific_name=structured_data.get("nombre_cientifico", ""),
+                    common_names=structured_data.get("nombres_comunes", ""),
+                    synonyms=json.dumps(structured_data.get("sinonimos", [])),  
+                    invasiveness_description=structured_data.get("descripcion_invasividad", ""),
+                    distribution=structured_data.get("distribucion", ""),
+                    impact=json.dumps(structured_data.get("impacto", {})),  
+                    habitat=structured_data.get("habitat", ""),
+                    life_cycle=structured_data.get("ciclo_vida", ""),
+                    reproduction=structured_data.get("reproduccion", ""),
+                    hosts=json.dumps(structured_data.get("hospedantes", [])),
+                    symptoms=json.dumps(structured_data.get("sintomas", [])),
+                    affected_organs=json.dumps(structured_data.get("organos_afectados", [])),
+                    environmental_conditions=json.dumps(structured_data.get("condiciones_ambientales", [])),
+                    prevention_control=json.dumps(structured_data.get("prevencion_control", {})),
+                    uses=json.dumps(structured_data.get("usos", [])),
+                    source_url=source_url,
+                    scraper_source=scraper_source,
+                )
+                species_objects.append(species_obj)
+
+            with transaction.atomic():
+                for batch in chunked_iterator(species_objects, batch_size):
+                    Species.objects.bulk_create(batch, batch_size=batch_size)
+
+            logger.info(f"{len(species_objects)} especies guardadas en PostgreSQL en lotes de {batch_size}.")
+
         except Exception as e:
             logger.error(f"Error al guardar en PostgreSQL: {str(e)}")
 class ScraperComparisonService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
-        self.collection = self.db["collection"]  
-    def compare_scraped_content(self, url):
+        self.collection = self.db["collection"]
+
+    def get_comparison_for_url(self, url):
 
         documents = list(self.collection.find({"url": url}).sort("scraping_date", -1))
 
@@ -230,31 +299,37 @@ class ScraperComparisonService:
             return {"status": "no_comparison", "message": "Menos de dos registros encontrados."}
 
         doc1, doc2 = documents[:2]  
+        object_id1 = str(doc1["_id"])
+        object_id2 = str(doc2["_id"])
+
+        existing_report = ReportComparison.objects.filter(scraper_source__url=url).first()
+
+        if existing_report and existing_report.object_id1 == object_id1 and existing_report.object_id2 == object_id2:
+            logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe y no ha cambiado.")
+            return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
+
+        return self.compare_and_save(url, doc1, doc2)
+
+
+    def compare_and_save(self, url, doc1, doc2):
+        object_id1 = str(doc1["_id"])
+        object_id2 = str(doc2["_id"])
         content1 = doc1.get("contenido", "")
         content2 = doc2.get("contenido", "")
-
-        object_id1 = str(doc1["_id"])  
-        object_id2 = str(doc2["_id"])  
 
         if not content1 or not content2:
             logger.warning(f"Uno de los documentos ({object_id1}, {object_id2}) no tiene contenido.")
             return {"status": "missing_content", "message": "Uno de los registros no tiene contenido."}
 
-        existing_report = ReportComparison.objects.filter(scraper_source__url=url).first()
-
-        if existing_report:
-            if existing_report.object_id1 == object_id1 and existing_report.object_id2 == object_id2:
-                logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe y no ha cambiado.")
-                return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
-
-            logger.info(f"Detectado cambio en ObjectId. Reprocesando comparación para {url}.")
-        
         comparison_result = self.generate_comparison_with_ollama(content1, content2, url, object_id1, object_id2)
 
-        if comparison_result:
+        if comparison_result and comparison_result.get("has_changes", False):  
             self.save_or_update_comparison_to_postgres(url, object_id1, object_id2, comparison_result)
+            return {"status": "changed", "message": "Se detectaron cambios en la comparación."}
 
-        return comparison_result
+        return {"status": "no_changes", "message": "No se detectaron cambios en la comparación."}
+    
+
 
     def generate_comparison_with_ollama(self, content1, content2, url, object_id1, object_id2):
 
@@ -291,7 +366,6 @@ class ScraperComparisonService:
             response = requests.post(
                 "http://127.0.0.1:11434/api/chat",
                 json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
-                timeout=30,  
                 stream=True
             )
         except requests.exceptions.RequestException as e:
@@ -329,7 +403,7 @@ class ScraperComparisonService:
         try:
             scraper_source, created = ScraperURL.objects.get_or_create(url=url, defaults={"sobrenombre": "Fuente desconocida"})
 
-            with transaction.atomic(): 
+            with transaction.atomic():
                 report, created = ReportComparison.objects.update_or_create(
                     scraper_source=scraper_source,
                     defaults={

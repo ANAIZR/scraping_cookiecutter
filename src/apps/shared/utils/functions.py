@@ -290,7 +290,6 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
         content_text = all_scraper.strip()
-
         if not content_text:
             logger.warning("El contenido está vacío, no se guardará en MongoDB.")
             return {"error": "El contenido del scraper está vacío."}
@@ -299,33 +298,35 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
             content_text.encode("utf-8"),
             source_url=url,
             scraping_date=datetime.now(),
+            contenido =all_scraper,
             Etiquetas=["planta", "plaga"],
-            contenido=content_text, 
             url=url
         )
 
-        logger.info(f"Archivo almacenado en MongoDB con ObjectId: {object_id}")
+        logger.info(f"Archivo almacenado en MongoDB GridFS con ObjectId: {object_id}")
 
         collection.insert_one({
             "_id": object_id,
             "source_url": url,
             "scraping_date": datetime.now(),
+            "contenido": f"Se scrapeo 1 url: {url}", 
             "Etiquetas": ["planta", "plaga"],
-            "contenido": content_text, 
             "url": url,
         })
 
-        existing_versions = list(
-            collection.find({"source_url": url}).sort("scraping_date", -1)
-        )
+        existing_files = list(fs.find({"source_url": url}).sort("uploadDate", -1))
 
-        if len(existing_versions) > 1:
-            oldest_version = existing_versions[-1]
-            fs.delete(ObjectId(oldest_version["_id"]))
-            collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-            logger.info(
-                f"Se eliminó la versión más antigua con este enlace: '{url}' y ObjectId: {oldest_version['_id']}'"
-            )
+        if len(existing_files) > 1:  
+            oldest_file = existing_files[-1]
+            fs.delete(oldest_file._id)
+            logger.info(f"Se eliminó el archivo más antiguo en fs con ObjectId: {oldest_file._id}")
+
+        existing_records = list(collection.find({"source_url": url}).sort("scraping_date", -1))
+
+        if len(existing_records) > 2: 
+            oldest_record = existing_records[-1]
+            collection.delete_one({"_id": oldest_record["_id"]})
+            logger.info(f"Se eliminó la versión más antigua en collection con ObjectId: {oldest_record['_id']}")
 
         response_data = {
             "Tipo": "Documento",
@@ -399,68 +400,7 @@ def process_scraper_data(all_scraper, url, sobrenombre):
 
 
 
-def save_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("GUARDAR DATOS DEL SCRAPER")
-    try:
-        folder_path = generate_directory(OUTPUT_DIR, url)
 
-        object_id = fs.put(all_scraper.encode("utf-8"), filename=sobrenombre)
-
-        data = {
-            "Objeto": object_id,
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Etiquetas": ["planta", "plaga"],
-        }
-
-        collection.insert_one(data)
-        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
-
-        delete_old_documents(url, collection, fs)
-
-        response_data = {
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scraper": data["Fecha_scraper"],
-            "Etiquetas": data["Etiquetas"],
-            "Mensaje": "Los datos han sido scrapeados correctamente.",
-        }
-
-        return response_data
-    except Exception as e:
-        logger.error(f"Error al guardar datos del scraper: {str(e)}")
-        raise
-
-
-def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection, fs):
-    logger = get_logger("procesar datos del scraper")
-    try:
-        if all_scraper:
-            response_data = save_scraper_data_without_file(
-                all_scraper, url, sobrenombre, collection, fs
-            )
-            return Response(response_data, status=status.HTTP_200_OK)
-        else:
-            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos para scrapear.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
-    except Exception as e:
-        logger.error(f"Error al procesar datos del scraper: {str(e)}")
-        return Response(
-            {
-                "Tipo": "Web",
-                "Url": url,
-                "Mensaje": "Ocurrió un error al procesar los datos.",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
 def extract_text_from_pdf(pdf_url):
     try:
         headers = {"User-Agent": get_random_user_agent()}

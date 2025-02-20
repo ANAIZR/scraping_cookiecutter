@@ -124,7 +124,7 @@ def scrape_content_from_links(state, collection, fs, main_url):
                         contenido=content_text,
                         url=main_url  
                     )
-
+                    
                     
                     state.scraped_urls.append(link)
 
