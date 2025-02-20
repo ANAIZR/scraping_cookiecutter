@@ -74,13 +74,8 @@ def scraper_notification_aphis(url, sobrenombre):
 
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
-                    fs.delete(ObjectId(oldest_version["_id"]))
-                    collection.delete_one(
-                        {"_id": ObjectId(oldest_version["_id"])}
-                    )
-                    logger.info(
-                        f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}"
-                    )
+                    fs.delete(ObjectId(oldest_version._id))
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al procesar el enlace {url}: {e}")
