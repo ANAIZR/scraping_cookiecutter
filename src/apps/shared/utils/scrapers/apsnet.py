@@ -6,19 +6,16 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
-    process_scraper_data_v2,
+    process_scraper_data,
     load_keywords
 )
 from rest_framework.response import Response
 from rest_framework import status
-import os
 from datetime import datetime
 import random
-import json
 import time
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-from django.utils.timezone import make_aware
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bson import ObjectId
 
 logger = get_logger("scraper")
@@ -137,7 +134,7 @@ def scraper_apsnet(url, sobrenombre):
                 all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
                 all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-                return process_scraper_data_v2(all_scraper, url, sobrenombre)
+                return process_scraper_data(all_scraper, url, sobrenombre)
 
             except Exception as e:
                 logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
