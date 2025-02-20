@@ -16,27 +16,33 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
+    from datetime import datetime, date
+    from django.utils import timezone
+
     scraper_service = WebScraperService()
 
     try:
         scraper_url = ScraperURL.objects.get(url=url)
         sobrenombre = scraper_url.sobrenombre
 
-        # Convertir fecha_scraper a datetime si es de tipo date
-        if isinstance(scraper_url.fecha_scraper, date) and not isinstance(scraper_url.fecha_scraper, datetime):
-            scraper_url.fecha_scraper = datetime.combine(
-                scraper_url.fecha_scraper, datetime.min.time()
-            )
-            scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
+        logger.info(f"📌 Tipo de fecha_scraper antes de conversión: {type(scraper_url.fecha_scraper)}")
 
+        if isinstance(scraper_url.fecha_scraper, datetime):
+            if timezone.is_naive(scraper_url.fecha_scraper):
+                scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
+        elif isinstance(scraper_url.fecha_scraper, date): 
+            scraper_url.fecha_scraper = datetime.combine(scraper_url.fecha_scraper, datetime.min.time())
+            scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
         else:
+            logger.error(f"⚠️ Tipo inesperado en fecha_scraper: {type(scraper_url.fecha_scraper)}")
             scraper_url.fecha_scraper = timezone.now()
 
-        scraper_url.save()
+        scraper_url.save()  
 
     except ScraperURL.DoesNotExist:
         logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
         return {"status": "failed", "url": url, "error": "ScraperURL no encontrado"}
+
     except Exception as e:
         logger.error(f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}")
         return {"status": "failed", "url": url, "error": str(e)}
