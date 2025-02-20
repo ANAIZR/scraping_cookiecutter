@@ -84,7 +84,7 @@ def scraper_ansci_cornell(url, sobrenombre):
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                             
-                            existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
+                            existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
 
 
                             if len(existing_versions) > 1:
