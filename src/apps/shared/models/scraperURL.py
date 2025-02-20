@@ -54,15 +54,12 @@ class ScraperURL(CoreModel):
     def get_time_limit(self):
         reference_date = self.fecha_scraper or self.updated_at
 
-        # ✅ Si `reference_date` es `date`, conviértelo a `datetime`
-        if isinstance(reference_date, datetime.date) and not isinstance(reference_date, datetime.datetime):
-            reference_date = datetime.datetime.combine(reference_date, datetime.time.min)
+        if isinstance(reference_date, datetime):
+            if timezone.is_naive(reference_date):
+                reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
+        else:
+            reference_date = datetime.combine(reference_date, datetime.min.time(), tzinfo=timezone.get_current_timezone())
 
-        # ✅ Asegurar que la fecha tiene zona horaria
-        if timezone.is_naive(reference_date):
-            reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
-
-        # ✅ Calcular el tiempo según la frecuencia seleccionada
         if self.time_choices == 1: 
             return reference_date + timedelta(days=30)
         elif self.time_choices == 2: 
