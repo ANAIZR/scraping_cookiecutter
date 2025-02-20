@@ -42,7 +42,7 @@ def process_scraped_data_task(self, url):
         return None
 
     scraper = ScraperService()
-    scraper.extract_and_save_species()
+    scraper.extract_and_save_species(url)
 
     return url 
 
