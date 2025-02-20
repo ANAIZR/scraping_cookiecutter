@@ -23,8 +23,8 @@ def scraper_ars_usda(url, sobrenombre):
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     processed_links = set()
-    urls_to_scrape = [(url, 1)]  
-    non_scraped_urls = []  
+    urls_to_scrape = [(url, 1)]
+    non_scraped_urls = []
     scraped_urls = []
 
     total_found_links = 0
@@ -34,7 +34,7 @@ def scraper_ars_usda(url, sobrenombre):
     def scrape_page(url, depth):
         nonlocal total_found_links, total_scraped_links, total_non_scraped_links
 
-        if url in processed_links or depth > 3: 
+        if url in processed_links or depth > 3:
             return []
         processed_links.add(url)
 
@@ -49,14 +49,36 @@ def scraper_ars_usda(url, sobrenombre):
 
             soup = BeautifulSoup(response.content, "html.parser")
 
-            if depth >= 2:
+            if url.endswith(".pdf"):
+                logger.info(f"Extrayendo texto de PDF: {url}")
+                pdf_text = extract_text_from_pdf(url)
 
-                if url.lower().endswith(".pdf"):
-                    logger.info(f"Extrayendo texto de PDF: {url}")
-                    main_content = extract_text_from_pdf(url)
+                if pdf_text:
+                    object_id = fs.put(
+                        pdf_text.encode("utf-8"),
+                        source_url=url,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=pdf_text,
+                        url=url_padre
+                    )
+                    total_scraped_links += 1
+                    scraped_urls.append(url)
+                    logger.info(f"Texto de PDF almacenado en MongoDB con object_id: {object_id}")
+
+                    existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version._id))
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
                 else:
-                    main_content = soup.find("main", id="main-content")
-                    
+                    non_scraped_urls.append(url)
+                    total_non_scraped_links += 1
+                return []
+
+            if depth >= 2:
+                main_content = soup.find("main", id="main-content")
+
                 if main_content:
                     nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
@@ -72,13 +94,12 @@ def scraper_ars_usda(url, sobrenombre):
                         total_scraped_links += 1
                         scraped_urls.append(url)
                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
- 
+
                         existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
-                            fs.delete(ObjectId(oldest_version["_id"]))
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
-                       
+                            fs.delete(ObjectId(oldest_version._id))
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
                     else:
                         non_scraped_urls.append(url)
 
@@ -86,30 +107,20 @@ def scraper_ars_usda(url, sobrenombre):
                 inner_href = link.get("href")
                 full_url = urljoin(url, inner_href)
 
-                if full_url.lower().endswith(".pdf"):
-                    print("PDF encontrado:", full_url)
-                    urls_to_scrape.append((full_url, depth + 1))
-                    # total_non_scraped_links += 1  
-                    # non_scraped_urls.append(full_url)  
+                if "forms" in full_url or full_url in processed_links:
+                    total_non_scraped_links += 1
+                    non_scraped_urls.append(full_url)
                     continue
 
-                if "forms" in full_url or "":  
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
-                    continue
-
-                if (
-                    urlparse(full_url).netloc == "www.ars.usda.gov"
-                    and full_url not in processed_links
-                ):
-                    total_found_links += 1  
+                if urlparse(full_url).netloc == "www.ars.usda.gov":
+                    total_found_links += 1
                     new_links.append((full_url, depth + 1))
-                    total_scraped_links += 1 
+                    total_scraped_links += 1
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al procesar el enlace {url}: {e}")
-            total_non_scraped_links += 1  
-            non_scraped_urls.append(url)  
+            total_non_scraped_links += 1
+            non_scraped_urls.append(url)
 
         return new_links
 
@@ -127,14 +138,14 @@ def scraper_ars_usda(url, sobrenombre):
                     new_links.extend(result_links)
                 except Exception as e:
                     logger.error(f"Error en tarea de scraping: {str(e)}")
-                    total_non_scraped_links += 1  
+                    total_non_scraped_links += 1
         return new_links
 
     try:
         while urls_to_scrape:
             logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
             urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
-            time.sleep(random.uniform(1, 3))  
+            time.sleep(random.uniform(1, 3))
 
         all_scraper = (
             f"Total enlaces scrapeados: {len(scraped_urls)}\n"
