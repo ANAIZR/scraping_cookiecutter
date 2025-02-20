@@ -249,10 +249,11 @@ class ScraperComparisonService:
 
         comparison_result = self.generate_comparison_with_ollama(content1, content2, url, object_id1, object_id2)
 
-        if comparison_result:
+        if comparison_result and comparison_result.get("has_changes", False):  
             self.save_or_update_comparison_to_postgres(url, object_id1, object_id2, comparison_result)
+            return {"status": "changed", "message": "Se detectaron cambios en la comparación."}
 
-        return comparison_result
+        return {"status": "no_changes", "message": "No se detectaron cambios en la comparación."}
     
 
 

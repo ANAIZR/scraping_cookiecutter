@@ -3,7 +3,7 @@ from src.apps.shared.utils.services import WebScraperService, ScraperService, Sc
 from src.apps.shared.models.scraperURL import ScraperURL
 from datetime import datetime
 import logging
-
+from src.apps.shared.utils.notify_change import notify_users_of_changes
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +46,6 @@ def process_scraped_data_task(self, url):
 
     return url 
 
-
 @shared_task(bind=True)
 def generate_comparison_report_task(self, url): 
     if not url:
@@ -58,10 +57,18 @@ def generate_comparison_report_task(self, url):
 
     if result.get("status") == "no_comparison":
         logger.info(f"No hay suficientes registros para comparación en la URL: {url}")
+        return None
     elif result.get("status") == "missing_content":
         logger.warning(f"Uno de los registros de {url} no tiene contenido para comparar.")
-    else:
-        logger.info(f"Reporte de comparación generado o actualizado para {url}: {result}")
+        return None
+    elif result.get("status") == "duplicate":
+        logger.info(f"La comparación entre las versiones ya existe y no ha cambiado para la URL {url}")
+        return None
+
+    logger.info(f"Reporte de comparación generado o actualizado para {url}: {result}")
+
+    if result.get("status") == "changed":
+        notify_users_of_changes(url, result)
 
     return result
 
