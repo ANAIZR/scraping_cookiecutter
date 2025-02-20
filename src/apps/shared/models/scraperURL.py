@@ -54,11 +54,17 @@ class ScraperURL(CoreModel):
     def get_time_limit(self):
         reference_date = self.fecha_scraper or self.updated_at
 
+        if reference_date is None:
+            return timezone.now()  
+
         if isinstance(reference_date, datetime):
             if timezone.is_naive(reference_date):
                 reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
+        elif isinstance(reference_date, datetime.date):  
+            reference_date = datetime.combine(reference_date, datetime.min.time())
+            reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
         else:
-            reference_date = datetime.combine(reference_date, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+            raise TypeError(f"Referencia de fecha inesperada: {type(reference_date)}")
 
         if self.time_choices == 1: 
             return reference_date + timedelta(days=30)
@@ -68,7 +74,7 @@ class ScraperURL(CoreModel):
             return reference_date + timedelta(days=180)
         elif self.time_choices == 4: 
             return reference_date + timedelta(days=7)
-        
+
         return reference_date
 
 
