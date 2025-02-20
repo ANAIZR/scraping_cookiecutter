@@ -25,10 +25,10 @@ def scraper_url_task(self, url):
         # Convertir fecha_scraper a datetime si es de tipo date
         if isinstance(scraper_url.fecha_scraper, date) and not isinstance(scraper_url.fecha_scraper, datetime):
             scraper_url.fecha_scraper = datetime.combine(
-                scraper_url.fecha_scraper,
-                datetime.min.time()
+                scraper_url.fecha_scraper, datetime.min.time()
             )
             scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
+
         else:
             scraper_url.fecha_scraper = timezone.now()
 
