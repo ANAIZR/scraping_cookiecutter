@@ -31,9 +31,7 @@ class WebScraperService:
 
             scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
             if not scraper_function:
-                error_msg = (
-                    f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS"
-                )
+                error_msg = f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS"
                 scraper_url.estado_scrapeo = "fallido"
                 scraper_url.error_scrapeo = error_msg
                 scraper_url.fecha_scraper = timezone.now()
@@ -47,11 +45,11 @@ class WebScraperService:
                 end_page = parameters.get("end_page", None)
                 logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
 
-                response = scraper_pdf(
-                    url, scraper_url.sobrenombre, start_page, end_page
-                )
+                response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
+                logger.info(f"Type of response: {type(response)}")  # Debugging line
+
                 if not isinstance(response, dict):
-                    error_msg = "Respuesta no serializable en scraper_pdf"
+                    error_msg = f"Respuesta no serializable en scraper_pdf. Tipo recibido: {type(response)}"
                     scraper_url.estado_scrapeo = "fallido"
                     scraper_url.error_scrapeo = error_msg
                     scraper_url.fecha_scraper = timezone.now()
@@ -75,9 +73,7 @@ class WebScraperService:
             # Verificar si el scraping devolvió datos válidos
             if not response or "error" in response:
                 scraper_url.estado_scrapeo = "fallido"
-                scraper_url.error_scrapeo = response.get(
-                    "error", "Scraping no devolvió datos válidos."
-                )
+                scraper_url.error_scrapeo = response.get("error", "Scraping no devolvió datos válidos.")
             else:
                 scraper_url.estado_scrapeo = "exitoso"
                 scraper_url.error_scrapeo = ""
