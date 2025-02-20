@@ -7,11 +7,9 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from src.apps.shared.models.scraperURL import ScraperURL, ReportComparison
 import logging
-from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
 from rest_framework import status
 from rest_framework.views import APIView
-
+from rest_framework.permissions import IsAuthenticated
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +36,8 @@ class ReportComparisonDetailView(generics.RetrieveAPIView):
         serializer = ReportComparisonSerializer(comparison)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-@method_decorator(login_required, name='dispatch')
 class ToggleNotificationAPIView(APIView):
-
+    permission_classes = [IsAuthenticated] 
     def post(self, request):
 
         scraper_url_id = request.data.get("scraper_url_id")
