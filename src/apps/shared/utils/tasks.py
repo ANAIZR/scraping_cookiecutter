@@ -4,12 +4,7 @@ from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.notify_change import check_new_species_and_notify
 import logging
 from src.apps.shared.utils.notify_change import notify_users_of_changes
-logger = logging.getLogger(__name__)
-
-
 from django.utils import timezone
-from celery import shared_task, chain
-import logging
 
 logger = logging.getLogger(__name__)
 
