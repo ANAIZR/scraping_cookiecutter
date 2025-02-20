@@ -91,10 +91,20 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
+@shared_task(bind=True)
+def scraper_expired_urls_task(self):
+    scraper_service = WebScraperService()
+    urls = scraper_service.get_expired_urls()
+
+    if not urls:
+        logger.info("No hay URLs expiradas para scrapear.")
+        return
+
     tarea_encadenada = chain(*[
-        scraper_url_task.s(url) | run_scraper_task.s(url) | compare_scraped_content_task.s(url)
-        for url in urls
+    scraper_url_task.s(url) | run_scraper_task.s() | compare_scraped_content_task.s()
+    for url in urls
     ])
+
     tarea_encadenada.apply_async()
 
     logger.info(f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs.")
