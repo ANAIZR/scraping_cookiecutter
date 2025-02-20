@@ -35,12 +35,16 @@ def notify_users_of_changes(url, comparison_result):
         logger.error(f"No se encontró ScraperURL para la URL {url}, no se enviará la notificación.")
 
 
-def check_new_species_and_notify():
+def check_new_species_and_notify(urls_to_check):
 
     now = timezone.now()
     last_scraping_time = now - timedelta(hours=1)  
 
-    new_species = Species.objects.filter(created_at__gte=last_scraping_time)
+    # 🔹 Solo busca nuevas especies en las URLs monitoreadas
+    new_species = Species.objects.filter(
+        created_at__gte=last_scraping_time,
+        scraper_source__url__in=urls_to_check  
+    )
 
     if not new_species.exists():
         return  
@@ -63,6 +67,7 @@ def check_new_species_and_notify():
 
         if matched_species.exists():
             notify_user_of_new_species(user, subscription, matched_species)
+
 
 def notify_user_of_new_species(user, subscription, species):
 

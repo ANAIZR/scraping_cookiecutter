@@ -51,7 +51,7 @@ def process_scraped_data_task(self, url):
 
     scraper = ScraperService()
     scraper.extract_and_save_species(url)
-    check_new_species_and_notify()
+    check_new_species_and_notify([url])
 
     
 
@@ -101,3 +101,14 @@ def scraper_expired_urls_task(self):
         ).apply_async()
 
     logger.info(f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs.")
+
+@shared_task(bind=True)
+def check_species_for_selected_urls_task(self):
+    urls_para_revisar = [
+        "https://ejemplo.com/especie1",
+        "https://ejemplo.com/especie2",
+        "https://otrafuente.com/nueva-plaga"
+    ]
+
+    for url in urls_para_revisar:
+        process_scraped_data_task.delay(url)  
