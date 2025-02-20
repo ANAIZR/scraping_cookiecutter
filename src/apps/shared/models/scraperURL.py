@@ -9,21 +9,30 @@ class ScraperURL(CoreModel):
         (1, "Web"),
         (2, "PDF"),
     ]
-    TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral"),(4,"Semanal")]
+    TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral"), (4, "Semanal")]
 
     url = models.URLField(max_length=500)
     sobrenombre = models.CharField(max_length=120)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     type_file = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, default=1)
-    deleted_at = models.DateTimeField(
-        blank=True, null=True, db_index=True, editable=False
-    )
-    fecha_scraper = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(blank=True, null=True, db_index=True, editable=False)
     time_choices = models.PositiveSmallIntegerField(choices=TIME_CHOICES, default=1)
     is_active = models.BooleanField(default=True)
     parameters = models.JSONField(default=dict)
     mode_scrapeo = models.PositiveSmallIntegerField(default=1, blank=True, null=True)
+
+    ESTADO_CHOICES = [
+        ("pendiente", "Pendiente"),
+        ("exitoso", "Exitoso"),
+        ("fallido", "Fallido"),
+    ]
+    
+    estado_scrapeo = models.CharField(
+        max_length=20, choices=ESTADO_CHOICES, default="pendiente"
+    )
+    error_scrapeo = models.TextField(blank=True, null=True)  
+    ultima_fecha_scrapeo = models.DateTimeField(null=True, blank=True)  
 
     class Meta:
         db_table = "scraper_url"
@@ -42,7 +51,7 @@ class ScraperURL(CoreModel):
         return self.deleted_at is not None
 
     def get_time_limit(self):
-        reference_date = self.fecha_scraper or self.updated_at
+        reference_date = self.ultima_fecha_scrapeo or self.updated_at
 
         if timezone.is_naive(reference_date):
             reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
@@ -65,11 +74,10 @@ class ScraperURL(CoreModel):
         super().save(*args, **kwargs)
 
         if is_new or self.is_time_expired():
-            from src.apps.shared.utils.tasks import (
-                scraper_url_task,
-            )  
+            from src.apps.shared.utils.tasks import scraper_url_task  
 
             scraper_url_task.apply_async((self.url,), eta=self.get_time_limit())
+
 
 class Species(models.Model):
     scientific_name = models.CharField(max_length=255, null=True, blank=True)
@@ -87,7 +95,7 @@ class Species(models.Model):
     environmental_conditions = models.TextField(blank=True, null=True)
     prevention_control = models.JSONField(blank=True, null=True)
     uses = models.TextField(blank=True, null=True)
-    source_url = models.URLField(max_length=500, unique=True)  # Único
+    source_url = models.URLField(max_length=500, unique=True)  
     scraper_source = models.ForeignKey(
         "ScraperURL",
         on_delete=models.SET_NULL,

@@ -6,6 +6,8 @@ class ScraperURLSerializer(serializers.ModelSerializer):
     time_choices_display = serializers.CharField(
         source="get_time_choices_display", read_only=True
     )
+    estado_scrapeo = serializers.CharField(read_only=True)
+    error_scrapeo = serializers.CharField(read_only=True)
 
     class Meta:
         model = ScraperURL
@@ -16,6 +18,8 @@ class ScraperURLSerializer(serializers.ModelSerializer):
             "time_choices",
             "fecha_scraper", 
             "time_choices_display",
+            "estado_scrapeo",  
+            "error_scrapeo",    
             "created_at",
             "updated_at",
         )
@@ -24,6 +28,10 @@ class ScraperURLSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         if instance.fecha_scraper is None:
             representation["fecha_scraper"] = "Aún no se ha realizado el proceso de scraper"
+        
+        if instance.estado_scrapeo == "fallido":
+            representation["error_scrapeo"] = instance.error_scrapeo or "Error desconocido."
+
         return representation
 
     def validate_url(self, value):
@@ -35,6 +43,7 @@ class ScraperURLSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Esta URL ya ha sido registrada.")
 
         return value
+
 class SpeciesSerializer(serializers.ModelSerializer):
     sobrenombre = serializers.CharField(source='scraper_source.sobrenombre', read_only=True)  
 
