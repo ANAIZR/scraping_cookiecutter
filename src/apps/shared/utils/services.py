@@ -284,75 +284,53 @@ class ScraperService:
                         continue
 
                     species_obj = Species(
-                        scientific_name=scientific_name,
-                        common_names=(
-                            ", ".join(structured_data.get("nombres_comunes", []))
-                            if isinstance(structured_data.get("nombres_comunes"), list)
-                            else structured_data.get("nombres_comunes", "") or ""
-                        ),
-                        synonyms=(
-                            json.dumps(structured_data.get("sinonimos", []))
-                            if isinstance(structured_data.get("sinonimos"), list)
-                            else "[]"
-                        ),
-                        invasiveness_description=structured_data.get(
-                            "descripcion_invasividad"
-                        )
-                        or "",
-                        distribution=(
-                            json.dumps(structured_data.get("distribucion", []))
-                            if isinstance(structured_data.get("distribucion"), list)
-                            else "[]"
-                        ),
-                        impact=(
-                            json.dumps(structured_data.get("impacto", {}))
-                            if isinstance(structured_data.get("impacto"), dict)
-                            else "{}"
-                        ),
-                        habitat=structured_data.get("habitat") or "",
-                        life_cycle=structured_data.get("ciclo_vida") or "",
-                        reproduction=structured_data.get("reproduccion") or "",
-                        hosts=(
-                            json.dumps(structured_data.get("hospedantes", []))
-                            if isinstance(structured_data.get("hospedantes"), list)
-                            else "[]"
-                        ),
-                        symptoms=(
-                            json.dumps(structured_data.get("sintomas", []))
-                            if isinstance(structured_data.get("sintomas"), list)
-                            else "[]"
-                        ),
-                        affected_organs=(
-                            json.dumps(structured_data.get("organos_afectados", []))
-                            if isinstance(
-                                structured_data.get("organos_afectados"), list
-                            )
-                            else "[]"
-                        ),
-                        environmental_conditions=(
-                            json.dumps(
-                                structured_data.get("condiciones_ambientales", [])
-                            )
-                            if isinstance(
-                                structured_data.get("condiciones_ambientales"), list
-                            )
-                            else "[]"
-                        ),
-                        prevention_control=(
-                            json.dumps(structured_data.get("prevencion_control", {}))
-                            if isinstance(
-                                structured_data.get("prevencion_control"), dict
-                            )
-                            else "{}"
-                        ),
-                        uses=(
-                            json.dumps(structured_data.get("usos", []))
-                            if isinstance(structured_data.get("usos"), list)
-                            else "[]"
-                        ),
+                        scientific_name=structured_data.get("nombre_cientifico", "").strip(),
+                        common_names=", ".join(structured_data.get("nombres_comunes", [])) 
+                        if isinstance(structured_data.get("nombres_comunes"), list) 
+                        else structured_data.get("nombres_comunes", "") or "",
+
+                        synonyms=json.dumps(structured_data.get("sinonimos", [])) 
+                        if isinstance(structured_data.get("sinonimos"), list) 
+                        else "[]",
+
+                        invasiveness_description=structured_data.get("descripcion_invasividad", "") or "",
+
+                        impact=json.dumps(structured_data["impacto"]) 
+                        if isinstance(structured_data.get("impacto"), dict) 
+                        else "{}",
+
+                        habitat=structured_data.get("habitat", "") or "",
+                        life_cycle=structured_data.get("ciclo_vida", "") or "",
+                        reproduction=structured_data.get("reproduccion", "") or "",
+
+                        hosts=json.dumps(structured_data["hospedantes"]) 
+                        if isinstance(structured_data.get("hospedantes"), list) 
+                        else "[]",
+
+                        symptoms=json.dumps(structured_data["sintomas"]) 
+                        if isinstance(structured_data.get("sintomas"), list) 
+                        else "[]",
+
+                        affected_organs=json.dumps(structured_data["organos_afectados"]) 
+                        if isinstance(structured_data.get("organos_afectados"), list) 
+                        else "[]",
+
+                        environmental_conditions=json.dumps(structured_data["condiciones_ambientales"]) 
+                        if isinstance(structured_data.get("condiciones_ambientales"), list) 
+                        else "[]",
+
+                        prevention_control=json.dumps(structured_data["prevencion_control"]) 
+                        if isinstance(structured_data.get("prevencion_control"), dict) 
+                        else "{}",
+
+                        uses=json.dumps(structured_data["usos"]) 
+                        if isinstance(structured_data.get("usos"), list) 
+                        else "[]",
+
                         source_url=source_url,
                         scraper_source=scraper_source,
                     )
+
                     species_objects.append(species_obj)
 
                 except Exception as e:
