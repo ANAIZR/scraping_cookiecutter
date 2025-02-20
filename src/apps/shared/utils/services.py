@@ -30,25 +30,21 @@ class WebScraperService:
                 logger.error(f"Modo de scrapeo no reconocido para URL: {url}")
                 return {"error": f"Modo de scrapeo no reconocido para URL: {url}"}
 
-            # 🔹 Validar si es PDF (modo_scrapeo = 7)
             if mode_scrapeo == 7:  
                 parameters = scraper_url.parameters or {}
                 start_page = parameters.get("start_page", 1)
                 end_page = parameters.get("end_page", None)
                 logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
 
-                # 🔹 Llamar al scraper de PDFs y devolver su resultado como diccionario
                 response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
 
-                # 🔹 Asegurar que la respuesta es serializable
                 if not isinstance(response, dict):
                     return {"error": "Respuesta no serializable en scraper_pdf"}
 
-                return response  # ✅ Retorna el resultado del procesamiento del PDF
+                return response  
 
-            # 🔹 Para los otros modos de scrapeo
             logger.info(f"Ejecutando scraper para {url} con método {mode_scrapeo}")
-            return scraper_function(url)
+            return scraper_function(url, scraper_url.sobrenombre)
 
         except ScraperURL.DoesNotExist:
             logger.error(f"La URL {url} no se encuentra en la base de datos.")
@@ -57,6 +53,7 @@ class WebScraperService:
         except Exception as e:
             logger.error(f"Error al ejecutar scraper para {url}: {str(e)}")
             return {"error": f"Error al ejecutar scraper para {url}: {str(e)}"}
+
 
 
 

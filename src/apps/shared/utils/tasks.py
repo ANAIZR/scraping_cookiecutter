@@ -7,17 +7,29 @@ from src.apps.shared.utils.notify_change import notify_users_of_changes
 logger = logging.getLogger(__name__)
 
 
+from django.utils import timezone
+from celery import shared_task, chain
+import logging
+
+logger = logging.getLogger(__name__)
+
 @shared_task(bind=True)
 def scraper_url_task(self, url):
     scraper_service = WebScraperService()
-    result = scraper_service.scraper_one_url(url)
 
     try:
         scraper_url = ScraperURL.objects.get(url=url)
-        scraper_url.fecha_scraper = datetime.now()
+        sobrenombre = scraper_url.sobrenombre  
+        scraper_url.fecha_scraper = timezone.now()  
         scraper_url.save()
+    except ScraperURL.DoesNotExist:
+        logger.error(f"No se encontró ScraperURL para {url}")
+        return None
     except Exception as e:
         logger.error(f"Error al actualizar fecha de scraping para {url}: {str(e)}")
+        return None
+
+    result = scraper_service.scraper_one_url(url, sobrenombre)
 
     if "error" in result:
         logger.error(f"Scraping fallido para {url}: {result['error']}")
@@ -27,12 +39,13 @@ def scraper_url_task(self, url):
 
     tarea_encadenada = chain(
         process_scraped_data_task.s(url), 
-        generate_comparison_report_task.si(url)  
+        generate_comparison_report_task.si(url)
     )
 
     tarea_encadenada.apply_async()
 
     return url
+
 
 
 @shared_task(bind=True)
