@@ -21,45 +21,42 @@ def scraper_url_task(self, url):
     try:
         scraper_url = ScraperURL.objects.get(url=url)
         sobrenombre = scraper_url.sobrenombre
-        if isinstance(scraper_url.fecha_scraper, date) and not isinstance(
-            scraper_url.fecha_scraper, datetime
-        ):
+
+        # Convertir fecha_scraper a datetime si es de tipo date
+        if isinstance(scraper_url.fecha_scraper, date) and not isinstance(scraper_url.fecha_scraper, datetime):
             scraper_url.fecha_scraper = datetime.combine(
                 scraper_url.fecha_scraper,
-                datetime.min.time(),
-                tzinfo=timezone.get_current_timezone(),
+                datetime.min.time()
             )
+            scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
         else:
             scraper_url.fecha_scraper = timezone.now()
+
         scraper_url.save()
+
     except ScraperURL.DoesNotExist:
         logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
         return {"status": "failed", "url": url, "error": "ScraperURL no encontrado"}
     except Exception as e:
-        logger.error(
-            f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}"
-        )
+        logger.error(f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}")
         return {"status": "failed", "url": url, "error": str(e)}
 
     result = scraper_service.scraper_one_url(url, sobrenombre)
 
     if "error" in result:
-        logger.error(
-            f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}"
-        )
+        logger.error(f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}")
         scraper_url.estado_scrapeo = "fallido"
         scraper_url.error_scrapeo = result["error"]
         scraper_url.save()
         return {"status": "failed", "url": url, "error": result["error"]}
     else:
-        logger.info(
-            f"Task {self.request.id}: Scraping exitoso para {url}, iniciando flujo de procesamiento..."
-        )
+        logger.info(f"Task {self.request.id}: Scraping exitoso para {url}, iniciando flujo de procesamiento...")
         tarea_encadenada = chain(
             process_scraped_data_task.s(url), generate_comparison_report_task.si(url)
         )
         tarea_encadenada.apply_async()
         return {"status": "success", "url": url}
+
 
 
 @shared_task(bind=True)
