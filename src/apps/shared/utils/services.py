@@ -178,7 +178,6 @@ class ScraperService:
                 response = requests.post(
                     "http://127.0.0.1:11434/api/chat",
                     json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
-                    timeout=30  # Evitar que se quede colgado
                 )
 
                 if response.status_code != 200:
