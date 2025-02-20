@@ -112,7 +112,7 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
 
         request.data["user"] = (
             request.user.id
-        )  # Asigna automáticamente el usuario autenticado
+        )  
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
