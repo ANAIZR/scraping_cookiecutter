@@ -77,9 +77,8 @@ def scraper_fao_org_home(url, sobrenombre):
                         existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
-                            fs.delete(ObjectId(oldest_version["_id"]))
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
-                        
+                            fs.delete(ObjectId(oldest_version._id))
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
                     else:
                         non_scraped_urls.append(url)
 
@@ -138,7 +137,7 @@ def scraper_fao_org_home(url, sobrenombre):
 
 
         all_scraper = (
-            f"Total enlaces scrapeados: {len(total_scraped_links)}\n"
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
             f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
             f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
