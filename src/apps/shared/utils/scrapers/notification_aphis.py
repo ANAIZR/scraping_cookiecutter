@@ -55,8 +55,8 @@ def scraper_notification_aphis(url, sobrenombre):
                 total_scraped_links += 1
                 scraped_urls.append(href)
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
 
+                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
                     fs.delete(ObjectId(oldest_version._id))
