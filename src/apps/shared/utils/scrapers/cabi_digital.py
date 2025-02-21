@@ -12,6 +12,7 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
+    process_scraper_data
 )
 from rest_framework.response import Response
 from rest_framework import status
