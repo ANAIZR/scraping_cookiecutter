@@ -13,7 +13,7 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data_v2
+    process_scraper_data
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -173,7 +173,7 @@ def scraper_sciencedirect(url, sobrenombre):
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
     
     except Exception as e:
