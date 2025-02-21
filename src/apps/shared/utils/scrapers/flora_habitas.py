@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from bson import ObjectId
+from datetime import datetime
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -11,7 +13,6 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 
-
 def scraper_flora_habitas(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
@@ -19,7 +20,8 @@ def scraper_flora_habitas(url, sobrenombre):
     all_scraper = ""
     visited_urls = set()
     urls_not_scraped = []
-    hrefs = set() 
+    hrefs = set()
+    total_scraped_successfully = 0
 
     def get_page_content(current_url):
         try:
@@ -44,17 +46,37 @@ def scraper_flora_habitas(url, sobrenombre):
         else:
             logger.info("No se encontró el div#contents en la página principal.")
 
-    def scrape_page(link):
-        nonlocal all_scraper
-        visited_urls.add(link) 
-        html_content = get_page_content(link)
+    def scrape_page(link_href):
+        nonlocal all_scraper, total_scraped_successfully
+        visited_urls.add(link_href)
+        html_content = get_page_content(link_href)
         if html_content:
             soup = BeautifulSoup(html_content, "html.parser")
             contents_div = soup.find("div", id="contents")
             if contents_div:
-                all_scraper += f"URL: {link}\n\n{contents_div.get_text(strip=True)}\n{'-' * 80}\n\n"
+                content_text = contents_div.get_text(strip=True)
+                all_scraper += f"URL: {link_href}\n\n{content_text}\n{'-' * 80}\n\n"
+                
+                if content_text:
+                    object_id = fs.put(
+                        content_text.encode("utf-8"),
+                        source_url=link_href,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=content_text,
+                        url=url
+                    )
+                    total_scraped_successfully += 1
+
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                    existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version["_id"]))
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
             else:
-                logger.info(f"No se encontró el div#contents en {link}")
+                logger.info(f"No se encontró el div#contents en {link_href}")
 
     try:
         main_html = get_page_content(url)
@@ -75,7 +97,8 @@ def scraper_flora_habitas(url, sobrenombre):
         all_scraper = (
             f"Resumen del scraping:\n"
             f"Total de URLs procesadas: {len(visited_urls)}\n"
-            f"Total de URLs no procesadas: {len(urls_not_scraped)}\n\n"
+            f"Total de URLs no procesadas: {len(urls_not_scraped)}\n"
+            f"Total de archivos almacenados: {total_scraped_successfully}\n\n"
             f"{'-'*80}\n\n"
         ) + all_scraper
 
@@ -85,7 +108,6 @@ def scraper_flora_habitas(url, sobrenombre):
             )
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-
         return response
 
     except Exception as e:
