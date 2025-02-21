@@ -131,34 +131,33 @@ class ScraperService:
     def process_document(self, doc):
         content = doc.get("contenido", "")
         source_url = doc.get("source_url", "")
+        mongo_id = doc["_id"]  
 
         if not content:
-            logger.warning(f"Documento {doc['_id']} no tiene contenido.")
+            logger.warning(f"Documento {mongo_id} no tiene contenido.")
+            return
+
+        existing_doc = self.collection.find_one({"_id": mongo_id, "processed": True})
+        if existing_doc:
+            logger.info(f"📌 Documento {mongo_id} ya fue procesado. Se ignora.")
             return
 
         structured_data = self.text_to_json(content, source_url, doc.get("url", ""))
-
-        print("📌 Tipo de structured_data antes de validación:", type(structured_data))
-        print("📌 Contenido de structured_data:", structured_data)
-
+        
         if not isinstance(structured_data, dict):
-            print("❌ JSON inválido: No es un diccionario")
+            logger.warning(f"❌ JSON inválido para {mongo_id}, no es un diccionario")
             return
 
         if datos_son_validos(structured_data):
-            self.save_species_to_postgres(
-                structured_data, source_url, doc.get("url", "")
-            )
+            self.save_species_to_postgres(structured_data, source_url, doc.get("url", ""), mongo_id)
 
             self.collection.update_one(
-                {"_id": doc["_id"]},
+                {"_id": mongo_id},
                 {"$set": {"processed": True, "processed_at": datetime.utcnow()}},
             )
-            logger.info(f"Procesado y guardado en PostgreSQL: {doc['_id']}")
+            logger.info(f"✅ Procesado y guardado en PostgreSQL: {mongo_id}")
         else:
-            logger.warning(
-                f"Datos vacíos para {doc['_id']}, no se guardan en PostgreSQL."
-            )
+            logger.warning(f"⚠️ Datos vacíos para {mongo_id}, no se guardan en PostgreSQL.")
 
     def text_to_json(self, content, source_url, url):
         prompt = f"""
@@ -259,80 +258,49 @@ class ScraperService:
             return None
 
     
-    def save_species_to_postgres(self, structured_data_list, source_url, url, batch_size=250):
+    def save_species_to_postgres(self, structured_data, source_url, url, mongo_id, batch_size=250):
         try:
-            # 🔍 Validar si structured_data_list es un string y convertirlo
-            if isinstance(structured_data_list, str):
-                try:
-                    structured_data_list = json.loads(structured_data_list)
-                except json.JSONDecodeError:
-                    print("❌ Error: No se pudo convertir structured_data_list en JSON válido antes de procesarlo.")
-                    return
-
-            # 🔍 Asegurar que es una lista
-            if isinstance(structured_data_list, dict):
-                structured_data_list = [structured_data_list]  # Convertir en lista si es un solo objeto
-            
-            print(f"🔍 structured_data_list es tipo {type(structured_data_list)} con {len(structured_data_list)} elementos")
-
-            scraper_source, created = ScraperURL.objects.get_or_create(
-                url=url, defaults={"sobrenombre": "Fuente desconocida"}
-            )
-
-            species_objects = []
-
-            for structured_data in structured_data_list:
-                print(f"🔍 Tipo de dato recibido en structured_data: {type(structured_data)}")
-                print("Contenido:", structured_data)  # Depuración
-
-                # 🔍 Si structured_data sigue siendo string, intentar convertirlo
-                if isinstance(structured_data, str):
+            def ensure_list(value):
+                if isinstance(value, str):
                     try:
-                        structured_data = json.loads(structured_data)
-                        print("✅ JSON convertido correctamente:", structured_data)
+                        value = json.loads(value)
+                        if not isinstance(value, list):
+                            value = [value]
                     except json.JSONDecodeError:
-                        print("❌ Error: No se pudo convertir la cadena en JSON válido, descartando.")
-                        continue
+                        value = [value]
+                return value if isinstance(value, list) else []
 
-                try:
-                    scientific_name = structured_data.get("nombre_cientifico", "").strip()
-                    if not scientific_name:
-                        logger.warning("⚠️ Se descartó una especie sin nombre científico.")
-                        continue
+            with transaction.atomic():
+                species_obj, created = Species.objects.update_or_create(
+                    source_url=source_url,
+                    defaults={
+                        "scientific_name": structured_data.get("nombre_cientifico", "").strip(),
+                        "common_names": json.dumps(ensure_list(structured_data.get("nombres_comunes", []))),
+                        "synonyms": json.dumps(ensure_list(structured_data.get("sinonimos", []))),
+                        "distribution": json.dumps(ensure_list(structured_data.get("distribucion", []))),
+                        "impact": structured_data.get("impacto", {}),
+                        "habitat": structured_data.get("habitat", ""),
+                        "life_cycle": structured_data.get("ciclo_vida", ""),
+                        "reproduction": structured_data.get("reproduccion", ""),
+                        "hosts": json.dumps(ensure_list(structured_data.get("hospedantes", []))),
+                        "symptoms": json.dumps(ensure_list(structured_data.get("sintomas", []))),
+                        "affected_organs": json.dumps(ensure_list(structured_data.get("organos_afectados", []))),
+                        "environmental_conditions": json.dumps(ensure_list(structured_data.get("condiciones_ambientales", []))),
+                        "prevention_control": structured_data.get("prevencion_control", {}),
+                        "uses": json.dumps(ensure_list(structured_data.get("usos", []))),
+                        "scraper_source": ScraperURL.objects.get(url=url),
+                    },
+                )
 
-                    species_obj = Species(
-                        scientific_name=scientific_name,
-                        common_names=", ".join(structured_data.get("nombres_comunes", [])),
-                        synonyms=json.dumps(structured_data.get("sinonimos", [])),
-                        invasiveness_description=structured_data.get("descripcion_invasividad", ""),
-                        distribution=json.dumps(structured_data.get("distribucion", [])),
-                        impact=json.dumps(structured_data.get("impacto", {})),
-                        habitat=structured_data.get("habitat", ""),
-                        life_cycle=structured_data.get("ciclo_vida", ""),
-                        reproduction=structured_data.get("reproduccion", ""),
-                        hosts=json.dumps(structured_data.get("hospedantes", [])),
-                        symptoms=json.dumps(structured_data.get("sintomas", [])),
-                        affected_organs=json.dumps(structured_data.get("organos_afectados", [])),
-                        environmental_conditions=json.dumps(structured_data.get("condiciones_ambientales", [])),
-                        prevention_control=json.dumps(structured_data.get("prevencion_control", {})),
-                        uses=json.dumps(structured_data.get("usos", [])),
-                        source_url=source_url,
-                        scraper_source=scraper_source,
-                    )
-                    species_objects.append(species_obj)
-
-                except Exception as e:
-                    logger.error(f"❌ Error al procesar especie '{structured_data.get('nombre_cientifico', 'Desconocido')}': {str(e)}")
-
-            if species_objects:
-                with transaction.atomic():
-                    Species.objects.bulk_create(species_objects, batch_size=batch_size)
-                logger.info(f"✅ {len(species_objects)} especies guardadas en PostgreSQL en lotes de {batch_size}.")
-            else:
-                logger.warning("⚠️ No se guardaron especies, todas fueron descartadas.")
+                if created:
+                    logger.info(f"✅ Nueva especie guardada en PostgreSQL: {species_obj.scientific_name}")
+                else:
+                    logger.info(f"🔄 Especie actualizada en PostgreSQL: {species_obj.scientific_name}")
 
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
+
+
 
 
 class ScraperComparisonService:
