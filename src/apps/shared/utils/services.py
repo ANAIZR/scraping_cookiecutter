@@ -240,7 +240,6 @@ class ScraperService:
                     "http://127.0.0.1:11434/api/chat",
                     json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
                     stream=True, 
-                    timeout=20
                 )
 
                 json_response = ""
