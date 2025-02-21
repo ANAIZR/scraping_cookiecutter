@@ -20,6 +20,7 @@ from bson import ObjectId
 from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
+
 logger = get_logger("scraper")
 
 def scraper_search_usa_gov(url, sobrenombre):
@@ -29,6 +30,8 @@ def scraper_search_usa_gov(url, sobrenombre):
     total_scraped_successfully = 0
     total_failed_scrapes = 0
     all_scraper = ""
+    scraped_urls = []
+    failed_urls = []
     
     try:
         driver.get(url)
@@ -75,7 +78,7 @@ def scraper_search_usa_gov(url, sobrenombre):
                 continue
 
             content_accumulated = ""
-            page_number = 1  # Para controlar el número de página
+            page_number = 1  
 
             while True:
                 try:
@@ -95,11 +98,12 @@ def scraper_search_usa_gov(url, sobrenombre):
                     for item in items:
                         href = item.find("a")["href"]
                         if href and href not in visited_urls:
+                            total_links_found += 1  # Incrementa el contador de enlaces encontrados
+                            visited_urls.add(href)
                             driver.get(href)
                             driver.execute_script("document.body.style.zoom='100%'")
                             WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                             time.sleep(5)
-                            visited_urls.add(href)
 
                             if href.lower().endswith(".pdf"):
                                 logger.info(f"Extrayendo texto de PDF: {href}")
@@ -124,19 +128,12 @@ def scraper_search_usa_gov(url, sobrenombre):
                                 )
                                 object_ids.append(object_id)
                                 total_scraped_successfully += 1
+                                scraped_urls.append(href)  # Agregar la URL scrapeada
 
                                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-
-                                existing_versions = list(
-                                    fs.find({"source_url": href}).sort("scraping_date", -1)
-                                )
-
-                                if len(existing_versions) > 1:
-                                    oldest_version = existing_versions[-1]
-                                    fs.delete(ObjectId(oldest_version._id))
-                                    logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version._id}")
                             else:
+                                total_failed_scrapes += 1
+                                failed_urls.append(href)  # Agregar la URL fallida
                                 print("No se encontró contenido en la página.")
                             
                             driver.back()
@@ -153,7 +150,7 @@ def scraper_search_usa_gov(url, sobrenombre):
                             logger.info(f"Detectada segunda página: {next_page_link}. Finalizando scraping tras procesar enlaces.")
                             driver.get(next_page_link)
                             time.sleep(random.uniform(3, 6))
-                            break  # Rompe el bucle tras procesar la página 2
+                            break  
                         else:
                             logger.info(f"Yendo a la siguiente página: {next_page_link}")
                             driver.get(next_page_link)
@@ -176,12 +173,9 @@ def scraper_search_usa_gov(url, sobrenombre):
         return response
 
     except Exception as e:
-        logger.error(f"Error al procesar datos del scraper: {str(e)}")
-        return Response(
-            {"Tipo": "Web", "Url": url, "Mensaje": "Ocurrió un error al procesar los datos."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-    
+        logger.error(f"Error general durante el scraping: {str(e)}")
+        return {"error": str(e)}
+        
     finally:
         driver.quit()
         logger.info("Navegador cerrado")
