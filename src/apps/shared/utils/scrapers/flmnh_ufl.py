@@ -5,13 +5,14 @@ from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
 import time
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
 )
-
 
 def scraper_flmnh_ufl(url, sobrenombre):
     logger = get_logger("scraper")
@@ -28,9 +29,10 @@ def scraper_flmnh_ufl(url, sobrenombre):
         )
 
     all_scraper = f"{url}\n\n"
+    total_scraped_successfully = 0
 
     def scrape_page():
-        nonlocal all_scraper
+        nonlocal all_scraper, total_scraped_successfully
         try:
             WebDriverWait(driver, 20).until(
                 EC.presence_of_all_elements_located(
@@ -43,7 +45,35 @@ def scraper_flmnh_ufl(url, sobrenombre):
             for row in rows:
                 cols = row.find_all("td")
                 data = [col.text.strip() for col in cols]
-                all_scraper += " | ".join(data) + "\n"  
+                all_scraper += " | ".join(data) + "\n"
+
+                # Extraer y procesar enlaces dentro de cada fila
+                links = row.find_all("a", href=True)
+                for link in links:
+                    link_href = link["href"]
+                    driver.get(link_href)
+                    time.sleep(2)
+                    content_soup = BeautifulSoup(driver.page_source, "html.parser")
+                    content_text = content_soup.get_text()
+
+                    if content_text:
+                        object_id = fs.put(
+                            content_text.encode("utf-8"),
+                            source_url=link_href,
+                            scraping_date=datetime.now(),
+                            Etiquetas=["planta", "plaga"],
+                            contenido=content_text,
+                            url=url
+                        )
+                        total_scraped_successfully += 1
+                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                        # Gestionar versiones antiguas
+                        existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
+                        if len(existing_versions) > 1:
+                            oldest_version = existing_versions[-1]
+                            fs.delete(ObjectId(oldest_version["_id"]))
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
         except Exception as e:
             logger.error(f"Error durante el scraping de la página: {str(e)}")
             raise e
@@ -89,4 +119,3 @@ def scraper_flmnh_ufl(url, sobrenombre):
     finally:
         driver.quit()
         logger.info("Navegador cerrado")
-
