@@ -260,15 +260,29 @@ class ScraperService:
     
     def save_species_to_postgres(self, structured_data, source_url, url, mongo_id, batch_size=250):
         try:
+            # Convertir strings en listas JSON válidas
             def ensure_list(value):
+                """Convierte strings JSON en listas reales y asegura que el valor sea una lista."""
                 if isinstance(value, str):
                     try:
-                        value = json.loads(value)
-                        if not isinstance(value, list):
-                            value = [value]
+                        parsed_value = json.loads(value)
+                        if not isinstance(parsed_value, list):
+                            return [parsed_value]
+                        return parsed_value
                     except json.JSONDecodeError:
-                        value = [value]
+                        return [value]  # Si falla la conversión, guarda como lista con un solo valor
                 return value if isinstance(value, list) else []
+
+            def ensure_dict(value):
+                """Convierte strings JSON en diccionarios reales y asegura que el valor sea un diccionario."""
+                if isinstance(value, str):
+                    try:
+                        parsed_value = json.loads(value)
+                        if isinstance(parsed_value, dict):
+                            return parsed_value
+                    except json.JSONDecodeError:
+                        return {}  # Si falla la conversión, devuelve un diccionario vacío
+                return value if isinstance(value, dict) else {}
 
             with transaction.atomic():
                 species_obj, created = Species.objects.update_or_create(
@@ -278,7 +292,7 @@ class ScraperService:
                         "common_names": json.dumps(ensure_list(structured_data.get("nombres_comunes", []))),
                         "synonyms": json.dumps(ensure_list(structured_data.get("sinonimos", []))),
                         "distribution": json.dumps(ensure_list(structured_data.get("distribucion", []))),
-                        "impact": structured_data.get("impacto", {}),
+                        "impact": ensure_dict(structured_data.get("impacto", {})),  # Guardar como JSON
                         "habitat": structured_data.get("habitat", ""),
                         "life_cycle": structured_data.get("ciclo_vida", ""),
                         "reproduction": structured_data.get("reproduccion", ""),
@@ -286,7 +300,7 @@ class ScraperService:
                         "symptoms": json.dumps(ensure_list(structured_data.get("sintomas", []))),
                         "affected_organs": json.dumps(ensure_list(structured_data.get("organos_afectados", []))),
                         "environmental_conditions": json.dumps(ensure_list(structured_data.get("condiciones_ambientales", []))),
-                        "prevention_control": structured_data.get("prevencion_control", {}),
+                        "prevention_control": ensure_dict(structured_data.get("prevencion_control", {})),  # Guardar como JSON
                         "uses": json.dumps(ensure_list(structured_data.get("usos", []))),
                         "scraper_source": ScraperURL.objects.get(url=url),
                     },
