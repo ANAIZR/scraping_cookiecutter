@@ -18,9 +18,8 @@ from django.shortcuts import get_object_or_404
 from src.apps.shared.models.scraperURL import ScraperURL, ReportComparison
 import logging
 from rest_framework import status
-from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework.exceptions import PermissionDenied
 logger = logging.getLogger(__name__)
 
 
@@ -74,6 +73,14 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """Permite a los administradores ver todas las suscripciones, pero los usuarios solo pueden ver las suyas."""
+        user_id = self.request.query_params.get("user_id")
+
+        if user_id:
+            if not self.request.user.is_staff:  # Solo administradores pueden filtrar por user_id
+                raise PermissionDenied("No tienes permisos para ver otras suscripciones.")
+            return SpeciesSubscription.objects.filter(user_id=user_id).order_by("-created_at")
+        
         return SpeciesSubscription.objects.filter(user=self.request.user).order_by("-created_at")
 
     def create(self, request, *args, **kwargs):
@@ -92,6 +99,7 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
         )
 
     def destroy(self, request, *args, **kwargs):
+        """Permite eliminar una suscripción solo si pertenece al usuario autenticado."""
         instance = get_object_or_404(SpeciesSubscription, id=kwargs["pk"], user=request.user)
         self.perform_destroy(instance)
 
