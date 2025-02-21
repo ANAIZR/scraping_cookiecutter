@@ -8,7 +8,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rest_framework.response import Response
 from rest_framework import status
 import time
-import os
 from bson import ObjectId
 from datetime import datetime
 from ..functions import (
@@ -148,6 +147,7 @@ def scraper_notification_aphis(url, sobrenombre):
                 break  
 
         driver.quit()
+ 
     try:
         extract_hrefs_from_url_main()
         logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
