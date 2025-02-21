@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 import time
 import random
 from datetime import datetime
@@ -98,23 +99,21 @@ def scraper_ippc_int(url, sobrenombre):
             logger.info("Se encontró el resultados.")
 
             if contents_div:
-                tbody = contents_div.find_element(By.CSS_SELECTOR,"tbody")
-                
-                if tbody:
-                    rows = tbody.find_elements(By.CSS_SELECTOR,"tr.odd, tr.even")
-                    print("nivel 0")
-                    for row in rows:
-                        print("nivel 1")
-                        tds = row.find_elements(By.CSS_SELECTOR,"td")
-                        cuarto_td = tds[4]
-                        options = cuarto_td.find_elements(By.CSS_SELECTOR, "table > tbody > tr > td")
-                        option = options[0]
-                        if option:
-                            print("nivel 2")
-                            link = option.find_element(By.CSS_SELECTOR,"a").get_attribute("href")
-                            print("link by quma: ",link)
-                            if link:
-                                hrefs.append(link)
+                items = WebDriverWait(driver, 10).until(
+                    EC.presence_of_all_elements_located(
+                        (By.CSS_SELECTOR, "tr.odd, tr.even")
+                    )
+                )
+                if items:
+                    for item in items:
+                        try:
+                            href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
+                        except NoSuchElementException:
+                            href = None
+                            # Opcional: registrar el error
+                            logger.info("Elemento no encontrado, continuando...")
+                        if href:
+                            hrefs.append(href)
                         
             else:
                 logger.info("No se encontró el div#contents en la página principal.")
