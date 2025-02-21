@@ -16,9 +16,6 @@ from ..functions import (
 )
 
 def navigate_to_next_page(driver, wait_time):
-    """
-    Navega a la siguiente página si es posible.
-    """
     try:
         next_button = WebDriverWait(driver, wait_time).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
@@ -30,14 +27,12 @@ def navigate_to_next_page(driver, wait_time):
         print(f"No se pudo navegar a la siguiente página: {e}")
         return False
 
-def extract_all_data(driver, wait_time):
-    """
-    Extrae datos de todas las páginas y devuelve un solo bloque de texto con toda la información.
-    """
+def extract_all_data(driver, wait_time, fs, logger, url):
     all_scraper = ""  
     record_count = 1
     skipped_rows = 0
-
+    total_scraped_successfully = 0
+    
     try:
         while True:
             tbody = WebDriverWait(driver, wait_time).until(
@@ -56,6 +51,35 @@ def extract_all_data(driver, wait_time):
                 descripcion = cols[1].text.strip()
                 host_name = cols[2].text.strip()
                 tipos = cols[3].text.strip()
+                
+                
+                
+                # Extraer enlaces dentro de la fila
+                link_elements = row.find_elements(By.TAG_NAME, "a")
+                for link in link_elements:
+                    link_href = link.get_attribute("href")
+                    if link_href:
+                        driver.get(link_href)
+                        time.sleep(2)
+                        content_text = driver.find_element(By.TAG_NAME, "body").text
+                        
+                        if content_text:
+                            object_id = fs.put(
+                                content_text.encode("utf-8"),
+                                source_url=link_href,
+                                scraping_date=datetime.now(),
+                                Etiquetas=["planta", "plaga"],
+                                contenido=content_text,
+                                url=url
+                            )
+                            total_scraped_successfully += 1
+                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                            
+                            existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
+                            if len(existing_versions) > 1:
+                                oldest_version = existing_versions[-1]
+                                fs.delete(ObjectId(oldest_version["_id"]))
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
                 all_scraper += (
                     f"Registro #{record_count}:\n"
@@ -65,7 +89,6 @@ def extract_all_data(driver, wait_time):
                     f"Host lineage: {tipos}\n"
                     f"{'-'*80}\n"
                 )
-
                 record_count += 1
 
             if not navigate_to_next_page(driver, wait_time):
@@ -73,18 +96,14 @@ def extract_all_data(driver, wait_time):
 
         if skipped_rows > 0:
             all_scraper += f"\nSe omitieron {skipped_rows} filas con columnas insuficientes.\n"
-
-        return all_scraper, record_count - 1
-
+        
+        return all_scraper, record_count - 1, total_scraped_successfully
+    
     except Exception as e:
         print(f"Error al extraer datos: {e}")
-        return all_scraper, 0
+        return all_scraper, 0, total_scraped_successfully
 
 def scraper_genome_jp(url, sobrenombre):
-    """
-    Scraper para Genome JP que extrae todas las páginas y almacena todo en un solo documento en MongoDB.
-    """
-
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
@@ -92,9 +111,8 @@ def scraper_genome_jp(url, sobrenombre):
 
     try:
         driver.get(url)
-        all_scraper, total_records = extract_all_data(driver, 30)
+        all_scraper, total_records, total_scraped_successfully = extract_all_data(driver, 30, fs, logger, url)
 
-        # 📌 **Guardar todo en un solo documento en MongoDB**
         if total_records > 0:
             object_id = fs.put(
                 all_scraper.encode("utf-8"),
@@ -116,7 +134,6 @@ def scraper_genome_jp(url, sobrenombre):
                 }
             )
 
-            # 📌 **Eliminar versiones antiguas**
             existing_versions = list(
                 collection.find({"source_url": url}).sort("scraping_date", -1)
             )
@@ -125,13 +142,12 @@ def scraper_genome_jp(url, sobrenombre):
                 oldest_version = existing_versions[-1]
                 fs.delete(ObjectId(oldest_version["_id"]))
                 collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-
                 logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
 
-        # 📌 **Generar el reporte en `all_scraper`**
         report = (
             f"Resumen del scraping:\n"
             f"Total de registros almacenados: {total_records}\n"
+            f"Total de enlaces visitados y almacenados: {total_scraped_successfully}\n"
             f"Fuente: {url}\n\n"
             f"{'-'*80}\n"
         )
