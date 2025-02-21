@@ -23,7 +23,7 @@ BASE_URL = "http://www.virtualherbarium.org"
 
 def scraper_herbarium(url, sobrenombre):
     logger.info(f"🚀 Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
+    driver = driver_init()
     collection, fs = connect_to_mongo()
     
     total_links_found = 0
