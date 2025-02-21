@@ -1158,6 +1158,19 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 91,
+    "fields": {
+      "url": "https://www.npdn.org/",
+      "sobrenombre": "npdn",
+      "time_choices": 1,
+      "mode_scrapeo": 65,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 93,
     "fields": {
       "url": "https://publications.gc.ca/site/eng/search/search.html",
