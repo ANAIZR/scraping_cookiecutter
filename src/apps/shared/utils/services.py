@@ -238,39 +238,30 @@ class ScraperService:
             try:
                 response = requests.post(
                     "http://127.0.0.1:11434/api/chat",
-                    json={
-                        "model": "llama3:8b",
-                        "messages": [{"role": "user", "content": prompt}],
-                    },
+                    json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
+                    stream=True, 
+                    timeout=20
                 )
 
-                json_response = response.text.strip()
+                json_response = ""
+                for chunk in response.iter_lines():
+                    if chunk:
+                        try:
+                            chunk_data = json.loads(chunk)  
+                            json_response += chunk_data.get("message", {}).get("content", "")
+                        except json.JSONDecodeError:
+                            continue
 
-                match = re.search(r"\{.*\}", json_response, re.DOTALL)
-                if match:
-                    json_cleaned = match.group(0)
-                else:
-                    print(
-                        f"⚠️ Ollama devolvió una respuesta sin JSON válido en el intento {intento}. Reintentando..."
-                    )
-                    continue
-
-                print("🔍 JSON limpiado:", json_cleaned)
-
-                parsed_json = json.loads(json_cleaned)
-                return parsed_json
-
-            except json.JSONDecodeError:
-                print(
-                    f"⚠️ Ollama devolvió un JSON inválido en el intento {intento}. Reintentando..."
-                )
+                try:
+                    parsed_json = json.loads(json_response)
+                    return parsed_json
+                except json.JSONDecodeError:
+                    print(f"⚠️ Ollama devolvió una respuesta incompleta en el intento {intento}. Reintentando...")
 
             except requests.exceptions.RequestException as e:
-                print(
-                    f"❌ Error en la solicitud a Ollama (Intento {intento}): {str(e)}"
-                )
+                print(f"❌ Error en la solicitud a Ollama (Intento {intento}): {str(e)}")
 
-            time.sleep(2)
+        time.sleep(2) 
 
         print("⚠️ No se encontró un JSON válido después de múltiples intentos.")
         return None
