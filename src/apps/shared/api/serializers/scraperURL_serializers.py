@@ -64,8 +64,9 @@ class SpeciesSubscriptionSerializer(serializers.ModelSerializer):
     scientific_name = serializers.CharField(required=False)
     distribution = serializers.CharField(required=False)
     hosts = serializers.CharField(required=False)
+    name_subscription = serializers.CharField(required=True)
     
     class Meta:
         model = SpeciesSubscription
-        fields = ["id", "user", "scientific_name", "distribution", "hosts", "created_at"]
+        fields = ["id", "user", "scientific_name", "distribution", "hosts","name_subscription", "created_at"]
         read_only_fields = ["id", "user", "created_at"]
