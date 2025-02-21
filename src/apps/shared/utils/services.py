@@ -242,7 +242,6 @@ class ScraperService:
                         "model": "llama3:8b",
                         "messages": [{"role": "user", "content": prompt}],
                     },
-                    stream=True,
                 )
 
                 json_response = response.text.strip()
