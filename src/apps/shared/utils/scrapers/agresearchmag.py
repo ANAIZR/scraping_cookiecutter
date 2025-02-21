@@ -7,16 +7,15 @@ import random
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+from urllib.parse import urljoin
+from bson import ObjectId
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-    initialize_driver,
-    get_logger,
+    process_scraper_data_v2,
     connect_to_mongo,
+    get_logger,
+    initialize_driver,
+    extract_text_from_pdf,
 )
-from rest_framework.response import Response
-from rest_framework import status
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException
 
 logger = get_logger("scraper")
@@ -24,15 +23,23 @@ logger = get_logger("scraper")
 def scraper_agresearchmag(url, sobrenombre):
     driver = initialize_driver()
     domain = "https://agresearchmag.ars.usda.gov"
-    fullhrefs = []
+    total_links_found = 0
+    total_scraped_successfully = 0
+    total_failed_scrapes = 0
+    scraped_urls = set()
+    failed_urls = set()
+    object_ids = []
+    all_scraper = ""
 
     try:
         driver.get(url)
-        time.sleep(random.uniform(6, 10))
+        driver.execute_script("document.body.style.zoom='100%'")
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+        time.sleep(5)
+
         logger.info(f"Iniciando scraping para URL: {url}")
 
         collection, fs = connect_to_mongo()
-        main_folder = generate_directory(sobrenombre)
 
         panel = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "div.panel-body ul.als-wrapper"))
@@ -45,7 +52,7 @@ def scraper_agresearchmag(url, sobrenombre):
 
         while attempts < max_attempts:
             li_elements = panel.find_elements(By.CSS_SELECTOR, "li.als-item")
-
+            
             if not li_elements:
                 logger.warning("No se encontraron elementos <li>. Saliendo del bucle.")
                 break
@@ -65,7 +72,8 @@ def scraper_agresearchmag(url, sobrenombre):
                             href = link.get_attribute("href")
                             if href:
                                 fullhref = domain + href if not href.startswith("http") else href
-                                fullhrefs.append(fullhref)
+                                scraped_urls.add(fullhref)
+                                total_links_found += 1
                                 logger.info(f"Enlace extraído: {fullhref}")
                     else:
                         logger.warning(f"Elemento {index+1} no se activó correctamente.")
@@ -75,6 +83,10 @@ def scraper_agresearchmag(url, sobrenombre):
                     break
             
             try:
+                driver.execute_script("document.body.style.zoom='100%'")
+                WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                time.sleep(5)
+                
                 next_button = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, next_button_selector)))
                 next_button.click()
                 logger.info("Clic en 'siguiente' realizado. Cargando más elementos...")
@@ -84,67 +96,81 @@ def scraper_agresearchmag(url, sobrenombre):
             except (TimeoutException, NoSuchElementException):
                 logger.info("No se encontró el botón 'siguiente' o ya no hay más elementos. Terminando.")
                 break
-    
-    except TimeoutException:
-        return Response(
-            {"status": "error", "message": "Error al cargar la página."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    
+
+        # Extraer enlaces de cada página visitada
+        additional_scraped_urls = set()
+        
+        for href in scraped_urls:
+            try:
+                driver.get(href)
+                driver.execute_script("document.body.style.zoom='100%'")
+                WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                time.sleep(5)
+
+                panel_body = driver.find_elements(By.CSS_SELECTOR, "div.panel-body div.row div.panel-body a")
+                for link in panel_body:
+                    inner_href = link.get_attribute("href")
+                    if inner_href:
+                        full_inner_href = urljoin(domain, inner_href)
+                        additional_scraped_urls.add(full_inner_href)
+                        logger.info(f"Enlace extraído dentro de la página: {full_inner_href}")
+            except Exception as e:
+                logger.error(f"No se pudo extraer enlaces adicionales de {href}: {e}")
+
+        scraped_urls.update(additional_scraped_urls)
+        
+        for href in scraped_urls:
+            try:
+                driver.get(href)
+                driver.execute_script("document.body.style.zoom='100%'")
+                WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                time.sleep(5)
+
+                try:
+                    third_row = WebDriverWait(driver, 5).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.row:nth-of-type(3)"))
+                    )
+                    content_text = third_row.text.strip()
+                    logger.info(f"Extraído div.row:nth-of-type(3) de {href}")
+                except TimeoutException:
+                    content_text = driver.find_element(By.TAG_NAME, "body").text.strip()
+                    logger.info(f"No se encontró div.row:nth-of-type(3), extrayendo body de {href}")
+
+                if content_text:
+                    object_id = fs.put(
+                        content_text.encode("utf-8"),
+                        source_url=href,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=content_text,
+                        url=url
+                    )
+                    object_ids.append(object_id)
+                    total_scraped_successfully += 1
+
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                    collection.insert_one(
+                        {
+                            "_id": object_id,
+                            "source_url": href,
+                            "scraping_date": datetime.now(),
+                            "Etiquetas": ["planta", "plaga"],
+                            "url": url,
+                        }
+                    )
+            except Exception as e:
+                logger.error(f"No se pudo extraer contenido de {href}: {e}")
+                total_failed_scrapes += 1
+                failed_urls.add(href)
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+
     except Exception as e:
-        logger.error(f"Error inesperado: {str(e)}")
-        return Response(
-            {"status": "error", "message": f"Error inesperado: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        logger.error(f"Error general durante el scraping: {str(e)}")
+        return {"error": str(e)}
 
     finally:
         driver.quit()
-        logger.info("Scraping finalizado en la primera fase.")
-
-    extracted_data = {}
-
-    for href in fullhrefs:
-        try:
-            driver = initialize_driver()
-            driver.get(href)
-            time.sleep(random.uniform(3, 6))
-
-            try:
-                third_row = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.row:nth-of-type(3)"))
-                )
-                extracted_html = third_row.get_attribute("outerHTML")
-                logger.info(f"Extraído div.row:nth-of-type(3) de {href}")
-            except TimeoutException:
-                body = driver.find_element(By.TAG_NAME, "body")
-                extracted_html = body.get_attribute("outerHTML")
-                logger.info(f"No se encontró div.row:nth-of-type(3), extrayendo body de {href}")
-
-            # Extraer solo el texto limpio
-            soup = BeautifulSoup(extracted_html, "html.parser")
-            body_text = soup.get_text(separator="\n", strip=True)
-
-            extracted_data[href] = body_text
-
-            # Guardar en un archivo versionado con el formato requerido
-            file_path = get_next_versioned_filename(main_folder, sobrenombre)
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(f"URL: {href}\nTexto: {body_text}\n\n" + "-" * 100 + "\n\n")
-
-        except Exception as e:
-            logger.error(f"Error al extraer datos de {href}: {str(e)}")
-        
-        finally:
-            driver.quit()
-
-    logger.info("Extracción de contenido finalizada.")
-
-    return Response(
-        {
-            "status": "success",
-            "message": "Scraping finalizado exitosamente.",
-            "data": extracted_data
-        },
-        status=status.HTTP_200_OK
-    )
+        logger.info("Navegador cerrado.")

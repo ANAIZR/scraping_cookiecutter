@@ -9,56 +9,41 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
     initialize_driver,
     get_logger,
     connect_to_mongo,
+    load_keywords,
+    process_scraper_data_v2
 )
 from rest_framework.response import Response
 from rest_framework import status
-
-logger = get_logger("scraper")
-
-
-def load_keywords(file_path="../txt/plants.txt"):
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        absolute_path = os.path.join(base_path, file_path)
-        with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [
-                line.strip() for line in f if isinstance(line, str) and line.strip()
-            ]
-        logger.info(f"Palabras clave cargadas: {keywords}")
-        return keywords
-    except Exception as e:
-        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
-        raise
-
+from bson import ObjectId
 
 def scraper_sciencedirect(url, sobrenombre):
+    
+    driver = initialize_driver()
+    logger = get_logger("scraper")
+    total_scraped_links = 0
+    scraped_urls = []
+    non_scraped_urls = []
     try:
-        driver = initialize_driver()
-        try:
-            driver.get(url)
-            time.sleep(random.uniform(6, 10))
-
-            collection, fs = connect_to_mongo("scrapping-can", "collection")
-            main_folder = generate_directory(url)
-            keywords = load_keywords()
-            visited_urls = set()
-            scraping_failed = False
-        except Exception as e:
-            logger.error(f"Error al inicializar el scraper: {str(e)}")
+        driver.get(url)
+        time.sleep(random.uniform(6, 10))
+        logger.info(f"Iniciando scraping para URL: {url}")
+        collection, fs = connect_to_mongo()
+        
+        keywords = load_keywords("plants.txt")
+        if not keywords:
             return Response(
-                {"message": f"Error al inicializar el scraper: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {
+                    "status": "error",
+                    "message": "El archivo de palabras clave está vacío o no se pudo cargar.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         for keyword in keywords:
             logger.info(f"Buscando con la palabra clave: {keyword}")
-            keyword_folder = generate_directory(keyword, main_folder)
             try:
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.ID, "qs"))
@@ -73,7 +58,6 @@ def scraper_sciencedirect(url, sobrenombre):
                 time.sleep(random.uniform(3, 6))
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
-                scraping_failed = True
                 continue
 
             while True:
@@ -92,12 +76,9 @@ def scraper_sciencedirect(url, sobrenombre):
                     ]
                     logger.info(f"{len(urls)} resultados filtrados para procesar.")
 
-                    for absolut_href in urls:
-                        if absolut_href in visited_urls:
-                            continue
+                    for full_url in urls:
 
-                        driver.get(absolut_href)
-                        visited_urls.add(absolut_href)
+                        driver.get(full_url)
                         WebDriverWait(driver, 60).until(
                             EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
                         )
@@ -109,41 +90,41 @@ def scraper_sciencedirect(url, sobrenombre):
                         introductin_text = soup.select_one("#preview-section-introduction").get_text(strip=True) if soup.select_one("#preview-section-introduction") else "No preview-section-introduction found"
                         snippets_text = soup.select_one("#preview-section-snippets").get_text(strip=True) if soup.select_one("#preview-section-snippets") else "No abstract found"
 
-                        print('variables booleanas de title_text', title_text)
-                        print('variables booleanas de abstract_text', abstract_text)
-                        print('variables booleanas de introductin_text', introductin_text)
-                        print('variables booleanas de snippets_text', snippets_text)
+                        # print('variables booleanas de title_text', title_text)
+                        # print('variables booleanas de abstract_text', abstract_text)
+                        # print('variables booleanas de introductin_text', introductin_text)
+                        # print('variables booleanas de snippets_text', snippets_text)
                         contenido = ""
                         if (title_text or abstract_text or introductin_text or snippets_text):
-                            print('creando el archivo INICIO')
                             if title_text: contenido += f"{title_text}\n\n\n"
                             if abstract_text: contenido += f"{abstract_text}\n\n\n"
                             if introductin_text: contenido += f"{introductin_text}\n\n\n"
                             if snippets_text: contenido += f"{snippets_text}\n\n\n"
-                            # contenido = f"{title_text}\n\n\n{abstract_text}\n\n\n{introductin_text}\n\n\n{snippets_text}"
 
-                            link_folder = generate_directory(absolut_href, keyword_folder)
-                            file_path = get_next_versioned_filename(link_folder, keyword)
 
-                            # Normalizar la ruta eliminando los '../'
-                            file_path = os.path.abspath(file_path)
-
-                            # Crear directorios si no existen
-                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-                            print(f"Ruta final del archivo: {file_path}")
-
-                            # Intentar abrir el archivo
-                            with open(file_path, "w", encoding="utf-8") as file:
-                                file.write(contenido)
-
-                            with open(file_path, "rb") as file_data:
+                            if contenido:
                                 object_id = fs.put(
-                                    file_data, filename=os.path.basename(file_path)
+                                    contenido.encode("utf-8"),
+                                    source_url=full_url,
+                                    scraping_date=datetime.now(),
+                                    Etiquetas=["planta", "plaga"],
+                                    contenido=contenido,
+                                    url=url
                                 )
-                            print('termiando de crear el archivo FINAL')
+                                total_scraped_links += 1
+                                scraped_urls.append(full_url)
+                                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                            logger.info(f"Página procesada y guardada: {absolut_href}")
+                                existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
+                                if len(existing_versions) > 1:
+                                    oldest_version = existing_versions[-1]
+                                    fs.delete(ObjectId(oldest_version._id))
+                                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+
+                            else:
+                                non_scraped_urls.append(full_url)
+
+                            logger.info(f"Página procesada y guardada: {full_url}")
                         else:
                             logger.info("No se encontró contenido en la página.")
                         driver.back()
@@ -151,10 +132,9 @@ def scraper_sciencedirect(url, sobrenombre):
 
                     try:
                         next_page_button = driver.find_element(By.CSS_SELECTOR, "a.anchor[data-aa-name='srp-next-page']")
-
-                        next_page_link = next_page_button.get_attribute("href")
-
-                        if next_page_link:
+                        
+                        if next_page_button:
+                            next_page_link = next_page_button.get_attribute("href")
                             logger.info(f"Yendo a la siguiente página: {next_page_link}")
                             driver.get(next_page_link)
                             time.sleep(random.uniform(3, 6))
@@ -163,33 +143,24 @@ def scraper_sciencedirect(url, sobrenombre):
                             break
                     except NoSuchElementException:
                         logger.info("No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave.")
+                        driver.get(url)
                         break
                 except Exception as e:
-                    logger.error(f"Error al procesar resultados: {e}")
-                    scraping_failed = True
+                    logger.warning(
+                        f"No se encontraron resultados para '{keyword}' después de esperar."
+                    )
                     break
-            driver.get(url)
 
-        if scraping_failed:
-            return Response(
-                {"message": "Error durante el scraping. Algunas URLs fallaron."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        else:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
 
-            return Response(
-                {"data": data, "message": "Scraping completado con éxito."},
-                status=status.HTTP_200_OK,
-            )
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+    
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")
         return Response(

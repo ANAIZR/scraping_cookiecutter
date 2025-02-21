@@ -1,36 +1,32 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.support.ui import Select
+import requests
 import time
 import random
-from datetime import datetime
-from ..functions import (
-    initialize_driver,
-    get_logger,
-    connect_to_mongo,
-    get_random_user_agent,
-    extract_text_from_pdf,
-    process_scraper_data_v2
-)
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from rest_framework.response import Response
 from rest_framework import status
+import time
 from bson import ObjectId
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import requests
+from datetime import datetime
+from ..functions import (
+    connect_to_mongo,
+    get_logger,
+    get_random_user_agent,
+    process_scraper_data_v2,
+    initialize_driver,
+    extract_text_from_pdf,
+)
 
-logger = get_logger("scraper")
-
-def scraper_ippc_int(url, sobrenombre):
-    logger = get_logger("IPPC INT")
+def scraper_notification_aphis(url, sobrenombre):
+    logger = get_logger("NOTIFICATION APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
     hrefs = [] #set() 
-
 
     def scrape_page(href):
         nonlocal total_scraped_links, non_scraped_urls
@@ -71,71 +67,6 @@ def scraper_ippc_int(url, sobrenombre):
 
         return new_links
 
-
-    def extract_hrefs_from_url_main():
-        driver = initialize_driver()
-        driver.get(url)
-        time.sleep(random.uniform(3, 6))
- 
-
-        while True:
-
-            select_element  = WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "select.form-select.form-select-sm"))
-            )
-            dropdown = Select(select_element)
-            dropdown.select_by_index(3)
-
-            contents_div = WebDriverWait(driver, 60).until(
-                EC.presence_of_element_located((By.ID, "publications"))
-            )
-
-            logger.info("Se encontró el resultados.")
-
-            if contents_div:
-                items = WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located(
-                        (By.CSS_SELECTOR, "tr.odd, tr.even")
-                    )
-                )
-                if items:
-                    for item in items:
-                        try:
-                            href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
-                        except NoSuchElementException:
-                            href = None
-                            logger.info("Elemento no encontrado, continuando...")
-                        if href:
-                            logger.info("URL encontrada, agregando...")
-                            hrefs.append(href)
-                        
-            else:
-                logger.info("No se encontró el div#contents en la página principal.")
-
-            try:
-                next_page_button = driver.find_element(
-                    By.ID,
-                    "publications_next",
-                )
-                if "disabled" in next_page_button.get_attribute("class"):
-                    logger.info(
-                        "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
-                    )
-                    break
-                else:
-                    logger.info(
-                        f"Yendo a la siguiente página"
-                    )
-                    next_page_button.click()
-                    time.sleep(random.uniform(1, 2))
-            except Exception as e:
-                logger.info(
-                    "No se encontró el botón para la siguiente página."
-                )
-                break  
-
-        driver.quit()
-
     def scrape_pages_in_parallel(url_list):
         nonlocal total_scraped_links, non_scraped_urls
         new_links = []
@@ -151,11 +82,61 @@ def scraper_ippc_int(url, sobrenombre):
                 except Exception as e:
                     logger.error(f"Error en tarea de scraping: {str(e)}")
                     non_scraped_urls.append(future_to_url)
-        return new_links        
+        return new_links
 
+    def extract_hrefs_from_url_main():
+        driver = initialize_driver()
+        driver.get(url)
+        time.sleep(random.uniform(3, 6))
+ 
+
+        while True:
+            contents_div = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "DataTables_Table_0"))
+                )
+            logger.info("Se encontró el resultados.")
+
+            if contents_div:
+                tbody = contents_div.find_element(By.CSS_SELECTOR,"tbody")
+                if tbody:
+                    for row in tbody.find_elements(By.CSS_SELECTOR,"tr"):
+                        tds = row.find_elements(By.CSS_SELECTOR,"td")
+                        segundo_td = tds[1]  # Índice 1 para el segundo td
+                        link = segundo_td.find_element(By.CSS_SELECTOR,"a").get_attribute("href")
+                        if link:
+                            hrefs.append(link)
+                        
+            else:
+                logger.info("No se encontró el div#contents en la página principal.")
+
+            try:
+                next_button = driver.find_element(
+                    By.CSS_SELECTOR,
+                    "button.dt-paging-button.next",
+                )
+                if "disabled" in next_button.get_attribute("class"):
+                    logger.info(
+                        "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
+                    )
+                    break
+                else:
+                    logger.info(
+                        f"Yendo a la siguiente página"
+                    )
+                    next_button.click()
+                    time.sleep(random.uniform(1, 2))
+            except Exception as e:
+                logger.info(
+                    "No se encontró el botón para la siguiente página."
+                )
+                break  
+
+        driver.quit()
+ 
     try:
         extract_hrefs_from_url_main()
         logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
+        print("hrefs by quma: ",hrefs)
 
         new_links = scrape_pages_in_parallel(hrefs)
 
@@ -172,4 +153,3 @@ def scraper_ippc_int(url, sobrenombre):
     except Exception as e:
         logger.error(f"Error durante el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    

@@ -3,7 +3,7 @@ import hashlib
 from datetime import datetime
 import logging
 import random
-import undetected_chromedriver as uc
+#import undetected_chromedriver as uc
 import time
 from pymongo import MongoClient
 import gridfs
@@ -14,7 +14,10 @@ from io import BytesIO
 
 from rest_framework.response import Response
 from rest_framework import status
-
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium_stealth import stealth
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
@@ -121,46 +124,34 @@ def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
     return logger
 
 
+def initialize_driver():
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")  # Usa la nueva implementación de headless
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-popup-blocking")
+    #options.add_argument("--window-size=1920,1080")
+    options.add_argument("--start-maximized")
 
+    # Configura el User-Agent para evitar detección
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"
+    options.add_argument(f"user-agent={user_agent}")
 
-def initialize_driver(retries=3):
-    logger = get_logger("INICIALIZANDO EL DRIVER")
-    for attempt in range(retries):
-        try:
-            logger.info(
-                f"Intento {attempt + 1} de inicializar el navegador con Selenium."
-            )
-            options = uc.ChromeOptions()
-            # options.binary_location = "/usr/bin/google-chrome"
-            # options.add_argument("--headless")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--allow-insecure-localhost")
-            options.add_argument("--disable-web-security")
-            options.add_argument("--disable-site-isolation-trials")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--start-maximized")
-            options.add_argument("--window-size=1920,1080")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument("--disable-infobars")                             # Elimina banners de control automático
-            random_user_agent = get_random_user_agent()
-            options.add_argument(f"user-agent={random_user_agent}")
-            logger.info(f"Usando User-Agent: {random_user_agent}")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-            driver = uc.Chrome(
-                service=Service(ChromeDriverManager().install()), options=options
-            )
+    # Aplicamos selenium-stealth para evitar detección
+    stealth(driver,
+        languages=["en-US", "en"],
+        vendor="Google Inc.",
+        platform="Win32",
+        webgl_vendor="Intel Inc.",
+        renderer="Intel Iris OpenGL Engine",
+        fix_hairline=True,
+    )
 
-            driver.set_page_load_timeout(600)
-            logger.info("Navegador iniciado correctamente con Selenium.")
-            return driver
-        except Exception as e:
-            logger.error(f"Error al iniciar el navegador: {e}")
-            if attempt < retries - 1:
-                time.sleep(5)
-            else:
-                raise
+    return driver
 
 
 def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
@@ -535,7 +526,7 @@ def process_scraper_data_without_file(all_scraper, url, sobrenombre, collection,
 def extract_text_from_pdf(pdf_url):
     try:
         headers = {"User-Agent": get_random_user_agent()}
-        response = requests.get(pdf_url, headers=headers, stream=True, timeout=10)
+        response = requests.get(pdf_url, headers=headers, stream=True, timeout=50)
         response.raise_for_status()  # Asegura que la petición fue exitosa
 
         pdf_buffer = BytesIO(response.content)
