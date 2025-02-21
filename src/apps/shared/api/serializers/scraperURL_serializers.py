@@ -61,7 +61,11 @@ class ReportComparisonSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class SpeciesSubscriptionSerializer(serializers.ModelSerializer):
+    scientific_name = serializers.CharField(required=False)
+    distribution = serializers.CharField(required=False)
+    hosts = serializers.CharField(required=False)
+    
     class Meta:
         model = SpeciesSubscription
         fields = ["id", "user", "scientific_name", "distribution", "hosts", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "user", "created_at"]

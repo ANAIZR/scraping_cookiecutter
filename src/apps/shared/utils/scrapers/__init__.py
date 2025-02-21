@@ -56,6 +56,7 @@ from .fao_org_home import scraper_fao_org_home
 from .apsnet import scraper_apsnet
 from .gc_ca import scraper_gc_ca
 from .sciencedirect import scraper_sciencedirect
+from .ippc_int import scraper_ippc_int
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -109,6 +110,7 @@ SCRAPER_FUNCTIONS = {
     51: scraper_nal_usda,
     52: scraper_ers_usda,
     53: scraper_ars_usda,
+    54: scraper_ippc_int,
     55: scraper_agriculture_gov,
     56: scraper_sciencedirect,
     60: scraper_fao_org_home,
