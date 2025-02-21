@@ -223,6 +223,8 @@ class ScraperService:
         **Instrucciones:**
         Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
          **No uses comillas triples , ni bloques de código (`'''`).**
+        - **Asegúrate de que el JSON devuelto tenga llaves de apertura y cierre correctamente.**
+
         1. Extrae el nombre científico y los nombres comunes de la especie.
         2. Lista los sinónimos científicos si están disponibles.
         3. Proporciona una descripción de la invasividad de la especie.
