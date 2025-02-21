@@ -1,8 +1,12 @@
 from django.utils import timezone
+import logging
+
+from datetime import datetime, timedelta, date, time
 from datetime import timedelta
 from ...core.models import CoreModel
 from django.db import models
 from src.apps.users.models import User
+logger = logging.getLogger(__name__)
 
 class ScraperURL(CoreModel):
     TYPE_CHOICES = [
@@ -32,7 +36,7 @@ class ScraperURL(CoreModel):
         max_length=20, choices=ESTADO_CHOICES, default="pendiente"
     )
     error_scrapeo = models.TextField(blank=True, null=True)  
-    ultima_fecha_scrapeo = models.DateTimeField(null=True, blank=True)  
+    fecha_scraper = models.DateTimeField(null=True, blank=True)  
 
     class Meta:
         db_table = "scraper_url"
@@ -51,20 +55,24 @@ class ScraperURL(CoreModel):
         return self.deleted_at is not None
 
     def get_time_limit(self):
-        reference_date = self.ultima_fecha_scrapeo or self.updated_at
+        reference_date = self.fecha_scraper or self.updated_at
 
-        if timezone.is_naive(reference_date):
-            reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
+        if isinstance(reference_date, datetime):
+            if timezone.is_naive(reference_date):
+                reference_date = timezone.make_aware(reference_date, timezone.get_current_timezone())
+        elif isinstance(reference_date, date): 
+            reference_date = datetime.combine(reference_date, datetime.min.time(), tzinfo=timezone.get_current_timezone())
 
-        if self.time_choices == 1: 
+        if self.time_choices == 1:
             return reference_date + timedelta(days=30)
-        elif self.time_choices == 2: 
+        elif self.time_choices == 2:
             return reference_date + timedelta(days=90)
-        elif self.time_choices == 3: 
+        elif self.time_choices == 3:
             return reference_date + timedelta(days=180)
-        elif self.time_choices == 4: 
+        elif self.time_choices == 4:
             return reference_date + timedelta(days=7)
         return reference_date
+
 
     def is_time_expired(self):
         return timezone.now() > self.get_time_limit()

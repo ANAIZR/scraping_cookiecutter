@@ -1,4 +1,4 @@
-from src.apps.shared.models.scraperURL import ScraperURL, NotificationSubscription, SpeciesSubscription, Species
+from src.apps.shared.models.scraperURL import SpeciesSubscription, Species
 import logging
 from django.utils import timezone
 from datetime import timedelta
@@ -7,40 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 
-
-def notify_users_of_changes(url, comparison_result):
-    try:
-        scraper_url = ScraperURL.objects.get(url=url)
-        subscribers = NotificationSubscription.objects.filter(scraper_url=scraper_url)
-
-        if not subscribers.exists():
-            logger.info(f"No hay usuarios suscritos para recibir notificaciones de la URL {url}.")
-            return
-
-        recipient_list = [sub.user.email for sub in subscribers]
-
-        subject = "🔔 Se detectaron cambios en la página que monitoreas"
-        html_content = f"""
-            <p>Se han detectado cambios en la siguiente URL:</p>
-            <a href="{url}">{url}</a>
-            <p>Resumen de cambios:</p>
-            <pre>{comparison_result.get("summary", "No disponible")}</pre>
-            <p>Revisa las actualizaciones en la plataforma.</p>
-        """
-
-        EmailService.send_email(subject, recipient_list, html_content)
-        logger.info(f"Correo de notificación enviado a {len(recipient_list)} usuarios suscritos a {url}.")
-
-    except ScraperURL.DoesNotExist:
-        logger.error(f"No se encontró ScraperURL para la URL {url}, no se enviará la notificación.")
-
-
 def check_new_species_and_notify(urls_to_check):
 
     now = timezone.now()
     last_scraping_time = now - timedelta(hours=1)  
 
-    # 🔹 Solo busca nuevas especies en las URLs monitoreadas
     new_species = Species.objects.filter(
         created_at__gte=last_scraping_time,
         scraper_source__url__in=urls_to_check  
@@ -49,7 +20,9 @@ def check_new_species_and_notify(urls_to_check):
     if not new_species.exists():
         return  
 
-    subscriptions = SpeciesSubscription.objects.all()
+    subscriptions = SpeciesSubscription.objects.filter(
+        scientific_name__in=new_species.values_list("scientific_name", flat=True)
+    )
 
     for subscription in subscriptions:
         user = subscription.user

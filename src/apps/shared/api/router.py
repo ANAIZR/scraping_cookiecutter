@@ -7,7 +7,6 @@ from .viewsets.scraperFixture_viewsets import ScraperAPIView
 from .viewsets.scraperURL_viewsets import (
     SpeciesViewSet,
     ReportComparisonDetailView,
-    ToggleNotificationAPIView,
     SpeciesSubscriptionViewSet,
 )
 
@@ -29,10 +28,6 @@ urlpatterns = [
         ReportComparisonDetailView.as_view(),
         name="report-comparison-detail",
     ),
-    path(
-        "api/notifications/toggle/",
-        ToggleNotificationAPIView.as_view(),
-        name="toggle-notification",
-    ),
+
 ]
 urlpatterns += router.urls
