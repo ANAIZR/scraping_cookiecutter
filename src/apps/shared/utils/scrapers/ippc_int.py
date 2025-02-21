@@ -104,15 +104,17 @@ def scraper_ippc_int(url, sobrenombre):
                         (By.CSS_SELECTOR, "tr.odd, tr.even")
                     )
                 )
+                print("items by quma: ",len(items))
                 if items:
                     for item in items:
                         try:
                             href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
+                            print("numero de href: ",len(hrefs)+1)
                         except NoSuchElementException:
                             href = None
-                            # Opcional: registrar el error
                             logger.info("Elemento no encontrado, continuando...")
                         if href:
+                            logger.info("URL encontrada, agregando...")
                             hrefs.append(href)
                         
             else:
@@ -162,7 +164,6 @@ def scraper_ippc_int(url, sobrenombre):
     try:
         extract_hrefs_from_url_main()
         logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
-        print("hrefs by quma: ",hrefs)
 
         new_links = scrape_pages_in_parallel(hrefs)
 
