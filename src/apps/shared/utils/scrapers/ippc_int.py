@@ -2,6 +2,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import Select
 import time
 import random
 from datetime import datetime
@@ -58,22 +59,7 @@ def scraper_ippc_int(url, sobrenombre):
                 scraped_urls.append(href)
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                collection.insert_one(
-                    {
-                        "_id": object_id,
-                        "source_url": href,
-                        "scraping_date": datetime.now(),
-                        "Etiquetas": ["planta", "plaga"],
-                        "url": url,
-                    }
-                )
-
-                existing_versions = list(
-                    collection.find({"source_url": href}).sort(
-                        "scraping_date", -1
-                    )
-                )
-
+                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
                     fs.delete(ObjectId(oldest_version._id))
@@ -93,9 +79,17 @@ def scraper_ippc_int(url, sobrenombre):
  
 
         while True:
+
+            select_element  = WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "select.form-select.form-select-sm"))
+            )
+            dropdown = Select(select_element)
+            dropdown.select_by_index(3)
+
             contents_div = WebDriverWait(driver, 60).until(
                 EC.presence_of_element_located((By.ID, "publications"))
             )
+
             logger.info("Se encontró el resultados.")
 
             if contents_div:
@@ -104,12 +98,10 @@ def scraper_ippc_int(url, sobrenombre):
                         (By.CSS_SELECTOR, "tr.odd, tr.even")
                     )
                 )
-                print("items by quma: ",len(items))
                 if items:
                     for item in items:
                         try:
                             href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
-                            print("numero de href: ",len(hrefs)+1)
                         except NoSuchElementException:
                             href = None
                             logger.info("Elemento no encontrado, continuando...")
