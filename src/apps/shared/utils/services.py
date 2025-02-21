@@ -2,6 +2,7 @@ from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS, scraper_pdf
 from src.apps.shared.models.scraperURL import Species, ReportComparison
 import logging
+import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from pymongo import MongoClient
@@ -50,8 +51,8 @@ class WebScraperService:
                 response = scraper_pdf(
                     url, scraper_url.sobrenombre, start_page, end_page
                 )
-                logger.info(f"Type of response: {type(response)}")  # Debugging line
-                logger.info(f"Type of 'dict': {type(dict)}")  # Debugging line
+                logger.info(f"Type of response: {type(response)}")
+                logger.info(f"Type of 'dict': {type(dict)}")
 
                 if not isinstance(response, dict):
                     error_msg = f"Respuesta no serializable en scraper_pdf. Tipo recibido: {type(response)}"
@@ -75,11 +76,6 @@ class WebScraperService:
             else:
                 response = scraper_function(url)
 
-            # Debugging: Log the type of response
-            logger.info(f"Type of response: {type(response)}")  # Debugging line
-            logger.info(f"Type of 'dict': {type(dict)}")  # Debugging line
-
-            # Verificar si el scraping devolvió datos válidos
             if not response or "error" in response:
                 scraper_url.estado_scrapeo = "fallido"
                 scraper_url.error_scrapeo = response.get(
@@ -122,7 +118,17 @@ class ScraperService:
             return
 
         with ThreadPoolExecutor(max_workers=5) as executor:
-            executor.map(self.process_document, documents)
+            futures = {
+                executor.submit(self.process_document, doc): doc for doc in documents
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(
+                        f"❌ Error procesando documento {futures[future]}: {e}"
+                    )
 
     def process_document(self, doc):
         content = doc.get("contenido", "")
@@ -210,7 +216,7 @@ class ScraperService:
         }}
         **Instrucciones:**
         Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
-        2. **No uses comillas triples , ni bloques de código (`'''`).**
+         **No uses comillas triples , ni bloques de código (`'''`).**
         1. Extrae el nombre científico y los nombres comunes de la especie.
         2. Lista los sinónimos científicos si están disponibles.
         3. Proporciona una descripción de la invasividad de la especie.
@@ -239,26 +245,26 @@ class ScraperService:
                     stream=True,
                 )
 
-                json_response = ""
-                for chunk in response.iter_lines():
-                    if chunk:
-                        try:
-                            chunk_data = json.loads(chunk)
-                            json_response += chunk_data.get("message", {}).get(
-                                "content", ""
-                            )
-                        except json.JSONDecodeError:
-                            continue
+                json_response = response.text.strip()
 
-                print("🔍 Respuesta completa de Ollama:", json_response)
-
-                try:
-                    parsed_json = json.loads(json_response)
-                    return parsed_json
-                except json.JSONDecodeError:
+                match = re.search(r"\{.*\}", json_response, re.DOTALL)
+                if match:
+                    json_cleaned = match.group(0)
+                else:
                     print(
-                        f"⚠️ Ollama devolvió una respuesta inválida en el intento {intento}. Reintentando..."
+                        f"⚠️ Ollama devolvió una respuesta sin JSON válido en el intento {intento}. Reintentando..."
                     )
+                    continue
+
+                print("🔍 JSON limpiado:", json_cleaned)
+
+                parsed_json = json.loads(json_cleaned)
+                return parsed_json
+
+            except json.JSONDecodeError:
+                print(
+                    f"⚠️ Ollama devolvió un JSON inválido en el intento {intento}. Reintentando..."
+                )
 
             except requests.exceptions.RequestException as e:
                 print(
