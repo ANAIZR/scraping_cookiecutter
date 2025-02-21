@@ -113,7 +113,6 @@ def driver_init():
     options.add_argument("--disable-popup-blocking")
     #options.add_argument("--window-size=1920,1080")
     options.add_argument("--start-maximized")
-    
     # Configura el User-Agent para evitar detección
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"
     options.add_argument(f"user-agent={user_agent}")
@@ -154,8 +153,7 @@ def initialize_driver(retries=3):
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--disable-infobars")        
-            proxy = PROXIES["http"].replace("http://", "") 
-            options.add_argument(f'--proxy-server=http://{proxy}')                
+                      
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
