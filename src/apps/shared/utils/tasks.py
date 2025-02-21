@@ -24,8 +24,11 @@ def scraper_url_task(self, url):
         sobrenombre = scraper_url.sobrenombre
 
         logger.info(f"📌 Tipo de fecha_scraper antes de conversión: {type(scraper_url.fecha_scraper)}")
+        if scraper_url.fecha_scraper is None:
+            logger.warning(f"⚠️ 'fecha_scraper' es None para {url}. Se usará la fecha actual.")
+            scraper_url.fecha_scraper = timezone.now()
 
-        if isinstance(scraper_url.fecha_scraper, datetime):
+        elif isinstance(scraper_url.fecha_scraper, datetime):
             if timezone.is_naive(scraper_url.fecha_scraper):
                 scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
         elif isinstance(scraper_url.fecha_scraper, date): 
