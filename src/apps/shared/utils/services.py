@@ -177,36 +177,35 @@ class ScraperService:
 
     def text_to_json(self, content, source_url, url, max_retries=3):
         prompt = f"""
-        Extrae la información del siguiente contenido y devuélvela en un JSON **válido** con esta estructura:
-
         {{
-            "nombre_cientifico": "Nombre científico de la especie",
-            "nombres_comunes": ["Nombre común 1", "Nombre común 2"],
-            "sinonimos": ["Sinónimo 1", "Sinónimo 2"],
-            "descripcion_invasividad": "Descripción de invasividad",
-            "distribucion": ["País 1", "País 2"],
+            "nombre_cientifico": "",
+            "nombres_comunes": [],
+            "sinonimos": [],
+            "descripcion_invasividad": "",
+            "distribucion": [],
             "impacto": {{
-                "Económico": "Impacto económico",
-                "Ambiental": "Impacto ambiental",
-                "Social": "Impacto social"
+                "Económico": "",
+                "Ambiental": "",
+                "Social": ""
             }},
-            "habitat": "Hábitat de la especie",
-            "ciclo_vida": "Ciclo de vida",
-            "reproduccion": "Método de reproducción",
-            "hospedantes": ["Hospedante 1", "Hospedante 2"],
-            "sintomas": ["Síntoma 1", "Síntoma 2"],
-            "organos_afectados": ["Órgano 1", "Órgano 2"],
-            "condiciones_ambientales": ["Condición 1", "Condición 2"],
+            "habitat": "",
+            "ciclo_vida": "",
+            "reproduccion": "",
+            "hospedantes": [],
+            "sintomas": [],
+            "organos_afectados": [],
+            "condiciones_ambientales": [],
             "prevencion_control": {{
-                "Prevención": "Métodos de prevención",
-                "Control": "Métodos de control"
+                "Prevención": "",
+                "Control": ""
             }},
-            "usos": ["Uso 1", "Uso 2"],
+            "usos": [],
             "url": "{source_url}",
-            "hora": "{time.strftime('%Y-%m-%d %H:%M:%S')}",
+            "hora": "{timezone.now().isoformat()}",
             "fuente": "{url}"
         }}
 
+        Devuelve únicamente el JSON, sin ningún texto adicional.
         ❗ **Reglas estrictas:**  
         1️⃣ **Devuelve solo el JSON, sin comentarios ni texto adicional.**  
         2️⃣ **Si un campo no tiene información, usa un valor vacío: "" para strings, [] para listas, {{}} para diccionarios.**  
