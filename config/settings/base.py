@@ -26,7 +26,14 @@ DATABASES = {
         "PORT": env("DB_PORT"),
     }
 }
-
+PROXY_USER = os.getenv("PROXY_USER")
+PROXY_PASS = os.getenv("PROXY_PASS")
+PROXY_HOST = os.getenv("PROXY_HOST")
+PROXY_PORT = os.getenv("PROXY_PORT")
+PROXIES = {
+    "http": f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_HOST}:{PROXY_PORT}",
+    "https": f"https://{PROXY_USER}:{PROXY_PASS}@{PROXY_HOST}:{PROXY_PORT}",
+}
 MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
 MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME")
