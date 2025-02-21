@@ -1093,6 +1093,19 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 82,
+    "fields": {
+      "url": "https://www.sciencedirect.com/",
+      "sobrenombre": "sciencedirect",
+      "time_choices": 1,
+      "mode_scrapeo": 56,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 86,
     "fields": {
       "url": "https://www.fao.org/",
@@ -1142,5 +1155,5 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
-  } 
+  }
 ]
