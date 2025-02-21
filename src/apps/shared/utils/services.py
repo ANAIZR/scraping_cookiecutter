@@ -217,7 +217,7 @@ class ScraperService:
           "usos": "",
           "url": "{source_url}",
           "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-          "fuente": "{url}",
+          "fuente": "{url}"
         }}
 
         **Instrucciones:**
@@ -262,9 +262,13 @@ class ScraperService:
             json_text = match.group(0)
             try:
                 parsed_json = json.loads(json_text)
+                print("✅ JSON correctamente extraído:", parsed_json)
+
                 return parsed_json
             except json.JSONDecodeError as e:
                 print(f"❌ Error al convertir JSON después de limpiar: {str(e)}")
+                print("📌 Respuesta completa recibida:", full_response)
+
                 print("📌 JSON detectado:", json_text)
                 return None
         else:
