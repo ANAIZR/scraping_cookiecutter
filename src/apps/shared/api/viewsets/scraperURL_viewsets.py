@@ -3,7 +3,6 @@ from ...models.scraperURL import (
     ScraperURL,
     Species,
     ReportComparison,
-    NotificationSubscription,
     SpeciesSubscription,
 )
 from ..serializers.scraperURL_serializers import (
@@ -71,32 +70,31 @@ class ReportComparisonDetailView(generics.RetrieveAPIView):
 
 
 class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
-
     serializer_class = SpeciesSubscriptionSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return SpeciesSubscription.objects.filter(user=self.request.user)
+        return SpeciesSubscription.objects.filter(user=self.request.user).order_by("-created_at")
 
     def create(self, request, *args, **kwargs):
-
-        request.data["user"] = (
-            request.user.id
-        )  
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)  
             return Response(
                 {"message": "Filtro guardado exitosamente", "data": serializer.data},
                 status=status.HTTP_201_CREATED,
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(
+            {"error": "Error al guardar la suscripción", "details": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     def destroy(self, request, *args, **kwargs):
-
-        instance = self.get_object()
+        instance = get_object_or_404(SpeciesSubscription, id=kwargs["pk"], user=request.user)
         self.perform_destroy(instance)
+
         return Response(
             {"message": "Filtro eliminado correctamente"},
             status=status.HTTP_204_NO_CONTENT,

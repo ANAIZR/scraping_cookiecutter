@@ -138,31 +138,27 @@ class ReportComparison(models.Model):
     
 
 
-class NotificationSubscription(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    scraper_url = models.ForeignKey("ScraperURL", on_delete=models.CASCADE)  
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("user", "scraper_url")  
-        db_table = "notifications_subscription"  
-
-
-    def __str__(self):
-        return f"{self.user.email} -> {self.scraper_url.url}"
     
 class SpeciesSubscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     scientific_name = models.CharField(max_length=255, blank=True, null=True) 
-    distribution = models.CharField(max_length=255, blank=True, null=True)  
-    hosts = models.CharField(max_length=255, blank=True, null=True)  
+    distribution = models.JSONField(blank=True, null=True)  # JSON para manejar múltiples valores
+    hosts = models.JSONField(blank=True, null=True)  # JSON para múltiples hosts
+    name_subscription = models.CharField(max_length=255, blank=False, null=False) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "scientific_name", "distribution", "hosts") 
-        db_table = "species_subscription"  
+        unique_together = ("user", "scientific_name", "distribution", "hosts")  
+        db_table = "species_subscription"
 
     def __str__(self):
-        filters = [self.scientific_name, self.distribution, self.hosts]
-        filters = [f for f in filters if f]  # Elimina valores vacíos
-        return f"{self.user.email} -> {', '.join(filters) if filters else 'Todos'}"
+        filters = []
+        if self.scientific_name:
+            filters.append(f"Scientific Name: {self.scientific_name}")
+        if self.distribution:
+            filters.append(f"Distribution: {', '.join(self.distribution)}")  # Convierte JSON a texto
+        if self.hosts:
+            filters.append(f"Hosts: {', '.join(self.hosts)}")
+
+        filters_text = " | ".join(filters) if filters else "All"
+        return f"{self.user.email} -> {filters_text}"
