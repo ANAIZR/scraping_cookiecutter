@@ -269,12 +269,12 @@ class ScraperService:
                         logger.warning("⚠️ Se descartó una especie sin nombre científico.")
                         continue
 
-                    # Validar impacto
+                    # 🛠 Validar que "impacto" sea un diccionario
                     impact_data = structured_data.get("impacto", {})
                     if not isinstance(impact_data, dict):
-                        impact_data = {} 
+                        impact_data = {}
 
-                    # Validar prevención y control
+                    # 🛠 Validar que "prevencion_control" sea un diccionario
                     prevencion_control_data = structured_data.get("prevencion_control", {})
                     if not isinstance(prevencion_control_data, dict):
                         prevencion_control_data = {}
@@ -295,7 +295,7 @@ class ScraperService:
                         if isinstance(structured_data.get("distribucion"), list) 
                         else "[]",
 
-                        impact=json.dumps(impact_data),  # Ahora siempre es un dict válido
+                        impact=json.dumps(impact_data),  # Ahora siempre es un diccionario válido
 
                         habitat=structured_data.get("habitat", "") or "",
                         life_cycle=structured_data.get("ciclo_vida", "") or "",
@@ -317,7 +317,7 @@ class ScraperService:
                         if isinstance(structured_data.get("condiciones_ambientales"), list) 
                         else "[]",
 
-                        prevention_control=json.dumps(prevencion_control_data),  # Ahora siempre es un dict válido
+                        prevention_control=json.dumps(prevencion_control_data),  # Ahora siempre es un diccionario válido
 
                         uses=json.dumps(structured_data.get("usos", [])) 
                         if isinstance(structured_data.get("usos"), list) 
