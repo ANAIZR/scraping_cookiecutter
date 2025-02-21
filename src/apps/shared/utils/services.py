@@ -2,22 +2,110 @@ from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS, scraper_pdf
 from src.apps.shared.models.scraperURL import Species, ReportComparison
 import logging
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
 import requests
 import json
 import re
+import inspect
 from django.db import transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 
+class WebScraperService:
+    def get_expired_urls(self):
+        return ScraperURL.objects.filter(
+            is_active=True, fecha_scraper__lt=datetime.now()
+        ).values_list("url", flat=True)
+
+    def scraper_one_url(self, url, sobrenombre):
+        try:
+            scraper_url = ScraperURL.objects.get(url=url)
+            mode_scrapeo = scraper_url.mode_scrapeo
+
+            scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
+            if not scraper_function:
+                error_msg = (
+                    f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS"
+                )
+                scraper_url.estado_scrapeo = "fallido"
+                scraper_url.error_scrapeo = error_msg
+                scraper_url.fecha_scraper = timezone.now()
+                scraper_url.save()
+                logger.error(error_msg)
+                return {"error": error_msg}
+
+            if mode_scrapeo == 7:
+                parameters = scraper_url.parameters or {}
+                start_page = parameters.get("start_page", 1)
+                end_page = parameters.get("end_page", None)
+                logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
+
+                response = scraper_pdf(
+                    url, scraper_url.sobrenombre, start_page, end_page
+                )
+                logger.info(f"Type of response: {type(response)}")
+                logger.info(f"Type of 'dict': {type(dict)}")
+
+                if not isinstance(response, dict):
+                    error_msg = f"Respuesta no serializable en scraper_pdf. Tipo recibido: {type(response)}"
+                    scraper_url.estado_scrapeo = "fallido"
+                    scraper_url.error_scrapeo = error_msg
+                    scraper_url.fecha_scraper = timezone.now()
+                    scraper_url.save()
+                    return {"error": error_msg}
+
+                scraper_url.estado_scrapeo = "exitoso"
+                scraper_url.error_scrapeo = ""
+                scraper_url.fecha_scraper = timezone.now()
+                scraper_url.save()
+                return response
+
+            logger.info(f"Ejecutando scraper para {url} con método {mode_scrapeo}")
+
+            params = inspect.signature(scraper_function).parameters
+            if len(params) == 2:
+                response = scraper_function(url, sobrenombre)
+            else:
+                response = scraper_function(url)
+
+            if not response or "error" in response:
+                scraper_url.estado_scrapeo = "fallido"
+                scraper_url.error_scrapeo = response.get(
+                    "error", "Scraping no devolvió datos válidos."
+                )
+            else:
+                scraper_url.estado_scrapeo = "exitoso"
+                scraper_url.error_scrapeo = ""
+
+            scraper_url.fecha_scraper = timezone.now()
+            scraper_url.save()
+            return response
+
+        except ScraperURL.DoesNotExist:
+            error_msg = f"La URL {url} no se encuentra en la base de datos."
+            logger.error(error_msg)
+            return {"error": error_msg}
+
+        except Exception as e:
+            error_msg = f"Error al ejecutar scraper para {url}: {str(e)}"
+            scraper_url.estado_scrapeo = "fallido"
+            scraper_url.error_scrapeo = error_msg
+            scraper_url.fecha_scraper = timezone.now()
+            scraper_url.save()
+            logger.error(error_msg)
+            return {"error": error_msg}
+
+
 class ScraperService:
-    def __init__(self, mongo_client):
-        self.client = mongo_client
-        self.db = self.client["scrapping-can"]
+    def __init__(self):
+        self.client = MongoClient(settings.MONGO_URI)
+        self.db = self.client[settings.MONGO_DB_NAME]
         self.collection = self.db["fs.files"]
 
     def extract_and_save_species(self, url):
@@ -27,8 +115,18 @@ class ScraperService:
             logger.info("No hay documentos pendientes de procesar.")
             return
 
-        for doc in documents:
-            self.process_document(doc)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                executor.submit(self.process_document, doc): doc for doc in documents
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(
+                        f"❌ Error procesando documento {futures[future]}: {e}"
+                    )
 
     def process_document(self, doc):
         content = doc.get("contenido", "")
@@ -39,7 +137,13 @@ class ScraperService:
             return
 
         structured_data = self.text_to_json(content, source_url, doc.get("url", ""))
+
         print("📌 Tipo de structured_data antes de validación:", type(structured_data))
+        print("📌 Contenido de structured_data:", structured_data)
+
+        if not isinstance(structured_data, dict):
+            print("❌ JSON inválido: No es un diccionario")
+            return
 
         if datos_son_validos(structured_data):
             self.save_species_to_postgres(
@@ -62,10 +166,11 @@ class ScraperService:
         **Contenido:**
         {content}
         **Estructura esperada en JSON:**
+
         {{
           "nombre_cientifico": "",
           "nombres_comunes": "",
-          "sinonimos": [],
+          "sinonimos": "",
           "descripcion_invasividad": "",
           "distribucion": "",
           "impacto": {{
@@ -91,10 +196,11 @@ class ScraperService:
         }}
 
         **Instrucciones:**
-        - Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
-        - **No uses frases como "Aquí está el JSON" ni títulos antes del JSON.**
+        Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
+         **No uses comillas triples , ni bloques de código (`'''`).**
         - **Asegúrate de que el JSON devuelto tenga llaves de apertura y cierre correctamente.**
-         1. Extrae el nombre científico y los nombres comunes de la especie.
+
+        1. Extrae el nombre científico y los nombres comunes de la especie.
         2. Lista los sinónimos científicos si están disponibles.
         3. Proporciona una descripción de la invasividad de la especie.
         4. Identifica los países o regiones donde está distribuida.
@@ -111,135 +217,182 @@ class ScraperService:
         14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
         """
 
-        try:
-            response = requests.post(
-                "http://127.0.0.1:11434/api/chat",
-                json={
-                    "model": "llama3:8b",
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-                stream=True,
-            )
-
-            full_response = ""
-
-            for line in response.iter_lines():
-                if line:
-                    try:
-                        json_line = json.loads(line.decode("utf-8"))
-                        full_response += json_line.get("message", {}).get("content", "")
-                    except json.JSONDecodeError:
-                        print("❌ Error al decodificar JSON en línea:", line)
-
-            print("🔍 Respuesta completa de Ollama:", full_response)
-
-            match = re.search(r"\{.*\}", full_response, re.DOTALL)
-
-            if match:
-                json_text = match.group(0).strip()
+        response = requests.post(
+            "http://127.0.0.1:11434/api/chat",
+            json={
+                "model": "llama3:8b",
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            stream=True,
+        )
+        full_response = ""
+        for line in response.iter_lines():
+            if line:
                 try:
-                    parsed_json = json.loads(json_text)
-                    print("✅ JSON correctamente extraído:", parsed_json)
-                    return parsed_json
-                except json.JSONDecodeError as e:
-                    print(f"❌ Error al convertir JSON después de limpiar: {str(e)}")
-                    print("📌 JSON detectado:", json_text)
-                    return None
-            else:
-                print("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
-                print("📌 Respuesta completa recibida:", full_response)
-                return None
+                    json_line = json.loads(line.decode("utf-8"))
+                    full_response += json_line.get("message", {}).get("content", "")
+                except json.JSONDecodeError:
+                    print("❌ Error al decodificar JSON:", line)
+        print("🔍 Respuesta completa de Ollama:", full_response)
+        match = re.search(r"\{.*\}", full_response, re.DOTALL)
+        if match:
+            json_text = match.group(0)
+            try:
+                parsed_json = json.loads(json_text)
+                print("✅ JSON correctamente extraído:", parsed_json)
 
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Error en la solicitud a Ollama: {str(e)}")
+                return parsed_json
+            except json.JSONDecodeError as e:
+                print(f"❌ Error al convertir JSON después de limpiar: {str(e)}")
+                print("📌 Respuesta completa recibida:", full_response)
+
+                print("📌 JSON detectado:", json_text)
+                return None
+        else:
+            print("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
 
-    def save_species_to_postgres(self, structured_data, source_url, url):
+    def save_species_to_postgres(
+        self, structured_data_list, source_url, url, batch_size=250
+    ):
         try:
-            if not structured_data:
+            if not structured_data_list:
                 logger.warning(
                     "⚠️ Lista de datos estructurados vacía, no se guardará en PostgreSQL."
                 )
                 return
 
-            print(f"🔍 Intentando guardar en PostgreSQL: {structured_data}")
+            print(
+                f"🔍 Intentando guardar {len(structured_data_list)} especies en PostgreSQL"
+            )
 
             scraper_source, created = ScraperURL.objects.get_or_create(
                 url=url, defaults={"sobrenombre": "Fuente desconocida"}
             )
 
-            scientific_name = structured_data.get("nombre_cientifico", "").strip()
-            if not scientific_name:
-                logger.warning("⚠️ Se descartó una especie sin nombre científico.")
-                return
+            species_objects = []
 
-            species_obj = Species(
-                scientific_name=scientific_name,
-                common_names=(
-                    ", ".join(structured_data.get("nombres_comunes", []))
-                    if isinstance(structured_data.get("nombres_comunes"), list)
-                    else structured_data.get("nombres_comunes", "")
-                ),
-                synonyms=json.dumps(structured_data.get("sinonimos", [])),
-                invasiveness_description=structured_data.get(
-                    "descripcion_invasividad", ""
-                ),
-                distribution=json.dumps(structured_data.get("distribucion", [])),
-                impact=json.dumps(structured_data.get("impacto", {})),
-                habitat=structured_data.get("habitat", ""),
-                life_cycle=structured_data.get("ciclo_vida", ""),
-                reproduction=structured_data.get("reproduccion", ""),
-                hosts=json.dumps(structured_data.get("hospedantes", [])),
-                symptoms=json.dumps(structured_data.get("sintomas", [])),
-                affected_organs=json.dumps(
-                    structured_data.get("organos_afectados", [])
-                ),
-                environmental_conditions=json.dumps(
-                    structured_data.get("condiciones_ambientales", [])
-                ),
-                prevention_control=json.dumps(
-                    structured_data.get("prevencion_control", {})
-                ),
-                uses=json.dumps(structured_data.get("usos", [])),
-                source_url=source_url,
-                scraper_source=scraper_source,
-            )
+            for structured_data in structured_data_list:
+                print(
+                    "🔍 Tipo de dato recibido en structured_data:",
+                    type(structured_data),
+                )
+                print("Contenido:", structured_data)
 
-            species_obj.save()
-            logger.info("✅ Especie guardada en PostgreSQL.")
+                if isinstance(structured_data, str):
+                    try:
+                        structured_data = json.loads(
+                            structured_data
+                        )  # Convierte string en JSON
+                        print("✅ JSON convertido correctamente:", structured_data)
+                    except json.JSONDecodeError:
+                        print(
+                            "❌ Error: No se pudo convertir la cadena en JSON válido, descartando."
+                        )
+                        continue  # Salta este dato si no es válido
+
+                try:
+                    scientific_name = structured_data.get(
+                        "nombre_cientifico", ""
+                    ).strip()
+                    if not scientific_name:
+                        logger.warning(
+                            "⚠️ Se descartó una especie sin nombre científico."
+                        )
+                        continue
+
+                    # Validar que "impacto" sea un diccionario
+                    impact_data = structured_data.get("impacto", {})
+                    if not isinstance(impact_data, dict):
+                        impact_data = {}
+
+                    # Validar que "prevencion_control" sea un diccionario
+                    prevencion_control_data = structured_data.get(
+                        "prevencion_control", {}
+                    )
+                    if not isinstance(prevencion_control_data, dict):
+                        prevencion_control_data = {}
+
+                    species_obj = Species(
+                        scientific_name=scientific_name,
+                        common_names=(
+                            ", ".join(structured_data.get("nombres_comunes", []))
+                            if isinstance(structured_data.get("nombres_comunes"), list)
+                            else structured_data.get("nombres_comunes", "") or ""
+                        ),
+                        synonyms=(
+                            json.dumps(structured_data.get("sinonimos", []))
+                            if isinstance(structured_data.get("sinonimos"), list)
+                            else "[]"
+                        ),
+                        invasiveness_description=structured_data.get(
+                            "descripcion_invasividad", ""
+                        )
+                        or "",
+                        distribution=(
+                            json.dumps(structured_data.get("distribucion", []))
+                            if isinstance(structured_data.get("distribucion"), list)
+                            else "[]"
+                        ),
+                        impact=json.dumps(
+                            impact_data
+                        ),  # Ahora siempre es un diccionario válido
+                        habitat=structured_data.get("habitat", "") or "",
+                        life_cycle=structured_data.get("ciclo_vida", "") or "",
+                        reproduction=structured_data.get("reproduccion", "") or "",
+                        hosts=(
+                            json.dumps(structured_data.get("hospedantes", []))
+                            if isinstance(structured_data.get("hospedantes"), list)
+                            else "[]"
+                        ),
+                        symptoms=(
+                            json.dumps(structured_data.get("sintomas", []))
+                            if isinstance(structured_data.get("sintomas"), list)
+                            else "[]"
+                        ),
+                        affected_organs=(
+                            json.dumps(structured_data.get("organos_afectados", []))
+                            if isinstance(
+                                structured_data.get("organos_afectados"), list
+                            )
+                            else "[]"
+                        ),
+                        environmental_conditions=(
+                            json.dumps(
+                                structured_data.get("condiciones_ambientales", [])
+                            )
+                            if isinstance(
+                                structured_data.get("condiciones_ambientales"), list
+                            )
+                            else "[]"
+                        ),
+                        prevention_control=json.dumps(prevencion_control_data),
+                        uses=(
+                            json.dumps(structured_data.get("usos", []))
+                            if isinstance(structured_data.get("usos"), list)
+                            else "[]"
+                        ),
+                        source_url=source_url,
+                        scraper_source=scraper_source,
+                    )
+                    species_objects.append(species_obj)
+
+                except Exception as e:
+                    logger.error(
+                        f"❌ Error al procesar especie '{structured_data.get('nombre_cientifico', 'Desconocido')}': {str(e)}"
+                    )
+
+            if species_objects:
+                with transaction.atomic():
+                    Species.objects.bulk_create(species_objects, batch_size=batch_size)
+                logger.info(
+                    f"✅ {len(species_objects)} especies guardadas en PostgreSQL en lotes de {batch_size}."
+                )
+            else:
+                logger.warning("⚠️ No se guardaron especies, todas fueron descartadas.")
 
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
-
-
-def datos_son_validos(datos, min_campos=2):
-    print("🔍 Evaluando JSON:", datos)
-    print("📌 Tipo de datos recibido en datos_son_validos:", type(datos))
-
-    if not datos or not isinstance(datos, dict):
-        print("❌ JSON inválido: No es un diccionario")
-        return False
-
-    if not datos.get("nombre_cientifico") or not datos["nombre_cientifico"].strip():
-        print("❌ JSON inválido: Falta nombre_cientifico")
-        return False
-
-    campos_con_datos = sum(
-        1
-        for clave, valor in datos.items()
-        if isinstance(valor, list)
-        and valor
-        or isinstance(valor, dict)
-        and any(valor.values())
-        or isinstance(valor, str)
-        and valor.strip()
-    )
-
-    if campos_con_datos >= min_campos:
-        return True
-
-    print("⚠️ JSON descartado por falta de datos")
-    return False
 
 
 class ScraperComparisonService:
@@ -418,3 +571,34 @@ class ScraperComparisonService:
             logger.error(
                 f"Error al guardar o actualizar comparación en PostgreSQL: {str(e)}"
             )
+
+
+def datos_son_validos(datos, min_campos=2):
+    print("🔍 Evaluando JSON:", datos)
+
+    if not datos or not isinstance(datos, dict):
+        print("❌ JSON inválido: No es un diccionario")
+        return False
+
+    if not datos.get("nombre_cientifico") or not datos["nombre_cientifico"].strip():
+        print("❌ JSON inválido: Falta nombre_cientifico")
+        return False
+
+    campos_con_datos = 0
+
+    for clave, valor in datos.items():
+        if isinstance(valor, list) and valor:
+            campos_con_datos += 1
+        elif isinstance(valor, dict):
+            for subvalor in valor.values():
+                if subvalor:
+                    campos_con_datos += 1
+                    break
+        elif isinstance(valor, str) and valor.strip():
+            campos_con_datos += 1
+
+        if campos_con_datos >= min_campos:
+            return True
+
+    print("⚠️ JSON descartado por falta de datos")
+    return False
