@@ -177,40 +177,55 @@ class ScraperService:
 
     def text_to_json(self, content, source_url, url, max_retries=3):
         prompt = f"""
+        Organiza el siguiente contenido en el formato JSON especificado.
+        **Contenido:**
+        {content}
+        **Estructura esperada en JSON:**
         {{
-            "nombre_cientifico": "",
-            "nombres_comunes": [],
-            "sinonimos": [],
-            "descripcion_invasividad": "",
-            "distribucion": [],
-            "impacto": {{
-                "Económico": "",
-                "Ambiental": "",
-                "Social": ""
-            }},
-            "habitat": "",
-            "ciclo_vida": "",
-            "reproduccion": "",
-            "hospedantes": [],
-            "sintomas": [],
-            "organos_afectados": [],
-            "condiciones_ambientales": [],
-            "prevencion_control": {{
-                "Prevención": "",
-                "Control": ""
-            }},
-            "usos": [],
-            "url": "{source_url}",
-            "hora": "{timezone.now().isoformat()}",
-            "fuente": "{url}"
+        "nombre_cientifico": "",
+        "nombres_comunes": "",
+        "sinonimos": "",
+        "descripcion_invasividad": "",
+        "distribucion": "",
+        "impacto": {{
+            "Económico": "",
+            "Ambiental": "",
+            "Social": ""
+        }},
+        "habitat": "",
+        "ciclo_vida": "",
+        "reproduccion": "",
+        "hospedantes": "",
+        "sintomas": "",
+        "organos_afectados": "",
+        "condiciones_ambientales": "",
+        "prevencion_control": {{
+            "Prevención": "",
+            "Control": ""
+        }},
+        "usos": "",
+        "url": "{source_url}",
+        "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "fuente": "{url}"
         }}
-
-        Devuelve únicamente el JSON, sin ningún texto adicional.
-        ❗ **Reglas estrictas:**  
-        1️⃣ **Devuelve solo el JSON, sin comentarios ni texto adicional.**  
-        2️⃣ **Si un campo no tiene información, usa un valor vacío: "" para strings, [] para listas, {{}} para diccionarios.**  
-        3️⃣ **No cambies los nombres de las claves.**  
-        4️⃣ **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
+        **Instrucciones:**
+        Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
+        2. **No uses comillas triples , ni bloques de código (`'''`).**
+        1. Extrae el nombre científico y los nombres comunes de la especie.
+        2. Lista los sinónimos científicos si están disponibles.
+        3. Proporciona una descripción de la invasividad de la especie.
+        4. Identifica los países o regiones donde está distribuida.
+        5. Extrae información sobre impacto económico, ambiental y social.
+        6. Describe el hábitat donde se encuentra.
+        7. Explica el ciclo de vida y los métodos de reproducción.
+        8. Lista los hospedantes afectados por la especie.
+        9. Describe los síntomas y los órganos afectados en los hospedantes.
+        10. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
+        11. Extrae información sobre métodos de prevención y control.
+        12. Lista los usos conocidos de la especie.
+        13. Usa la hora actual para completar el campo "hora".
+            Devuelve solo el JSON con los datos extraídos, sin texto adicional.
+        14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
         """
 
         for intento in range(1, max_retries + 1):
