@@ -101,6 +101,7 @@ def scraper_sciencedirect(url, sobrenombre):
                             if introductin_text: contenido += f"{introductin_text}\n\n\n"
                             if snippets_text: contenido += f"{snippets_text}\n\n\n"
 
+
                             if contenido:
                                 object_id = fs.put(
                                     contenido.encode("utf-8"),
@@ -132,13 +133,9 @@ def scraper_sciencedirect(url, sobrenombre):
 
                                 if len(existing_versions) > 1:
                                     oldest_version = existing_versions[-1]
-                                    fs.delete(ObjectId(oldest_version["_id"]))
-                                    collection.delete_one(
-                                        {"_id": ObjectId(oldest_version["_id"])}
-                                    )
-                                    logger.info(
-                                        f"Se eliminó la versión más antigua con este enlace: '{full_url}' y object_id: {oldest_version['_id']}"
-                                    )
+                                    fs.delete(ObjectId(oldest_version._id))
+                                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+
                             else:
                                 non_scraped_urls.append(full_url)
 
