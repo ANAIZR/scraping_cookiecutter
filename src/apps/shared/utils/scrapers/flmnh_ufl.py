@@ -130,7 +130,7 @@ def scraper_flmnh_ufl(url, sobrenombre):
             time.sleep(2)
             scrape_page()
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
