@@ -90,11 +90,11 @@ def scraper_plants_usda_gov(url, sobrenombre):
                                     scraped_urls.append(href)
                                     total_scraped_links += 1
                                     existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version["_id"]))
-                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                        fs.delete(oldest_version._id) 
+                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+
 
                                     
 
