@@ -70,7 +70,7 @@ def scraper_ansci_cornell(url, sobrenombre):
                         driver.get(link_href)
                         content_text = extract_content(driver, link_href, logger)
 
-                        if content_text:
+                        if content_text and content_text.strip():
                             object_id = fs.put(
                                 content_text.encode("utf-8"),
                                 source_url=link_href,

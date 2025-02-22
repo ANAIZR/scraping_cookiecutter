@@ -55,7 +55,7 @@ def scraper_flmnh_ufl(url, sobrenombre):
                     content_soup = BeautifulSoup(driver.page_source, "html.parser")
                     content_text = content_soup.get_text()
 
-                    if content_text:
+                    if content_text and content_text.strip():
                         object_id = fs.put(
                             content_text.encode("utf-8"),
                             source_url=link_href,

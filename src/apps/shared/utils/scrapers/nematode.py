@@ -61,7 +61,7 @@ def scraper_nematode(url, sobrenombre):
                         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
                         content_text = driver.find_element(By.TAG_NAME, "body").text.strip()
                         
-                        if content_text:
+                        if content_text and content_text.strip():
                             object_id = fs.put(
                                 content_text.encode("utf-8"),
                                 source_url=link_href,

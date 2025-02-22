@@ -81,7 +81,7 @@ def scraper_mycobank_org(url, sobrenombre):
                     content_text = f"Title: {popup_title}\nContent:\n{popup_content}\n{'-'*50}\n"
                     all_scraper += content_text
                     
-                    if content_text:
+                    if content_text and content_text.strip():
                         object_id = fs.put(
                             content_text.encode("utf-8"),
                             source_url=link_href,

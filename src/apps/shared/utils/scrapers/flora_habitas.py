@@ -57,7 +57,7 @@ def scraper_flora_habitas(url, sobrenombre):
                 content_text = contents_div.get_text(strip=True)
                 all_scraper += f"URL: {link_href}\n\n{content_text}\n{'-' * 80}\n\n"
                 
-                if content_text:
+                if content_text and content_text.strip():
                     object_id = fs.put(
                         content_text.encode("utf-8"),
                         source_url=link_href,
