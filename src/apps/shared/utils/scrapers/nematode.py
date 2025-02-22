@@ -53,7 +53,6 @@ def scraper_nematode(url, sobrenombre):
                     all_scraper += f"{label}: {field_text}\n"
                 all_scraper += "\n"
             
-                # Extraer y almacenar cada enlace visitado
                 links = row.find_elements(By.CSS_SELECTOR, "a")
                 for link in links:
                     link_href = link.get_attribute("href")
