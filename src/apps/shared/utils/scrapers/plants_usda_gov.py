@@ -35,7 +35,7 @@ def scraper_plants_usda_gov(url, sobrenombre):
         characteristic = driver.find_element(
             By.CSS_SELECTOR, "div.sidebar-desktop li:first-child a"
         )
-        characteristic.click()
+        driver.execute_script("arguments[0].click();", characteristic)
 
         time.sleep(2)
 
