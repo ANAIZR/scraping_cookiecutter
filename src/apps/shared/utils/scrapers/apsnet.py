@@ -100,7 +100,7 @@ def scraper_apsnet(url, sobrenombre):
 
                         content_text = content_div.get_text(strip=True) if content_div else soup.get_text(strip=True)
 
-                        if content_text:
+                        if content_text and content_text.strip():
                             object_id = fs.put(
                                 content_text.encode("utf-8"),
                                 source_url=link,

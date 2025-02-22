@@ -56,7 +56,7 @@ def scraper_aphis_usda(url, sobrenombre):
                     if main_content:
                         content_text = main_content.get_text(separator=" ", strip=True)
 
-            if content_text:
+            if content_text and content_text.strip():
                 object_id = fs.put(
                     content_text.encode("utf-8"),
                     source_url=current_url,

@@ -53,7 +53,7 @@ def scraper_ars_usda(url, sobrenombre):
                 logger.info(f"Extrayendo texto de PDF: {url}")
                 pdf_text = extract_text_from_pdf(url)
 
-                if pdf_text:
+                if pdf_text and pdf_text.strip():
                     object_id = fs.put(
                         pdf_text.encode("utf-8"),
                         source_url=url,

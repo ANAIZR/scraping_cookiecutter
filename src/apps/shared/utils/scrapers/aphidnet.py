@@ -63,7 +63,7 @@ def scraper_aphidnet(url, sobrenombre):
 
             full_content = f"{content_text}\n{portfolio_text}".strip()
             
-            if full_content:
+            if full_content and full_content.strip():
                 object_id = fs.put(
                     full_content.encode("utf-8"),
                     source_url=current_url,

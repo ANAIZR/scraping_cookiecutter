@@ -113,7 +113,7 @@ def scraper_agriculture_gov(url, sobrenombre):
                             time.sleep(random.randint(2, 4))
                             content_text = driver.find_element(By.CSS_SELECTOR, "div.region-content").text.strip()
                         
-                        if content_text:
+                        if content_text and content_text.strip():
                             object_id = fs.put(
                                 content_text.encode("utf-8"),
                                 source_url=href,
