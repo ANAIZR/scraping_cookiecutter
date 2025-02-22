@@ -1145,6 +1145,19 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 88,
+    "fields": {
+      "url": "https://search.usa.gov/search?query=&affiliate=agriculturalresearchservicears",
+      "sobrenombre": "SEARCH_USA_GOV",
+      "time_choices": 1,
+      "mode_scrapeo": 62,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 89,
     "fields": {
       "url": "https://apsjournals.apsnet.org/search/advanced",
