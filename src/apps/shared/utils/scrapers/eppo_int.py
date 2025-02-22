@@ -88,7 +88,6 @@ def scraper_eppo_int(url, sobrenombre):
                 main_content = soup.find("div", class_=["main-content"])
 
                 if main_content:
-                    nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
                     if page_text:
                         object_id = fs.put(
