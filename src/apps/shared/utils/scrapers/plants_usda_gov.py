@@ -90,6 +90,8 @@ def scraper_plants_usda_gov(url, sobrenombre):
                                     scraped_urls.append(href)
                                     total_scraped_links += 1
                                     existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
                                         fs.delete(oldest_version._id) 

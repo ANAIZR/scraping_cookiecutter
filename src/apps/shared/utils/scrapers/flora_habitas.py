@@ -71,10 +71,12 @@ def scraper_flora_habitas(url, sobrenombre):
                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                     existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version["_id"]))
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                        fs.delete(oldest_version._id) 
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
             else:
                 logger.info(f"No se encontró el div#contents en {link_href}")
 
