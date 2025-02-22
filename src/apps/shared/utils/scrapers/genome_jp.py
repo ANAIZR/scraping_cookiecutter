@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from bson import ObjectId
 from ..functions import (
-    process_scraper_data_v2,
+    process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
@@ -118,7 +118,7 @@ def scraper_genome_jp(url, sobrenombre):
             f"{'-'*80}\n"
         )
 
-        response = process_scraper_data_v2(report, url, sobrenombre)
+        response = process_scraper_data(report, url, sobrenombre)
         logger.info("Scraping completado exitosamente.")
         return response
 
