@@ -75,8 +75,31 @@ def scraper_flmnh_ufl(url, sobrenombre):
         except Exception as e:
             logger.error(f"Error durante el scraping de la página: {str(e)}")
             raise e
+    def go_to_next_page(max_pages=3):
+        page_count = 0  
 
-    def go_to_next_page():
+        while page_count < max_pages:
+            try:
+                WebDriverWait(driver, 20).until(
+                    EC.element_to_be_clickable((By.ID, "button-1065-btnEl"))
+                )
+                next_button = driver.find_element(By.ID, "button-1065-btnEl")
+                driver.execute_script("arguments[0].click();", next_button)
+                logger.info(f"Clic en el botón de siguiente página ({page_count + 1}/{max_pages})")
+                
+                page_count += 1  
+                time.sleep(3) 
+            except Exception as e:
+                logger.warning(f"No se pudo hacer clic en el botón de siguiente página: {str(e)}")
+                break  
+
+        logger.info("Se alcanzó el límite de navegación o no hay más páginas.")
+
+    
+    
+    
+    
+    """def go_to_next_page():
         try:
             WebDriverWait(driver, 20).until(
                 EC.element_to_be_clickable((By.ID, "button-1065-btnEl"))
@@ -89,7 +112,7 @@ def scraper_flmnh_ufl(url, sobrenombre):
             logger.warning(
                 f"No se pudo hacer clic en el botón de siguiente página: {str(e)}"
             )
-            return False
+            return False"""
 
     try:
         driver.get(url)
