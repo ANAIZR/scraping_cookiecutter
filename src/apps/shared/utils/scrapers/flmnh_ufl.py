@@ -47,7 +47,6 @@ def scraper_flmnh_ufl(url, sobrenombre):
                 data = [col.text.strip() for col in cols]
                 all_scraper += " | ".join(data) + "\n"
 
-                # Extraer y procesar enlaces dentro de cada fila
                 links = row.find_all("a", href=True)
                 for link in links:
                     link_href = link["href"]
@@ -68,7 +67,6 @@ def scraper_flmnh_ufl(url, sobrenombre):
                         total_scraped_successfully += 1
                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                        # Gestionar versiones antiguas
                         existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
