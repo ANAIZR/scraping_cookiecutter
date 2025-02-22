@@ -115,8 +115,28 @@ def scraper_plants_usda_gov(url, sobrenombre):
                         import traceback
                         traceback.print_exc()
                         urls_not_scraped.append(href)
+                max_pages = 3  # Número máximo de veces que se puede hacer clic en "Next"
+                page_count = 0  # Contador de páginas navegadas
 
-                try:
+                while page_count < max_pages:  # Se detiene después de 3 páginas
+                    try:
+                        next_page_button = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable(
+                                (By.CSS_SELECTOR, "li.usa-pagination__item.usa-pagination__arrow a.usa-pagination__next-page")
+                            )
+                        )
+                        driver.execute_script("arguments[0].click();", next_page_button)
+                        time.sleep(3)
+                        
+                        page_count += 1  # Incrementa el contador
+                        print(f"Navegación {page_count}: Se hizo clic en 'Next'.")
+                    except Exception as e:
+                        print("No se encontró el botón 'Next' o no es clickeable.")
+                        break  # Detiene el bucle si el botón no aparece
+
+                print("Se alcanzó el límite de navegación (3 páginas) o no hay más páginas.")
+
+                """try:
                     next_page_button = WebDriverWait(driver, 10).until(
                         EC.element_to_be_clickable(
                             (By.CSS_SELECTOR, "li.usa-pagination__item.usa-pagination__arrow a.usa-pagination__next-page")
@@ -125,7 +145,7 @@ def scraper_plants_usda_gov(url, sobrenombre):
                     driver.execute_script("arguments[0].click();", next_page_button)
                     time.sleep(3)
                 except Exception as e:
-                    break 
+                    break """
 
             except Exception as e:
                 break 
