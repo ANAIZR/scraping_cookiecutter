@@ -14,26 +14,27 @@ from ..functions import (
     get_logger,
     initialize_driver,
 )
+def navigate_multiple_pages(driver, wait_time, max_pages=3):
+    pages_navigated = 0  # Contador de páginas visitadas
 
-def navigate_to_next_page(driver, wait_time):
-    """
-    Navega a la siguiente página si es posible.
-    """
-    try:
-        next_button = WebDriverWait(driver, wait_time).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
-        )
-        next_button.click()
-        time.sleep(2)
-        return True
-    except Exception as e:
-        print(f"No se pudo navegar a la siguiente página: {e}")
-        return False
+    while pages_navigated < max_pages:
+        try:
+            next_button = WebDriverWait(driver, wait_time).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
+            )
+            driver.execute_script("arguments[0].click();", next_button)
+            time.sleep(2)  # Esperar a que cargue la siguiente página
+            pages_navigated += 1
+            print(f"Página {pages_navigated}: Se hizo clic en 'Next'.")
+        except Exception as e:
+            print(f"Intento fallido en la página {pages_navigated + 1}: {e}")
+            break  # Salir del bucle si no puede hacer clic en 'Next'
+
+    print(f"Navegación finalizada. Se avanzó hasta {pages_navigated} páginas.")
+
 
 def extract_all_data(driver, wait_time):
-    """
-    Extrae datos de todas las páginas y devuelve un solo bloque de texto con toda la información.
-    """
+
     all_scraper = ""  
     record_count = 1
     skipped_rows = 0
@@ -68,7 +69,7 @@ def extract_all_data(driver, wait_time):
 
                 record_count += 1
 
-            if not navigate_to_next_page(driver, wait_time):
+            if not navigate_multiple_pages(driver, wait_time):
                 break
 
         if skipped_rows > 0:
@@ -81,9 +82,7 @@ def extract_all_data(driver, wait_time):
         return all_scraper, 0
 
 def scraper_genome_jp(url, sobrenombre):
-    """
-    Scraper para Genome JP que extrae todas las páginas y almacena todo en un solo documento en MongoDB.
-    """
+
 
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
@@ -94,7 +93,6 @@ def scraper_genome_jp(url, sobrenombre):
         driver.get(url)
         all_scraper, total_records = extract_all_data(driver, 30)
 
-        # 📌 **Guardar todo en un solo documento en MongoDB**
         if total_records > 0:
             object_id = fs.put(
                 all_scraper.encode("utf-8"),
@@ -105,30 +103,14 @@ def scraper_genome_jp(url, sobrenombre):
                 url=url
             )
 
-            collection.insert_one(
-                {
-                    "_id": object_id,
-                    "source_url": url,
-                    "scraping_date": datetime.now(),
-                    "Etiquetas": ["virus", "genome"],
-                    "contenido": all_scraper,
-                    "url": url,
-                }
-            )
-
-            # 📌 **Eliminar versiones antiguas**
             existing_versions = list(
-                collection.find({"source_url": url}).sort("scraping_date", -1)
+                fs.find({"source_url": url}).sort("scraping_date", -1)
             )
 
             if len(existing_versions) > 1:
                 oldest_version = existing_versions[-1]
-                fs.delete(ObjectId(oldest_version["_id"]))
-                collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-
-                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
-
-        # 📌 **Generar el reporte en `all_scraper`**
+                fs.delete(ObjectId(oldest_version._id))  
+                logger.info(f"Se eliminó la versión más antigua en GridFS con object_id: {oldest_version._id}")
         report = (
             f"Resumen del scraping:\n"
             f"Total de registros almacenados: {total_records}\n"

@@ -6,6 +6,9 @@ from urllib.parse import urlparse, urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rest_framework.response import Response
 from rest_framework import status
+from datetime import datetime
+from bson import ObjectId
+
 from ..functions import (
     process_scraper_data_v2,
     connect_to_mongo,
@@ -13,13 +16,14 @@ from ..functions import (
     get_random_user_agent,
     extract_text_from_pdf
 )
-from datetime import datetime
-from bson import ObjectId
 
 def scraper_eppo_int(url, sobrenombre):
+    """Scraper para EPPO con extracción de texto y PDFs."""
+    
     url_padre = url
     logger = get_logger("EPPO_INT")
     logger.info(f"Iniciando scraping para URL: {url}")
+
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
     processed_links = set()
@@ -32,7 +36,8 @@ def scraper_eppo_int(url, sobrenombre):
     total_non_scraped_links = 0
 
     def scrape_page(url, depth):
-        nonlocal total_found_links, total_scraped_links, total_non_scraped_links
+        """Función que extrae información de una página, almacena contenido y encuentra nuevos enlaces."""
+        nonlocal all_scraper, total_found_links, total_scraped_links, total_non_scraped_links
 
         if url in processed_links or depth > 3: 
             return []
@@ -50,13 +55,12 @@ def scraper_eppo_int(url, sobrenombre):
             soup = BeautifulSoup(response.content, "html.parser")
 
             if depth >= 2:
-                # main_content = soup.find("main", id="main-content")
                 main_content = soup.find("div", class_=["main-content"])
                 if main_content:
-                    nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
-                    all_scraper += f"URL: {url}\n{page_text}\n\n" 
+                    all_scraper += f"URL: {url}\n{page_text}\n\n"
 
+            # Manejo de archivos PDF
             if url.endswith(".pdf"):
                 logger.info(f"Extrayendo texto de PDF: {url}")
                 pdf_text = extract_text_from_pdf(url)
@@ -74,19 +78,19 @@ def scraper_eppo_int(url, sobrenombre):
                     scraped_urls.append(url)
                     logger.info(f"Texto de PDF almacenado en MongoDB con object_id: {object_id}")
 
+                    # Eliminar versiones antiguas
                     existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version._id))
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                        fs.delete(ObjectId(oldest_version["_id"]))
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
                 else:
                     non_scraped_urls.append(url)
                     total_non_scraped_links += 1
                 return []
 
+            # Extraer texto si la profundidad es mayor o igual a 2
             if depth >= 2:
-                main_content = soup.find("div", class_=["main-content"])
-
                 if main_content:
                     page_text = main_content.get_text(separator=" ", strip=True)
                     if page_text:
@@ -105,12 +109,12 @@ def scraper_eppo_int(url, sobrenombre):
                         existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
-                            fs.delete(ObjectId(oldest_version._id))
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                            fs.delete(ObjectId(oldest_version["_id"]))
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
                     else:
                         non_scraped_urls.append(url)
 
-
+            # Extraer nuevos enlaces
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
                 full_url = urljoin(url, inner_href)
@@ -133,6 +137,7 @@ def scraper_eppo_int(url, sobrenombre):
         return new_links
 
     def scrape_pages_in_parallel(url_list):
+        """Ejecuta el scraping en paralelo para mejorar el rendimiento."""
         nonlocal total_non_scraped_links
         new_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
