@@ -1,3 +1,5 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -7,121 +9,122 @@ import time
 from datetime import datetime
 from bson import ObjectId
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
 )
+def navigate_multiple_pages(driver, wait_time, max_pages=3):
+    pages_navigated = 0  # Contador de páginas visitadas
 
-def navigate_to_next_page(driver, wait_time):
-    try:
-        next_button = WebDriverWait(driver, wait_time).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
-        )
-        next_button.click()
-        time.sleep(2)
-        return True
-    except Exception:
-        return False 
+    while pages_navigated < max_pages:
+        try:
+            next_button = WebDriverWait(driver, wait_time).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
+            )
+            driver.execute_script("arguments[0].click();", next_button)
+            time.sleep(2)  # Esperar a que cargue la siguiente página
+            pages_navigated += 1
+            print(f"Página {pages_navigated}: Se hizo clic en 'Next'.")
+        except Exception as e:
+            print(f"Intento fallido en la página {pages_navigated + 1}: {e}")
+            break  # Salir del bucle si no puede hacer clic en 'Next'
 
-def extract_data(driver, wait_time, fs, logger, url):
-    all_scraper = ""
+    print(f"Navegación finalizada. Se avanzó hasta {pages_navigated} páginas.")
+
+
+def extract_all_data(driver, wait_time):
+
+    all_scraper = ""  
     record_count = 1
     skipped_rows = 0
-    total_scraped_successfully = 0
 
     try:
-        tbody = WebDriverWait(driver, wait_time).until(
-            EC.presence_of_element_located((By.XPATH, "//table/tbody[2]"))
-        )
-        rows = tbody.find_elements(By.CSS_SELECTOR, "tr")
-
-        for row in rows:
-            cols = row.find_elements(By.CSS_SELECTOR, "td")
-
-            if len(cols) < 4:
-                skipped_rows += 1
-                continue
-
-            titulo = cols[0].text.strip()
-            descripcion = cols[1].text.strip()
-            host_name = cols[2].text.strip()
-            tipos = cols[3].text.strip()
-            
-            link_elements = row.find_elements(By.TAG_NAME, "a")
-            for link in link_elements:
-                link_href = link.get_attribute("href")
-                if link_href:
-                    driver.get(link_href)
-                    time.sleep(2)
-                    content_text = driver.find_element(By.TAG_NAME, "body").text
-
-                    if content_text:
-                        object_id = fs.put(
-                            content_text.encode("utf-8"),
-                            source_url=link_href,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=content_text,
-                            url=url
-                        )
-                        total_scraped_successfully += 1
-                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                        existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            fs.delete(ObjectId(oldest_version["_id"]))
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
-
-            all_scraper += (
-                f"Registro #{record_count} : \n"
-                f"Virus(species) name :      {titulo}\n"
-                f"Virus lineage       :      {descripcion}\n"
-                f"Host name           :      {host_name}\n"
-                f"Host lineage        :      {tipos}\n"
-                "-------------------------------------------\n\n"
+        while True:
+            tbody = WebDriverWait(driver, wait_time).until(
+                EC.presence_of_element_located((By.XPATH, "//table/tbody[2]"))
             )
+            rows = tbody.find_elements(By.CSS_SELECTOR, "tr")
 
-            record_count += 1
+            for row in rows:
+                cols = row.find_elements(By.CSS_SELECTOR, "td")
+
+                if len(cols) < 4:
+                    skipped_rows += 1
+                    continue
+
+                titulo = cols[0].text.strip()
+                descripcion = cols[1].text.strip()
+                host_name = cols[2].text.strip()
+                tipos = cols[3].text.strip()
+
+                all_scraper += (
+                    f"Registro #{record_count}:\n"
+                    f"Virus(species) name: {titulo}\n"
+                    f"Virus lineage: {descripcion}\n"
+                    f"Host name: {host_name}\n"
+                    f"Host lineage: {tipos}\n"
+                    f"{'-'*80}\n"
+                )
+
+                record_count += 1
+
+            if not navigate_multiple_pages(driver, wait_time):
+                break
 
         if skipped_rows > 0:
-            print(f"Se omitieron {skipped_rows} filas con columnas insuficientes.")
+            all_scraper += f"\nSe omitieron {skipped_rows} filas con columnas insuficientes.\n"
 
-        return all_scraper, total_scraped_successfully
+        return all_scraper, record_count - 1
+
     except Exception as e:
-        logger.error(f"Error al extraer datos: {e}")
-        return all_scraper, total_scraped_successfully
+        print(f"Error al extraer datos: {e}")
+        return all_scraper, 0
 
 def scraper_genome_jp(url, sobrenombre):
+
+
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
-    all_scraper = ""
 
     try:
         driver.get(url)
+        all_scraper, total_records = extract_all_data(driver, 30)
 
-        while True:
-            data, total_scraped_successfully = extract_data(driver, 30, fs, logger, url)
-            all_scraper += data
+        if total_records > 0:
+            object_id = fs.put(
+                all_scraper.encode("utf-8"),
+                source_url=url,
+                scraping_date=datetime.now(),
+                Etiquetas=["virus", "genome"],
+                contenido=all_scraper,
+                url=url
+            )
 
-            if not navigate_to_next_page(driver, 30):
-                break
+            existing_versions = list(
+                fs.find({"source_url": url}).sort("scraping_date", -1)
+            )
 
-        if not all_scraper:
-            raise Exception("No se pudo extraer ningún dato.")
+            if len(existing_versions) > 1:
+                oldest_version = existing_versions[-1]
+                fs.delete(ObjectId(oldest_version._id))  
+                logger.info(f"Se eliminó la versión más antigua en GridFS con object_id: {oldest_version._id}")
+        report = (
+            f"Resumen del scraping:\n"
+            f"Total de registros almacenados: {total_records}\n"
+            f"Fuente: {url}\n\n"
+            f"{'-'*80}\n"
+        )
 
-        logger.info(f"Total de enlaces visitados y almacenados: {total_scraped_successfully}")
-
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data_v2(report, url, sobrenombre)
+        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:
-        logger.error(f"Error general en el scraping: {e}")
+        print(f"Error general en el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         driver.quit()
-        logger.info("Navegador cerrado")
