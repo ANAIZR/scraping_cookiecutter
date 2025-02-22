@@ -24,12 +24,12 @@ def navigate_to_next_page(driver, wait_time):
     except Exception:
         return False 
 
-def extract_data(driver, wait_time, fs, logger, url):
-    all_scraper = ""
+def extract_all_data(driver, wait_time, fs, logger, url):
+    all_scraper = ""  
     record_count = 1
     skipped_rows = 0
     total_scraped_successfully = 0
-
+    
     try:
         tbody = WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located((By.XPATH, "//table/tbody[2]"))
