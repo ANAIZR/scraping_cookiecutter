@@ -178,8 +178,8 @@ def connect_to_mongo(db_name=None, collection_name=None):
     
     try:
         # Cargar variables desde el .env
-        MONGO_USER = os.getenv("MONGO_USER")
-        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+        MONGO_USER = os.getenv("MONGO_USER","admin")
+        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD","SuperPassword123!")
         MONGO_HOST = os.getenv("MONGO_HOST", "localhost")  # Default: localhost
         MONGO_PORT = os.getenv("MONGO_PORT", "27017")  # Default: 27017
         MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE", "admin")  # Default: admin
