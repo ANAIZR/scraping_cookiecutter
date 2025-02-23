@@ -5,7 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from ..functions import (
     connect_to_mongo,
     get_logger,
-    initialize_driver,
+    driver_init,
     process_scraper_data,
     load_keywords
 )
@@ -23,7 +23,7 @@ logger = get_logger("scraper")
 def scraper_apsnet(url, sobrenombre):
     driver = None
     try:
-        driver = initialize_driver()
+        driver = driver_init()
         object_id = None
 
         collection, fs = connect_to_mongo()
