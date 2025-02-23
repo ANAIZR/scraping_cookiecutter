@@ -109,7 +109,7 @@ def scraper_cahfsa(url, sobrenombre):
                         )
                         content_text = content_element.text.strip()
                     except TimeoutException:
-                        content_element = driver.find_element(By.TAG_NAME, "body")
+                        content_element = driver.find_element(By.TAG_NAME, "section.mcb-section.the_content.has_content")
                         content_text = content_element.text.strip()
 
                     soup = BeautifulSoup(content_text, "html.parser")

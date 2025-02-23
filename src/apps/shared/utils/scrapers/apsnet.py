@@ -27,7 +27,7 @@ def scraper_apsnet(url, sobrenombre):
         object_id = None
 
         collection, fs = connect_to_mongo()
-        keywords = load_keywords("plants.txt")
+        keywords = load_keywords("family.txt")
         scraped_urls = set()
         failed_urls = set()
         total_links_found = 0
