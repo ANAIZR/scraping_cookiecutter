@@ -127,5 +127,4 @@ SCRAPER_FUNCTIONS = {
     63: scraper_apsnet,
     73: scraper_notification_aphis,
     74: scraper_repository_cimmy
-
 }
