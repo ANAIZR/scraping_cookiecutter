@@ -98,7 +98,7 @@ def scraper_ala_org(url, sobrenombre):
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
                                         fs.delete(oldest_version._id)  
-                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
 
                                     
                             except Exception as e:

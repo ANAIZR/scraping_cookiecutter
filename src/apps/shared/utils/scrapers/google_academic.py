@@ -108,9 +108,8 @@ def scraper_google_academic(url, sobrenombre):
                                     oldest_version = existing_versions[-1]
                                     fs.delete(oldest_version._id)  
                                     collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-                                    logger.info(
-                                        f"Se eliminó la versión más antigua con este enlace: '{full_url}' y object_id: {oldest_version['_id']}'"
-                                    )
+                                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+
                             else:
                                 total_failed_scrapes += 1
                                 failed_urls.append(full_url)
