@@ -1,13 +1,9 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import os
 import time
 import random
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
-from urllib.parse import urljoin
 from bson import ObjectId
 from ..functions import (
     process_scraper_data,
@@ -16,7 +12,7 @@ from ..functions import (
     driver_init,
     extract_text_from_pdf,
 )
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 
 logger = get_logger("scraper")
 
