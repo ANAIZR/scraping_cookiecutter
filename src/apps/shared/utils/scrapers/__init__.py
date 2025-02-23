@@ -62,6 +62,7 @@ from .npdn import scraper_npdn
 from .eppo_int import scraper_eppo_int
 from .search_usa_gov import scraper_search_usa_gov
 from .repository_cimmy import scraper_repository_cimmy
+from .agresearchmag import scraper_agresearchmag
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -125,6 +126,7 @@ SCRAPER_FUNCTIONS = {
     66: scraper_eppo_int,
     67: scraper_gc_ca,
     63: scraper_apsnet,
+    71: scraper_agresearchmag,
     73: scraper_notification_aphis,
     74: scraper_repository_cimmy
 }
