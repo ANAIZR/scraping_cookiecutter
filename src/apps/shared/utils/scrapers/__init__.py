@@ -64,7 +64,7 @@ from .search_usa_gov import scraper_search_usa_gov
 from .repository_cimmy import scraper_repository_cimmy
 from .agresearchmag import scraper_agresearchmag
 from .ippc_int import scraper_ippc_int
-from .aphis_usda_gov import scraper_aphis_usda_gov
+from .notification_aphis_usda_gov import scraper_aphis_usda_gov
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
