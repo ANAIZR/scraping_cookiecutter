@@ -22,6 +22,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from pymongo import MongoClient
 from django.conf import settings
+from ....users.utils.services import EmailService
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,11 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            serializer.save(user=request.user)  
+            subscription = serializer.save(user=request.user)  # Guardamos la suscripción
+
+            # 🔥 Enviar correo de confirmación al usuario
+            self.send_subscription_email(subscription)
+
             return Response(
                 {"message": "Filtro guardado exitosamente", "data": serializer.data},
                 status=status.HTTP_201_CREATED,
@@ -131,3 +136,29 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
             {"message": "Filtro eliminado correctamente"},
             status=status.HTTP_204_NO_CONTENT,
         )
+
+    def send_subscription_email(self, subscription):
+        """Envía un correo de confirmación al usuario cuando se suscribe a nuevas especies."""
+        user = subscription.user
+        filters = []
+        if subscription.scientific_name:
+            filters.append(f"🔬 Nombre Científico: {subscription.scientific_name}")
+        if subscription.distribution:
+            filters.append(f"🌍 Distribución: {subscription.distribution}")
+        if subscription.hosts:
+            filters.append(f"🌱 Hospedante: {subscription.hosts}")
+
+        filters_text = "<br>".join(filters)
+
+        subject = "✅ Confirmación de suscripción a especies"
+        html_content = f"""
+            <p>Hola {user.first_name},</p>
+            <p>Te has suscrito con éxito a notificaciones de nuevas especies.</p>
+            <p><b>Filtros guardados:</b></p>
+            <p>{filters_text}</p>
+            <p>Te notificaremos cuando haya nuevas coincidencias.</p>
+            <p>¡Gracias por usar nuestra plataforma!</p>
+        """
+
+        logger.info(f"📩 Enviando confirmación de suscripción a {user.email}")
+        EmailService.send_email(subject, [user.email], html_content)
