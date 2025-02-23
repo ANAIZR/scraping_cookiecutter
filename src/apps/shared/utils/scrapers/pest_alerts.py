@@ -15,6 +15,7 @@ from ..functions import (
     get_random_user_agent,
 )
 
+
 def scraper_pest_alerts(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"🚀 Iniciando scraping para URL: {url}")
@@ -88,11 +89,23 @@ def scraper_pest_alerts(url, sobrenombre):
                         scraping_date=datetime.now(),
                         Etiquetas=["Pest Alerts", "Plagas"],
                         contenido=page_text,
-                        url=url
+                        url=url,
                     )
 
                     urls_scraped.add(link)
-                    logger.info(f"✅ Contenido almacenado en MongoDB con ID: {object_id}")
+                    logger.info(
+                        f"✅ Contenido almacenado en MongoDB con ID: {object_id}"
+                    )
+                    existing_versions = list(
+                        fs.find({"source_url": link}).sort("scraping_date", -1)
+                    )
+
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version._id))
+                        logger.info(
+                            f"🗑️ Se eliminó la versión más antigua con object_id: {oldest_version['_id']}"
+                        )
 
                 else:
                     logger.warning(f"⚠️ No se extrajo contenido de {link}")
@@ -111,10 +124,14 @@ def scraper_pest_alerts(url, sobrenombre):
         )
 
         if urls_scraped:
-            all_scraper += "✅ **URLs scrapeadas:**\n" + "\n".join(urls_scraped) + "\n\n"
+            all_scraper += (
+                "✅ **URLs scrapeadas:**\n" + "\n".join(urls_scraped) + "\n\n"
+            )
 
         if urls_not_scraped:
-            all_scraper += "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
+            all_scraper += (
+                "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
+            )
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
         return response

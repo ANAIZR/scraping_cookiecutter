@@ -4,6 +4,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -31,36 +33,36 @@ def scraper_species(driver, lookupid):
     base_url = "https://diaspididae.linnaeus.naturalis.nl/linnaeus_ng/app/views/species/taxon.php"
     full_url = f"{base_url}?id={lookupid}"
 
-    driver.get(full_url)
-
     try:
+        driver.get(full_url)
+
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "div#content.taxon-detail")
-            )
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div#content.taxon-detail"))
         )
         content_div = driver.find_element(By.CSS_SELECTOR, "div#content.taxon-detail")
         html_content = content_div.get_attribute("innerHTML")
+
+        soup = BeautifulSoup(html_content, "html.parser")
+        scraped_text = format_scraper_data_with_headers(html_content)
+
+        return {
+            "url": full_url,
+            "text": scraped_text,
+        }
     except Exception as e:
         return None
-
-    soup = BeautifulSoup(html_content, "html.parser")
-    scraped_data = {}
-
-    scraped_data["text"] = format_scraper_data_with_headers(html_content)
-
-    return {
-        "url": full_url,  
-        "text": scraped_data["text"],
-    }
 
 
 def scraper_diaspididae(url, sobrenombre):
     logger = get_logger("scraper")
-    logger.info(f"Iniciando scraping para URL: {url}")
+    logger.info(f"🚀 Iniciando scraping para URL: {url}")
+
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
-    all_scraper = ""
+
+    urls_found = set()
+    urls_scraped = set()
+    urls_not_scraped = set()
 
     try:
         driver.get(url)
@@ -72,18 +74,57 @@ def scraper_diaspididae(url, sobrenombre):
 
         for lookupid in lookup_ids:
             scraped_data = scraper_species(driver, lookupid)
+
             if scraped_data:
-                all_scraper += f"URL: {scraped_data['url']}\n\n"
-                all_scraper += f"{scraped_data['text']}\n"
-                all_scraper += "\n" + "-" * 80 + "\n\n"  
+                full_url = scraped_data["url"]
+                urls_found.add(full_url)
+                logger.info(f"🔗 URL encontrada: {full_url}")
+
+                if scraped_data["text"]:
+                    # Guardar en MongoDB
+                    object_id = fs.put(
+                        scraped_data["text"].encode("utf-8"),
+                        source_url=full_url,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["Diaspididae", "Especies"],
+                        contenido=scraped_data["text"],
+                        url=url
+                    )
+
+                    urls_scraped.add(full_url)
+                    logger.info(f"✅ Contenido almacenado en MongoDB con ID: {object_id}")
+                    existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
+
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version["_id"]))
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+
+                else:
+                    urls_not_scraped.add(full_url)
+                    logger.warning(f"⚠️ No se extrajo contenido de {full_url}")
+
+        all_scraper = (
+            f"📌 **Reporte de scraping:**\n"
+            f"🌐 URL principal: {url}\n"
+            f"🔍 URLs encontradas: {len(urls_found)}\n"
+            f"✅ URLs scrapeadas: {len(urls_scraped)}\n"
+            f"⚠️ URLs no scrapeadas: {len(urls_not_scraped)}\n\n"
+        )
+
+        if urls_scraped:
+            all_scraper += "✅ **URLs scrapeadas:**\n" + "\n".join(urls_scraped) + "\n\n"
+
+        if urls_not_scraped:
+            all_scraper += "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
         return response
 
     except Exception as e:
+        logger.error(f"❌ Error durante el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         driver.quit()
-        logger.info("Navegador cerrado")
-
+        logger.info("🛑 Navegador cerrado.")
