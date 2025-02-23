@@ -3,13 +3,14 @@ from datetime import timedelta
 from ...core.models import CoreModel
 from django.db import models
 
+from src.apps.users.models import User
 
 class ScraperURL(CoreModel):
     TYPE_CHOICES = [
         (1, "Web"),
         (2, "PDF"),
     ]
-    TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral")]
+    TIME_CHOICES = [(1, "Mensual"), (2, "Trimestral"), (3, "Semestral"), (4, "Semanal")]
 
     url = models.URLField(max_length=500)
     sobrenombre = models.CharField(max_length=120)
@@ -19,12 +20,23 @@ class ScraperURL(CoreModel):
     deleted_at = models.DateTimeField(
         blank=True, null=True, db_index=True, editable=False
     )
-    fecha_scraper = models.DateTimeField(null=True, blank=True)
     time_choices = models.PositiveSmallIntegerField(choices=TIME_CHOICES, default=1)
     is_active = models.BooleanField(default=True)
     parameters = models.JSONField(default=dict)
     mode_scrapeo = models.PositiveSmallIntegerField(default=1, blank=True, null=True)
 
+    ESTADO_CHOICES = [
+        ("pendiente", "Pendiente"),
+        ("en_progreso", "En Progreso"),
+        ("exitoso", "Exitoso"),
+        ("fallido", "Fallido"),
+    ]
+
+    estado_scrapeo = models.CharField(
+        max_length=45, choices=ESTADO_CHOICES, default="pendiente"
+    )
+    error_scrapeo = models.TextField(blank=True, null=True)
+    fecha_scraper = models.DateTimeField(null=True, blank=True)
     class Meta:
         db_table = "scraper_url"
 
@@ -73,7 +85,7 @@ class ScraperURL(CoreModel):
 
 
 class Species(models.Model):
-    scientific_name = models.CharField(max_length=255, unique=True)
+    scientific_name = models.CharField(max_length=255, null=True, blank=True)
     common_names = models.TextField(blank=True, null=True)
     synonyms = models.TextField(blank=True, null=True)
     invasiveness_description = models.TextField(blank=True, null=True)
@@ -88,14 +100,68 @@ class Species(models.Model):
     environmental_conditions = models.TextField(blank=True, null=True)
     prevention_control = models.JSONField(blank=True, null=True)
     uses = models.TextField(blank=True, null=True)
-    source_url = models.URLField(max_length=500)
+    source_url = models.URLField(max_length=500, unique=True)
     scraper_source = models.ForeignKey(
-        ScraperURL,
+        "ScraperURL",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="species",
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "species"
 
     def __str__(self):
         return self.scientific_name
+
+
+
+
+class ReportComparison(models.Model):
+    scraper_source = models.ForeignKey(
+        ScraperURL, on_delete=models.CASCADE, related_name="comparisons"
+    )
+    object_id1 = models.CharField(max_length=50)
+    object_id2 = models.CharField(max_length=50)
+    comparison_date = models.DateTimeField(auto_now_add=True)
+    info_agregada = models.TextField(blank=True, null=True)
+    info_eliminada = models.TextField(blank=True, null=True)
+    info_modificada = models.TextField(blank=True, null=True)
+    estructura_cambio = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "report_comparison"
+
+    def __str__(self):
+        return f"Comparación {self.id} - {self.scraper_source.url}"
+
+
+class SpeciesSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    scientific_name = models.CharField(max_length=255, blank=True, null=True)
+    distribution = models.JSONField(
+        blank=True, null=True
+    )  
+    hosts = models.JSONField(blank=True, null=True)  
+    name_subscription = models.CharField(max_length=255, blank=False, null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "scientific_name", "distribution", "hosts")
+        db_table = "species_subscription"
+
+    def __str__(self):
+        filters = []
+        if self.scientific_name:
+            filters.append(f"Scientific Name: {self.scientific_name}")
+        if self.distribution:
+            filters.append(
+                f"Distribution: {', '.join(self.distribution)}"
+            )  # Convierte JSON a texto
+        if self.hosts:
+            filters.append(f"Hosts: {', '.join(self.hosts)}")
+
+        filters_text = " | ".join(filters) if filters else "All"
+        return f"{self.user.email} -> {filters_text}"
