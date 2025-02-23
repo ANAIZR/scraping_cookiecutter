@@ -175,7 +175,7 @@ def scraper_fws_gov(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "⚠ URLs no procesadas:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
