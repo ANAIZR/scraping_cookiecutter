@@ -39,11 +39,9 @@ def scraper_fws_gov(url, sobrenombre):
             )
             logger.info("✅ Página principal cargada correctamente.")
         except Exception as e:
-            logger.error(f"❌ Error al cargar la página principal: {e}")
-            return Response(
-                {"error": f"Error al cargar la página principal: {e}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            error_message = f"❌ Error al cargar la página principal: {e}"
+            logger.error(error_message)
+            return Response({"error": error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page_number = 1
 
@@ -106,8 +104,8 @@ def scraper_fws_gov(url, sobrenombre):
                                     existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version["_id"]))
-                                        logger.info(f"🗑 Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                        fs.delete(oldest_version._id)
+                                        logger.info(f"🗑 Se eliminó la versión más antigua con object_id: {oldest_version._id}")
                                 else:
                                     logger.warning(f"⚠ Contenido vacío en {full_url}")
                                     urls_not_scraped.append(full_url)
@@ -175,7 +173,8 @@ def scraper_fws_gov(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "⚠ URLs no procesadas:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+
         return response
 
     except Exception as e:
