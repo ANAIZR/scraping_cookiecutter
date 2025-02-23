@@ -44,6 +44,7 @@ def scraper_ippc_int(url, sobrenombre):
         while True:
             page_source = driver.page_source
             soup = BeautifulSoup(page_source, "html.parser")
+
             results_divs = soup.find_all("div.dt-row div.col-sm-12")
             
             for div in results_divs:
@@ -57,18 +58,26 @@ def scraper_ippc_int(url, sobrenombre):
                         failed_urls.add(href)
                         total_failed_scrapes += 1
                         total_links_found += 1
-            try:
-                next_button = driver.find_element(By.CSS_SELECTOR, "li#reportingsys_next.paginate_button.page-item.next")
-                if "disabled" in next_button.get_attribute("class"):
-                    logger.info("Botón 'Next' deshabilitado. No hay más páginas para scrapear.")
-                    break
 
-                driver.execute_script("arguments[0].click();", next_button)
-                time.sleep(random.uniform(5, 10))
-            except (TimeoutException, NoSuchElementException):
-                logger.info("No se encontró el botón 'Next' o no hay más páginas disponibles.")
-                break
+            next_button_soup = soup.select_one("li.c-pager__item--next a.c-pager__link--next")
             
+            if not next_button_soup:
+                logger.info("No se encontró el botón 'Next' en el HTML. Terminando la paginación.")
+                break
+
+            try:
+                next_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "li.c-pager__item--next a.c-pager__link--next"))
+                )
+                driver.execute_script("arguments[0].click();", next_button)
+                logger.info("Clic en 'Next' realizado correctamente.")
+                time.sleep(random.uniform(5, 10))
+            
+            except (TimeoutException, NoSuchElementException) as e:
+                logger.warning(f"No se pudo hacer clic en 'Next': {e}")
+                break  
+
+                    
         for href in scraped_urls:
             try:
                 if href.endswith(".pdf"):
