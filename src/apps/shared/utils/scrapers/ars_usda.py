@@ -69,7 +69,7 @@ def scraper_ars_usda(url, sobrenombre):
                     existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version._id))
+                        fs.delete(oldest_version._id)  
                         logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
                 else:
                     non_scraped_urls.append(url)
