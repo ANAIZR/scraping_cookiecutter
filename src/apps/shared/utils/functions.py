@@ -154,17 +154,24 @@ def initialize_driver():
     return driver
 
 
-def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
-
+def connect_to_mongo(db_name=None, collection_name=None):
     logger = get_logger("MONGO_CONNECTION")
+    
     try:
-        mongo_uri = os.getenv("MONGO_URI")
-        db_name = db_name or os.getenv("MONGO_DB_NAME")
-        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME")
+        MONGO_USER = os.getenv("MONGO_USER")
+        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+        MONGO_HOST = os.getenv("MONGO_HOST", "localhost") 
+        MONGO_PORT = os.getenv("MONGO_PORT", "27017")  
+        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE", "admin") 
 
-        logger.info(f"Conectando a MongoDB: {mongo_uri} - Base de datos: {db_name}")
+        db_name = db_name or os.getenv("MONGO_DB_NAME", "scrapping-can")
+        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME", "collection")
 
-        client = MongoClient(mongo_uri)
+        MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{db_name}?authSource={MONGO_AUTH_SOURCE}"
+
+        logger.info(f"🔗 Conectando a MongoDB en: {MONGO_HOST}:{MONGO_PORT} - DB: {db_name}")
+
+        client = MongoClient(MONGO_URI)
         db = client[db_name]
         fs = gridfs.GridFS(db)
 
