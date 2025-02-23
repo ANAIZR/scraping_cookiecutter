@@ -66,6 +66,9 @@ from .agresearchmag import scraper_agresearchmag
 from .ippc_int import scraper_ippc_int
 from .notification_aphis_usda_gov import scraper_aphis_usda_gov
 from .notification_cahfsa import scraper_cahfsa
+from .canada_ca import scraper_canada_ca
+from .ecoport import scraper_ecoport
+from .pestnet import scraper_pestnet
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -122,6 +125,8 @@ SCRAPER_FUNCTIONS = {
     54: scraper_ippc_int,
     55: scraper_agriculture_gov,
     56: scraper_sciencedirect,
+    58: scraper_ecoport,
+    59: scraper_pestnet,
     60: scraper_fao_org_home,
     61: scraper_scientific_discoveries,
     62: scraper_search_usa_gov,
@@ -129,6 +134,7 @@ SCRAPER_FUNCTIONS = {
     66: scraper_eppo_int,
     67: scraper_gc_ca,
     63: scraper_apsnet,
+    64: scraper_canada_ca,
     71: scraper_agresearchmag,
     73: scraper_notification_aphis,
     74: scraper_repository_cimmy,
