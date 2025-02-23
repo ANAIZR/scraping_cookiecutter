@@ -16,7 +16,7 @@ from datetime import datetime
 def scraper_bugwood(url, sobrenombre, max_depth=3):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     all_scraper = ""
     total_urls_found = 0
@@ -104,10 +104,8 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
                     total_urls_scraped += 1
                     logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                    # 🔍 Buscar versiones previas en GridFS
                     existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
 
-                    # 🗑️ Eliminar versiones antiguas si hay más de una
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
                         fs.delete(ObjectId(oldest_version._id))
@@ -161,7 +159,7 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
             all_scraper += "⚠️ URLs no scrapeadas:\n\n"
             all_scraper += "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         logger.info("🚀 Scraping completado exitosamente.")
         return response
 
