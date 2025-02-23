@@ -108,7 +108,7 @@ def scraper_agriculture(url, sobrenombre):
             if text:
                 all_scraper += f"URL: {link}\n{text}\n\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:

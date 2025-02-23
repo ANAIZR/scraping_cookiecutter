@@ -2,9 +2,11 @@ from urllib.parse import urljoin
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup  
+from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -12,19 +14,24 @@ from ..functions import (
     initialize_driver,
 )
 
+
 def scraper_eppo_quarentine(url, sobrenombre):
     logger = get_logger("scraper")
+    logger.info(f"🚀 Iniciando scraping para URL: {url}")
 
-    logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
-    all_scraper = ""
+
+    urls_found = set()
+    urls_scraped = set()
+    urls_not_scraped = set()
 
     try:
         driver.get(url)
-
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.main-content div.container"))
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "div.main-content div.container")
+            )
         )
 
         page_source = driver.page_source
@@ -34,7 +41,6 @@ def scraper_eppo_quarentine(url, sobrenombre):
 
         if len(rows) >= 4:
             fourth_row = rows[3]
-
             table_responsive_divs = fourth_row.select("div.table-responsive")
 
             for table in table_responsive_divs:
@@ -45,33 +51,90 @@ def scraper_eppo_quarentine(url, sobrenombre):
                     for em in tds:
                         link_tag = em.find("a")
                         if link_tag and "href" in link_tag.attrs:
-                            link = link_tag["href"]
-                            full_link = urljoin(url, link)  
+                            full_link = urljoin(url, link_tag["href"])
 
-                            logger.info(f"Accediendo a: {full_link}")
-                            driver.get(full_link)
+                            if full_link in urls_found:
+                                continue  # Evitar duplicados
 
-                            WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "div.col-md-6.col-sm-6.col-xs-6"))
-                            )
+                            urls_found.add(full_link)
+                            logger.info(f"🔗 URL encontrada: {full_link}")
 
-                            page_source_inner = driver.page_source
-                            soup_inner = BeautifulSoup(page_source_inner, "html.parser")
+                            try:
+                                driver.get(full_link)
+                                WebDriverWait(driver, 10).until(
+                                    EC.presence_of_element_located(
+                                        (
+                                            By.CSS_SELECTOR,
+                                            "div.col-md-6.col-sm-6.col-xs-6",
+                                        )
+                                    )
+                                )
 
-                            content = soup_inner.select("div.col-md-6.col-sm-6.col-xs-6")
+                                page_source_inner = driver.page_source
+                                soup_inner = BeautifulSoup(
+                                    page_source_inner, "html.parser"
+                                )
 
-                            if content:
-                                page_text = "\n".join([item.get_text(strip=True) for item in content])
-                                all_scraper += f"\n\nURL: {full_link}\n{page_text}\n"
+                                content = soup_inner.select(
+                                    "div.col-md-6.col-sm-6.col-xs-6"
+                                )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+                                if content:
+                                    page_text = "\n".join(
+                                        [item.get_text(strip=True) for item in content]
+                                    )
+
+                                    object_id = fs.put(
+                                        page_text.encode("utf-8"),
+                                        source_url=full_link,
+                                        scraping_date=datetime.now(),
+                                        Etiquetas=["planta", "plaga"],
+                                        contenido=page_text,
+                                        url=url,
+                                    )
+                                    logger.info(
+                                        f"✅ Contenido almacenado en MongoDB con ID: {object_id}"
+                                    )
+
+                                    urls_scraped.add(full_link)
+                                    existing_versions = list(
+                                        fs.find({"source_url": full_link}).sort(
+                                            "scraping_date", -1
+                                        )
+                                    )
+
+                                    if len(existing_versions) > 1:
+                                        oldest_version = existing_versions[-1]
+                                        fs.delete(ObjectId(oldest_version._id))
+                                        logger.info(
+                                            f"🗑️ Se eliminó la versión más antigua con object_id: {oldest_version['_id']}"
+                                        )
+
+                            except Exception as scrape_error:
+                                logger.error(
+                                    f"❌ Error al procesar {full_link}: {str(scrape_error)}"
+                                )
+                                urls_not_scraped.add(full_link)
+
+        all_scraper = (
+            f"📌 **Reporte de scraping:**\n"
+            f"🔍 URLs encontradas: {len(urls_found)}\n"
+            f"✅ URLs scrapeadas: {len(urls_scraped)}\n"
+            f"⚠️ URLs no scrapeadas: {len(urls_not_scraped)}\n\n"
+        )
+
+        if urls_not_scraped:
+            all_scraper += (
+                "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
+            )
+
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
-        logger.error(f"Error en el proceso de scraping: {str(e)}")
+        logger.error(f"❌ Error en el proceso de scraping: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         driver.quit()
-        logger.info("Navegador cerrado")
-
+        logger.info("🛑 Navegador cerrado.")

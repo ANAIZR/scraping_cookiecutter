@@ -2,13 +2,12 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from PyPDF2 import PdfReader
-from io import BytesIO
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 import time
 from bson import ObjectId
@@ -32,21 +31,8 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
 
     base_domain = "https://www.cal-ipc.org/"
 
-    def extract_text_from_pdf(pdf_url):
-        """Extrae texto de un PDF dado su URL."""
-        try:
-            response = requests.get(pdf_url, headers=headers, timeout=20)
-            response.raise_for_status()
-            pdf_file = BytesIO(response.content)
-            reader = PdfReader(pdf_file)
-            extracted_text = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
-            return extracted_text.strip()
-        except Exception as e:
-            logger.error(f"❌ Error al extraer texto del PDF {pdf_url}: {str(e)}")
-            return None
 
     def scrape_initial_page(current_url):
-        """Obtiene los enlaces desde la página principal."""
         logger.info(f"🔍 Scraping la página inicial: {current_url}")
         try:
             response = requests.get(current_url, headers=headers, timeout=50)
@@ -71,7 +57,6 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
             return []
 
     def scrape_page(current_url, current_depth):
-        """Scrapea una página y extrae contenido relevante."""
         nonlocal total_urls_found, total_urls_scraped, all_scraper, total_non_scraped_links
 
         if current_url in visited_urls or current_depth > max_depth:
@@ -104,10 +89,8 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
                     total_urls_scraped += 1
                     logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                    # 🔍 Buscar versiones previas en GridFS
                     existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
 
-                    # 🗑️ Eliminar versiones antiguas si hay más de una
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
                         fs.delete(ObjectId(oldest_version._id))
@@ -126,9 +109,32 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
                         if href.lower().endswith(".pdf"):
                             pdf_text = extract_text_from_pdf(full_url)
                             if pdf_text:
-                                all_scraper += f"📄 Texto extraído del PDF: {full_url}\n\n{pdf_text}\n"
+                                content_text = f"{pdf_text}\n"
+                                if content_text:
+                                    object_id = fs.put(
+                                        content_text.encode("utf-8"),
+                                        source_url=full_url,
+                                        scraping_date=datetime.now(),
+                                        Etiquetas=["planta", "plaga"],
+                                        contenido=content_text,
+                                        url=url
+                                    )
+                                    total_urls_scraped += 1
+                                    logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                    existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
+
+                                    if len(existing_versions) > 1:
+                                        oldest_version = existing_versions[-1]
+                                        fs.delete(ObjectId(oldest_version._id))
+                                        logger.info(f"🗑️ Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                else:
+                                    total_non_scraped_links += 1
+                                    urls_not_scraped.append(current_url)
+                                    logger.warning(f"⚠️ No se almacenó contenido vacío para: {current_url}")
                             else:
                                 all_scraper += f"🔗 Enlace PDF (sin texto extraído): {full_url}\n"
+                                total_non_scraped_links+=1
                         elif not any(href.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".gif"]):
                             extracted_links.append((full_url, current_depth + 1))
 
@@ -142,7 +148,6 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
             return []
 
     def scrape_pages_in_parallel(url_list):
-        """Ejecuta scraping en paralelo."""
         with ThreadPoolExecutor(max_workers=6) as executor:
             future_to_url = {
                 executor.submit(scrape_page, url, depth): (url, depth)
@@ -179,7 +184,7 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
         if urls_not_scraped:
             all_scraper += "⚠️ URLs no scrapeadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         logger.info("🚀 Scraping completado exitosamente.")
         return response
 
