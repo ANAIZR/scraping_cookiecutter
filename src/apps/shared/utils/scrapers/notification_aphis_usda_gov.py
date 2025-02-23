@@ -39,17 +39,16 @@ def scraper_aphis_usda_gov (url, sobrenombre):
         time.sleep(5)
         
         logger.info("Página cargada correctamente.")
-        domain = "https://www.ippc.int"
         
         while True:
             page_source = driver.page_source
             soup = BeautifulSoup(page_source, "html.parser")
-            results_divs = soup.find_all("div.dt-row div.col-sm-12")
+            results_divs = soup.find_all("div.c-article-list-search")
             
             for div in results_divs:
                 link = div.find("a", href=True)
                 if link and link["href"]:
-                    href = urljoin(domain, link["href"])
+                    href = link["href"]
                     if href not in scraped_urls and href not in failed_urls:
                         scraped_urls.add(href)
                         total_links_found += 1
@@ -58,11 +57,8 @@ def scraper_aphis_usda_gov (url, sobrenombre):
                         total_failed_scrapes += 1
                         total_links_found += 1
             try:
-                next_button = driver.find_element(By.CSS_SELECTOR, "li#reportingsys_next.paginate_button.page-item.next")
-                if "disabled" in next_button.get_attribute("class"):
-                    logger.info("Botón 'Next' deshabilitado. No hay más páginas para scrapear.")
-                    break
-
+                next_button = driver.find_element(By.CSS_SELECTOR, "li.c-pager__item--next a.c-pager__link--next")
+                print(f"✅ Se encontró el botón 'Next'.")
                 driver.execute_script("arguments[0].click();", next_button)
                 time.sleep(random.uniform(5, 10))
             except (TimeoutException, NoSuchElementException):
@@ -82,10 +78,10 @@ def scraper_aphis_usda_gov (url, sobrenombre):
                     time.sleep(5)
                     
                     WebDriverWait(driver, 30).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div#divmainbox"))
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "article.is-promoted"))
                     )
                     time.sleep(random.randint(2, 4))
-                    content_text = driver.find_element(By.CSS_SELECTOR, "div#divmainbox").text.strip()
+                    content_text = driver.find_element(By.CSS_SELECTOR, "article.is-promoted").text.strip()
                         
                 if content_text and content_text.strip():
                     object_id = fs.put(

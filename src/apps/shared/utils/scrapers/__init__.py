@@ -65,7 +65,7 @@ from .repository_cimmy import scraper_repository_cimmy
 from .agresearchmag import scraper_agresearchmag
 from .ippc_int import scraper_ippc_int
 from .notification_aphis_usda_gov import scraper_aphis_usda_gov
-
+from .notification_cahfsa import scraper_cahfsa
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -133,5 +133,6 @@ SCRAPER_FUNCTIONS = {
     73: scraper_notification_aphis,
     74: scraper_repository_cimmy,
     75: scraper_ippc_int,
+    76: scraper_cahfsa,
     77: scraper_aphis_usda_gov
 }
