@@ -105,7 +105,7 @@ def scraper_cahfsa(url, sobrenombre):
                         )
                         content_text = content_element.text.strip()
                     except TimeoutException:
-                        content_element = driver.find_element(By.TAG_NAME, "section.mcb-section.the_content.has_content")
+                        content_element = driver.find_element(By.CSS_SELECTOR, "section.mcb-section.the_content.has_content")
                         content_text = content_element.text.strip()
 
                     soup = BeautifulSoup(content_text, "html.parser")
@@ -131,7 +131,7 @@ def scraper_cahfsa(url, sobrenombre):
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
                         fs.delete(oldest_version._id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
                 else:
                     failed_urls.add(href)
                     total_failed_scrapes += 1
@@ -141,7 +141,6 @@ def scraper_cahfsa(url, sobrenombre):
                 failed_urls.add(href)
                 total_failed_scrapes += 1
 
-        # Eliminamos de failed_urls cualquier URL que esté en successfully_scraped
         failed_urls = failed_urls - successfully_scraped
 
         all_scraper = f"Total enlaces encontrados: {total_links_found}\n"
