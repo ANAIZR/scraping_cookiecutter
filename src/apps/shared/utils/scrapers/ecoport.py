@@ -124,22 +124,13 @@ def scraper_ecoport(url, sobrenombre):
                                     total_urls_scraped += 1
                                     
                                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                    
-                                    collection.insert_one({
-                                        "_id": object_id,
-                                        "source_url": full_href,
-                                        "scraping_date": datetime.now(),
-                                        "Etiquetas": ["planta", "plaga"],
-                                        "url": url,
-                                    })
-                                    
+                                                
                                     existing_versions = list(
-                                        collection.find({"source_url": full_href}).sort("scraping_date", -1)
+                                        fs.find({"source_url": full_href}).sort("scraping_date", -1)
                                     )
-                                    if len(existing_versions) > 2:
+                                    if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
-                                        fs.delete(oldest_version._id)  
-                                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])});
+                                        fs.delete(ObjectId(oldest_version["_id"]))
                                         logger.info(f"Se eliminó la versión más antigua para {full_href} (object_id: {oldest_version['_id']})")                                    
                                 else:
                                     failed_urls.add(full_href)
