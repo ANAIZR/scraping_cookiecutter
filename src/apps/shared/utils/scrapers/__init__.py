@@ -60,6 +60,7 @@ from .ippc_int import scraper_ippc_int
 from .scientific_discoveries import scraper_scientific_discoveries
 from .npdn import scraper_npdn
 from .eppo_int import scraper_eppo_int
+from .cdnsciencepub import scraper_cdnsciencepub
 from .search_usa_gov import scraper_search_usa_gov
 from .repository_cimmy import scraper_repository_cimmy
 from .agresearchmag import scraper_agresearchmag
@@ -130,11 +131,12 @@ SCRAPER_FUNCTIONS = {
     60: scraper_fao_org_home,
     61: scraper_scientific_discoveries,
     62: scraper_search_usa_gov,
+    63: scraper_apsnet,
+    64: scraper_canada_ca,
     65: scraper_npdn,
     66: scraper_eppo_int,
     67: scraper_gc_ca,
-    63: scraper_apsnet,
-    64: scraper_canada_ca,
+    69: scraper_cdnsciencepub,
     71: scraper_agresearchmag,
     73: scraper_notification_aphis,
     74: scraper_repository_cimmy,
