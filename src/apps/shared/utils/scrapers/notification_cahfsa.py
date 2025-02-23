@@ -22,14 +22,10 @@ def scraper_cahfsa(url, sobrenombre):
     
     driver = driver_init()
     collection, fs = connect_to_mongo()
-    total_links_found = 0
-    total_scraped_successfully = 0
-    total_failed_scrapes = 0
-    all_scraper = ""
     scraped_urls = set()
     failed_urls = set()
-    object_ids = []
-    
+    total_links_found = 0
+
     try:
         driver.get(url)
         driver.execute_script("document.body.style.zoom='100%'")
@@ -82,16 +78,16 @@ def scraper_cahfsa(url, sobrenombre):
                         if href not in scraped_urls and href not in failed_urls:
                             scraped_urls.add(href)
                             total_links_found += 1
-                        else:
-                            failed_urls.add(href)
-                            total_failed_scrapes += 1
-                            total_links_found += 1
                 else:
                     logger.warning(f"No se encontró la sección {div_selector}")
 
             except Exception as e:
                 logger.error(f"Error en la sección {div_selector}: {e}")
         
+        successfully_scraped = set()
+        total_scraped_successfully = 0
+        total_failed_scrapes = 0
+
         for href in scraped_urls:
             try:
                 if href.endswith(".pdf"):
@@ -127,31 +123,31 @@ def scraper_cahfsa(url, sobrenombre):
                         url=url
                     )
                     
-                    object_ids.append(object_id)
+                    successfully_scraped.add(href)
                     total_scraped_successfully += 1
                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                    existing_versions = list(
-                        fs.find({"source_url": href}).sort("scraping_date", -1)
-                    )
-
+                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
                         fs.delete(oldest_version._id)  
-                        logger.info(f"Se eliminó la versión más antigua: '{href}' object_id: {oldest_version['_id']}")
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                else:
+                    failed_urls.add(href)
+                    total_failed_scrapes += 1
 
-                    logger.info(f"Contenido extraído de {href}.")
             except Exception as e:
                 logger.error(f"No se pudo extraer contenido de {href}: {e}")
-                total_failed_scrapes += 1
                 failed_urls.add(href)
-            finally:
-                driver.get(url)
+                total_failed_scrapes += 1
 
-        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+        # Eliminamos de failed_urls cualquier URL que esté en successfully_scraped
+        failed_urls = failed_urls - successfully_scraped
+
+        all_scraper = f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
-        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
-        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(successfully_scraped) + "\n"
+        all_scraper += f"Total fallidos: {len(failed_urls)}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
