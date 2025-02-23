@@ -18,7 +18,6 @@ from ..functions import (
 )
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework import status
 from bson import ObjectId
 
 logger = get_logger("scraper")
