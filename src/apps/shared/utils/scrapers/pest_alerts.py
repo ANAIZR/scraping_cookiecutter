@@ -69,7 +69,7 @@ def scraper_pest_alerts(url, sobrenombre):
         for link in urls_found:
             try:
                 logger.info(f"🌍 Procesando URL: {link}")
-                response = requests.get(link, headers=headers, timeout=10)
+                response = requests.get(link, headers=headers)
                 response.raise_for_status()
 
                 soup = BeautifulSoup(response.content, "html.parser")
