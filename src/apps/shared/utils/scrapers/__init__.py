@@ -71,6 +71,7 @@ from .canada_ca import scraper_canada_ca
 from .ecoport import scraper_ecoport
 from .pestnet import scraper_pestnet
 from .scienceopen import scraper_scienceopen
+from .doaj_org import scraper_doaj_org
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -137,6 +138,7 @@ SCRAPER_FUNCTIONS = {
     65: scraper_npdn,
     66: scraper_eppo_int,
     67: scraper_gc_ca,
+    68: scraper_doaj_org,
     69: scraper_cdnsciencepub,
     70: scraper_scienceopen,
     71: scraper_agresearchmag,
