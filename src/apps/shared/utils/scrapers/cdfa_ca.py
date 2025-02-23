@@ -39,7 +39,7 @@ def scraper_cdfa(url, sobrenombre):
         
         logger.info("Página cargada correctamente.")
 
-        keywords = load_keywords("plants.txt")
+        keywords = load_keywords("pruebas.txt")
 
         for keyword in keywords:
             try:
