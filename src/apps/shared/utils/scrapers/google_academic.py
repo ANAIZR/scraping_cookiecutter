@@ -5,7 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from ..functions import (
     connect_to_mongo,
     get_logger,
-    initialize_driver,
+    driver_init,
     extract_text_from_pdf,
     load_keywords,
     process_scraper_data
@@ -25,8 +25,8 @@ logger = get_logger("scraper")
 
 def scraper_google_academic(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
-    collection, fs = connect_to_mongo()
+    driver = driver_init()
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
 
     keywords = load_keywords("plants.txt")
     total_links_found = 0
@@ -93,12 +93,21 @@ def scraper_google_academic(url, sobrenombre):
                                 scraped_urls.append(full_url)
                                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
+                                collection.insert_one({
+                                    "_id": object_id,
+                                    "source_url": full_url,
+                                    "scraping_date": datetime.now(),
+                                    "Etiquetas": ["planta", "plaga"],
+                                    "url": url,
+                                })
+
                                 existing_versions = list(
-                                    fs.find({"source_url": full_url}).sort("scraping_date", -1)
+                                    collection.find({"source_url": full_url}).sort("scraping_date", -1)
                                 )
                                 if len(existing_versions) > 1:
                                     oldest_version = existing_versions[-1]
                                     fs.delete(ObjectId(oldest_version["_id"]))
+                                    collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
                                     logger.info(
                                         f"Se eliminó la versión más antigua con este enlace: '{full_url}' y object_id: {oldest_version['_id']}'"
                                     )
