@@ -1,22 +1,17 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import os
 import time
 import random
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
-from urllib.parse import urljoin
 from bson import ObjectId
 from ..functions import (
-    process_scraper_data_v2,
+    process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
-    extract_text_from_pdf,
 )
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
 
 logger = get_logger("scraper")
 
@@ -115,7 +110,7 @@ def scraper_agresearchmag(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
