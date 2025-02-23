@@ -118,7 +118,7 @@ def scraper_nematode(url, sobrenombre):
 
         
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:

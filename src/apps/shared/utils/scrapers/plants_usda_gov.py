@@ -164,7 +164,6 @@ def scraper_plants_usda_gov(url, sobrenombre):
             all_scraper += "Enlaces no procesados:\n" + "\n".join(urls_not_scraped) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:

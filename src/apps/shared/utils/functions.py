@@ -298,7 +298,7 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
             content_text.encode("utf-8"),
             source_url=url,
             scraping_date=datetime.now(),
-            contenido =all_scraper,
+            contenido =content_text,
             Etiquetas=["planta", "plaga"],
             url=url
         )
@@ -350,7 +350,6 @@ def process_scraper_data(all_scraper, url, sobrenombre):
         collection,fs = connect_to_mongo()
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
-
             collection.insert_one(
                 {
                     "scraping_date": datetime.now(),
