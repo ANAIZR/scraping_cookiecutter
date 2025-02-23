@@ -1,41 +1,35 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-from pymongo import MongoClient
-from datetime import datetime
-import gridfs
-import os
-from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-    initialize_driver,
-    connect_to_mongo,
-    get_logger
-)
 from rest_framework.response import Response
 from rest_framework import status
 import time
-from selenium.webdriver.support.ui import Select
+import os
+from datetime import datetime
+from bson import ObjectId
+from ..functions import (
+    connect_to_mongo,
+    get_logger,
+    initialize_driver,
+    process_scraper_data
+)
 
 
 def scraper_ndrs_org(url, sobrenombre):
-    driver =  initialize_driver()
-    collection,fs = connect_to_mongo()
+    driver = initialize_driver()
+    collection, fs = connect_to_mongo()
     logger = get_logger("scraper")
     base_url = "https://www.ndrs.org.uk/"
 
-    base_folder_path = generate_directory(base_url)
-
-    data_collected = []
+    urls_found = set()
+    urls_scraped = set()
+    urls_not_scraped = set()
 
     try:
         driver.get(url)
-        logger.info("Página de NDRS cargada exitosamente")
+        logger.info("🌐 Página de NDRS cargada exitosamente")
+
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent"))
         )
@@ -44,10 +38,14 @@ def scraper_ndrs_org(url, sobrenombre):
         containers = soup.select("#MainContent .volumes .column")
 
         if not containers:
+            logger.warning("⚠️ No se encontraron volúmenes de publicaciones")
             driver.quit()
-            logger.info("Navegador cerrado")
+            return Response(
+                {"message": "No se encontraron volúmenes en la página"},
+                status=status.HTTP_204_NO_CONTENT,
+            )
 
-        for index, container in enumerate(containers):
+        for container in containers:
             title = (
                 container.select_one("h2").text.strip()
                 if container.select_one("h2")
@@ -59,14 +57,13 @@ def scraper_ndrs_org(url, sobrenombre):
             )
             if enlace:
                 container_url = base_url + enlace
-
                 driver.get(container_url)
+
                 WebDriverWait(driver, 20).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
                 )
 
                 time.sleep(3)
-
                 page_soup = BeautifulSoup(driver.page_source, "html.parser")
                 article_list = page_soup.select("ul.clist li a")
 
@@ -78,7 +75,11 @@ def scraper_ndrs_org(url, sobrenombre):
                     article_url = article["href"]
                     article_full_url = base_url + article_url
 
-                    folder_path = generate_directory(base_folder_path, article_full_url)
+                    if article_full_url in urls_found:
+                        continue  # Evita procesar la misma URL más de una vez
+
+                    urls_found.add(article_full_url)
+                    logger.info(f"🔗 URL encontrada: {article_full_url}")
 
                     driver.get(article_full_url)
                     WebDriverWait(driver, 20).until(
@@ -86,73 +87,77 @@ def scraper_ndrs_org(url, sobrenombre):
                     )
 
                     article_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    article_title_text = (
-                        article_soup.title.text if article_soup.title else "No Title"
-                    )
                     body_text = article_soup.select_one("#repbody")
 
-                    if article_title_text and body_text:
-                        contenido = f"{body_text.text}"
-                        file_path = get_next_versioned_filename(
-                            folder_path, base_name=sobrenombre
+                    if body_text:
+                        contenido = body_text.text.strip()
+
+                        # Guardar en MongoDB
+                        object_id = fs.put(
+                            contenido.encode("utf-8"),
+                            source_url=article_full_url,
+                            scraping_date=datetime.now(),
+                            Etiquetas=["planta", "plaga"],
+                            contenido=contenido,
+                            url=url,
                         )
-                        with open(file_path, "w", encoding="utf-8") as file:
-                            file.write(contenido)
 
-                        with open(file_path, "rb") as file_data:
-                            object_id = fs.put(
-                                file_data,
-                                filename=os.path.basename(file_path),
+                        urls_scraped.add(article_full_url)
+                        logger.info(
+                            f"✅ Contenido almacenado en MongoDB con ID: {object_id}"
+                        )
+                        existing_versions = list(
+                            fs.find({"source_url": article_full_url}).sort(
+                                "scraping_date", -1
                             )
-                            data = {
-                                "Objeto": object_id,
-                                "Tipo": "Web",
-                                "Url": article_full_url,
-                                "Fecha_scrapper": datetime.now().strftime(
-                                    "%Y-%m-%d %H:%M:%S"
-                                ),
-                                "Etiquetas": ["planta", "plaga"],
-                            }
-                            collection.insert_one(data)
-                            delete_old_documents(article_full_url, collection, fs)
+                        )
+                        if len(existing_versions) > 1:
+                            oldest_version = existing_versions[-1]
+                            fs.delete(ObjectId(oldest_version["_id"]))
+                            logger.info(
+                                f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}"
+                            )
 
-                            data_collected.append(
-                                {
-                                    "Url": article_full_url,
-                                    "Fecha_scrapper": data["Fecha_scrapper"],
-                                    "Etiquetas": data["Etiquetas"],
-                                }
-                            )
+                    else:
+                        urls_not_scraped.add(article_full_url)
+                        logger.warning(
+                            f"⚠️ No se extrajo contenido de {article_full_url}"
+                        )
 
                 driver.get(url)
                 WebDriverWait(driver, 20).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "#MainContent"))
                 )
-
                 time.sleep(3)
 
-                soup = BeautifulSoup(driver.page_source, "html.parser")
-                containers = soup.select("#MainContent .volumes .column")
-
-                if len(containers) <= index + 1:
-                    break
-                time.sleep(2)
-
     except Exception as e:
-        print(f"Ocurrió un error: {e}")
+        logger.error(f"❌ Ocurrió un error: {e}")
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    driver.quit()
-    logger.info("Navegador cerrado")
-    if data_collected:
-        return Response(
-            {
-                "message": "Escrapeo realizado con éxito",
-                "data": data_collected,
-            },
-            status=status.HTTP_200_OK,
+    finally:
+        driver.quit()
+        logger.info("🛑 Navegador cerrado")
+
+    all_scraper = (
+        f"📌 **Reporte de scraping:**\n"
+        f"🌐 URL principal: {url}\n"
+        f"🔍 URLs encontradas: {len(urls_found)}\n"
+        f"✅ URLs scrapeadas: {len(urls_scraped)}\n"
+        f"⚠️ URLs no scrapeadas: {len(urls_not_scraped)}\n\n"
+    )
+
+    if urls_scraped:
+        all_scraper += "✅ **URLs scrapeadas:**\n" + "\n".join(urls_scraped) + "\n\n"
+
+    if urls_not_scraped:
+        all_scraper += (
+            "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
         )
-    else:
-        return Response(
-            {"message": "No se generaron datos. Volver a realizar el scraping"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+
+    response = process_scraper_data(all_scraper, url, sobrenombre)
+         
+
+    return response
