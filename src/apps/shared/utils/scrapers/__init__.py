@@ -60,6 +60,7 @@ from .ippc_int import scraper_ippc_int
 from .scientific_discoveries import scraper_scientific_discoveries
 from .npdn import scraper_npdn
 from .eppo_int import scraper_eppo_int
+from .cdnsciencepub import scraper_cdnsciencepub
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -118,10 +119,11 @@ SCRAPER_FUNCTIONS = {
     56: scraper_sciencedirect,
     60: scraper_fao_org_home,
     61: scraper_scientific_discoveries,
+    63: scraper_apsnet,
     65: scraper_npdn,
     66: scraper_eppo_int,
     67: scraper_gc_ca,
-    63: scraper_apsnet,
+    69: scraper_cdnsciencepub,
     73: scraper_notification_aphis,
 
 }
