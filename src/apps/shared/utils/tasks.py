@@ -12,6 +12,8 @@ from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
 
+from celery import chain
+from django.core.cache import cache
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
@@ -45,14 +47,25 @@ def scraper_url_task(self, url):
         scraper_url.estado_scrapeo = "exitoso"
         scraper_url.error_scrapeo = ""
 
-        tarea_encadenada = chain(
-            process_scraped_data_task.s(url), generate_comparison_report_task.si(url)
-        )
+        # 🔥 Definir las URLs permitidas
+        urls_permitidas = {
+            "https://www.ippc.int/en/countries/south-africa/pestreports/",
+            "https://www.pestalerts.org/nappo/emerging-pest-alerts/"
+        }
+
+        tareas = [
+            process_scraped_data_task.s(url),
+            generate_comparison_report_task.si(url)
+        ]
+
+        if url in urls_permitidas:
+            tareas.append(check_new_species_and_notify.si([url]))
+
+        tarea_encadenada = chain(*tareas)
         tarea_encadenada.apply_async()
 
     scraper_url.save()
     return {"status": scraper_url.estado_scrapeo, "url": url}
-
 
 
 
@@ -126,13 +139,3 @@ def scraper_expired_urls_task(self):
     )
 
 
-@shared_task(bind=True)
-def check_species_for_selected_urls_task(self):
-    urls_para_revisar = list(ScraperURL.objects.filter(is_active=True).values_list("url", flat=True))
-
-    if not urls_para_revisar:
-        logger.info("No hay URLs activas para verificar.")
-        return
-
-    for url in urls_para_revisar:
-        process_scraped_data_task.delay(url)
