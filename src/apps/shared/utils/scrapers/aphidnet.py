@@ -4,6 +4,8 @@ from urllib.parse import urljoin
 from django.http import JsonResponse
 from datetime import datetime
 from bson import ObjectId
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import chardet
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
@@ -11,8 +13,6 @@ from ..functions import (
     get_random_user_agent,
     extract_text_from_pdf
 )
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import chardet
 
 def scraper_aphidnet(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
@@ -63,7 +63,7 @@ def scraper_aphidnet(url, sobrenombre):
 
             full_content = f"{content_text}\n{portfolio_text}".strip()
             
-            if full_content:
+            if full_content and full_content.strip():
                 object_id = fs.put(
                     full_content.encode("utf-8"),
                     source_url=current_url,
@@ -75,13 +75,13 @@ def scraper_aphidnet(url, sobrenombre):
                 total_urls_scraped += 1
                 urls_scraped.append(current_url)
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
 
+                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
 
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
-                    fs.delete(ObjectId(oldest_version["_id"]))
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                    fs.delete(oldest_version._id)  
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
             else:
                 urls_not_scraped.append(current_url)
                 total_failed_scrapes += 1
@@ -120,7 +120,8 @@ def scraper_aphidnet(url, sobrenombre):
                     if new_links:
                         urls_to_scrape.extend(new_links)
                 except Exception as e:
-                    logger.info(f"Error en tarea de scraping: {str(e)}")
+                    logger.error(f"❌ Error en tarea de scraping: {str(e)}")
+                    raise  
 
     try:
         urls_to_scrape.append((url, 0))

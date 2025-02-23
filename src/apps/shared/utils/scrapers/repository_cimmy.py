@@ -7,19 +7,20 @@ from ..functions import (
     get_logger,
     driver_init,
     load_keywords,
-    extract_text_from_pdf
+    extract_text_from_pdf,
 )
 import time
 import random
 from datetime import datetime
 from bson import ObjectId
+from urllib.parse import urljoin
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
 
-def scraper_cdfa(url, sobrenombre):
-    logger = get_logger("CDFA_CA")
+def scraper_repository_cimmy(url, sobrenombre):
+    logger = get_logger("REPOSITORY_CIMMY")
     logger.info(f"Iniciando scraping para URL: {url}")
-    
+
     driver = driver_init()
     collection, fs = connect_to_mongo()
     total_links_found = 0
@@ -28,107 +29,95 @@ def scraper_cdfa(url, sobrenombre):
     all_scraper = ""
     scraped_urls = set()
     failed_urls = set()
+    visited_urls = set() 
     object_ids = []
 
     try:
         driver.get(url)
-        
         driver.execute_script("document.body.style.zoom='100%'")
         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
         time.sleep(5)
-        
+
         logger.info("Página cargada correctamente.")
 
-        keywords = load_keywords("pruebas.txt")
+        domain = "https://repository.cimmyt.org"
+        keywords = load_keywords("plants.txt")
 
         for keyword in keywords:
             try:
                 search_input = WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "input.search-textfield"))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "input[data-test='search-box']"))
                 )
                 search_input.clear()
                 search_input.send_keys(keyword)
-                
+
                 try:
                     search_button = WebDriverWait(driver, 15).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "button.gsc-search-button"))
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "button.btn.btn-primary.search-button"))
                     )
                     logger.info("✅ Se encontró el botón de búsqueda con Selenium")
                 except TimeoutException:
                     logger.error("❌ No se encontró el botón con Selenium después de la espera")
                     continue
-                
+
                 try:
                     search_button.click()
                 except:
                     driver.execute_script("arguments[0].click();", search_button)
-                
+
                 time.sleep(random.uniform(3, 6))
 
                 while True:
+                    # Extraer enlaces de la página actual
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
-                    results_divs = soup.select("div.gsc-webResult.gsc-result")
+                    results = soup.select("ds-listable-object-component-loader")
 
-                    for div in results_divs:
-                        link = div.find("a", href=True)
+                    for result in results:
+                        link = result.find("a", href=True)
                         if link and link["href"]:
-                            href = link["href"]
-                            if href not in scraped_urls and href not in failed_urls:
+                            href = urljoin(domain, link["href"])
+                            if href not in visited_urls: 
                                 scraped_urls.add(href)
                                 total_links_found += 1
 
                     try:
-                        pagination = WebDriverWait(driver, 5).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.gsc-cursor"))
+                        next_button = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, "a[aria-label='Next']"))
                         )
-                        pages = driver.find_elements(By.CSS_SELECTOR, "div.gsc-cursor-page")
 
-                        current_page = driver.find_element(By.CSS_SELECTOR, "div.gsc-cursor-current-page").text.strip()
-                        next_page = None
-
-                        for page in pages:
-                            page_number = page.text.strip()
-                            if page_number.isdigit() and int(page_number) > int(current_page):
-                                next_page = page
-                                break
-
-                        if next_page:
-                            logger.info(f"📄 Pasando a la página {next_page.text}...")
-                            driver.execute_script("arguments[0].scrollIntoView();", next_page)
-                            time.sleep(1)
-                            driver.execute_script("arguments[0].click();", next_page)
-                            time.sleep(random.uniform(3, 6))
-
-                            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
-                            time.sleep(3)
-                        else:
-                            logger.info("🚫 No hay más páginas disponibles.")
+                        if next_button.get_attribute("aria-disabled") == "true":
+                            logger.info("Botón 'Next' deshabilitado. Fin de paginación.")
                             break
 
-                    except TimeoutException:
-                        logger.info("🚫 No se encontró la paginación.")
+                        driver.execute_script("arguments[0].click();", next_button)
+                        time.sleep(random.uniform(3, 6))
+
+                    except (TimeoutException, NoSuchElementException):
+                        logger.info("No se encontró botón 'Next' o no es clickeable. Fin de paginación.")
                         break
 
-                logger.info(f"🔍 Comenzando a procesar {len(scraped_urls)} enlaces almacenados.")
-                
                 for href in scraped_urls:
+                    if href in visited_urls: 
+                        continue
+                    
+                    visited_urls.add(href)  
+
                     try:
                         if href.endswith(".pdf"):
-                            logger.info(f"📄 Extrayendo texto de PDF: {href}")
+                            logger.info(f"***Extrayendo texto de {href}")
                             content_text = extract_text_from_pdf(href)
                         else:
                             driver.get(href)
-                            
                             driver.execute_script("document.body.style.zoom='100%'")
                             WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                             time.sleep(5)
 
                             WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "div.region-content"))
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "div.col-xs-12.col-md-7"))
                             )
                             time.sleep(random.randint(2, 4))
-                            content_text = driver.find_element(By.CSS_SELECTOR, "div.region-content").text.strip()
+                            content_text = driver.find_element(By.CSS_SELECTOR, "div.col-xs-12.col-md-7").text.strip()
 
                         if content_text:
                             object_id = fs.put(
@@ -139,31 +128,31 @@ def scraper_cdfa(url, sobrenombre):
                                 contenido=content_text,
                                 url=url
                             )
-                            object_ids.append(object_id)
-                            total_scraped_successfully += 1
 
+                            object_ids.append(object_id)
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                             existing_versions = list(
                                 fs.find({"source_url": href}).sort("scraping_date", -1)
                             )
 
-                            if len(existing_versions) > 2:
+                            if len(existing_versions) > 1:
                                 oldest_version = existing_versions[-1]
                                 fs.delete(oldest_version._id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
-                            
+                                logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
+
                             logger.info(f"Contenido extraído de {href}.")
+
                     except Exception as e:
                         logger.error(f"No se pudo extraer contenido de {href}: {e}")
                         total_failed_scrapes += 1
                         failed_urls.add(href)
-                    finally:
-                        driver.get(url)
 
             except Exception as e:
                 logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
                 continue
+
+        total_scraped_successfully = len(object_ids)
 
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"

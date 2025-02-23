@@ -70,7 +70,7 @@ def scraper_ansci_cornell(url, sobrenombre):
                         driver.get(link_href)
                         content_text = extract_content(driver, link_href, logger)
 
-                        if content_text:
+                        if content_text and content_text.strip():
                             object_id = fs.put(
                                 content_text.encode("utf-8"),
                                 source_url=link_href,
@@ -89,8 +89,8 @@ def scraper_ansci_cornell(url, sobrenombre):
 
                             if len(existing_versions) > 1:
                                 oldest_version = existing_versions[-1]
-                                fs.delete(ObjectId(oldest_version["_id"]))
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                fs.delete(oldest_version._id)  
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
                         else:
                             failed_urls.append(link_href)
                             total_failed_scrapes += 1

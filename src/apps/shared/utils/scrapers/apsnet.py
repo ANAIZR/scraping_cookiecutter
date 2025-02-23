@@ -27,7 +27,7 @@ def scraper_apsnet(url, sobrenombre):
         object_id = None
 
         collection, fs = connect_to_mongo()
-        keywords = load_keywords("plants.txt")
+        keywords = load_keywords("family.txt")
         scraped_urls = set()
         failed_urls = set()
         total_links_found = 0
@@ -100,7 +100,7 @@ def scraper_apsnet(url, sobrenombre):
 
                         content_text = content_div.get_text(strip=True) if content_div else soup.get_text(strip=True)
 
-                        if content_text:
+                        if content_text and content_text.strip():
                             object_id = fs.put(
                                 content_text.encode("utf-8"),
                                 source_url=link,
@@ -117,8 +117,8 @@ def scraper_apsnet(url, sobrenombre):
                             existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
                             if len(existing_versions) > 1:
                                 oldest_version = existing_versions[-1]
-                                fs.delete(ObjectId(oldest_version["_id"]))
-                                logger.info(f"Se eliminó la versión más antigua con este enlace: '{link}' y object_id: {oldest_version['_id']}")
+                                fs.delete(oldest_version._id)  
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
                         else:
                             total_failed_scrapes += 1
                             failed_urls.add(link)

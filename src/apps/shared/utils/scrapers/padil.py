@@ -1,15 +1,12 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from ..functions import (
     initialize_driver,
     get_logger,
-    generate_directory,
-    get_next_versioned_filename,
     connect_to_mongo,
-    delete_old_documents,
     load_keywords,
+    process_scraper_data
 )
 import os
 import random
@@ -20,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from selenium.common.exceptions import TimeoutException
 from requests.exceptions import ConnectionError
+from bson import ObjectId
 
 
 def scraper_padil(url, sobrenombre):
@@ -28,14 +26,22 @@ def scraper_padil(url, sobrenombre):
         logger = get_logger("PADIL")
         logger.info(f"Iniciando scraping para URL: {url}")
         driver = initialize_driver()
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
-
-        main_folder = generate_directory(sobrenombre)
+        collection, fs = connect_to_mongo()
+        total_scraped_links = 0
+        scraped_urls = []
+        non_scraped_urls = []
         keywords = load_keywords("plants.txt")
+        if not keywords:
+            return Response(
+                {
+                    "status": "error",
+                    "message": "El archivo de palabras clave está vacío o no se pudo cargar.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         base_domain = "https://www.padil.gov.au"
 
         visited_urls = set()
-        scraping_failed = False
     except Exception as e:
         logger.error(f"Error al inicializar el scraper: {str(e)}")
 
@@ -45,8 +51,6 @@ def scraper_padil(url, sobrenombre):
 
         for keyword in keywords:
             logger.info(f"Procesando palabra clave: {keyword}")
-            keyword_folder = generate_directory(keyword, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
             content_accumulated = ""
 
             while True:
@@ -62,7 +66,6 @@ def scraper_padil(url, sobrenombre):
                     search_box.clear()
                     time.sleep(random.uniform(6, 10))
                     search_box.send_keys(keyword)
-                    search_box.send_keys(Keys.RETURN)
                     logger.info(f"Palabra clave '{keyword}' buscada.")
                     time.sleep(random.uniform(6, 10))
 
@@ -98,7 +101,6 @@ def scraper_padil(url, sobrenombre):
                             search_box.clear()
                             time.sleep(random.uniform(6, 10))
                             search_box.send_keys(keyword)
-                            search_box.send_keys(Keys.RETURN)
                             time.sleep(random.uniform(6, 10))
 
                             WebDriverWait(driver, 30).until(
@@ -137,11 +139,37 @@ def scraper_padil(url, sobrenombre):
                                 pest_details = soup.find("div", class_="pest-details")
 
                                 if pest_details:
-                                    content_accumulated += f"URL: {href}\nTexto: {pest_details.text.strip()}\n\n"
+                                    content_accumulated = f"{pest_details.text.strip()}\n\n"
+                                    if content_accumulated:
+
+                                        object_id = fs.put(
+                                            content_accumulated.encode("utf-8"),
+                                            source_url=href,
+                                            scraping_date=datetime.now(),
+                                            Etiquetas=["planta", "plaga"],
+                                            contenido=content_accumulated,
+                                            url=url,
+                                        )
+                                        total_scraped_links += 1
+                                        scraped_urls.append(href)
+                                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                                        existing_versions = list(
+                                            fs.find({"source_url": href}).sort("scraping_date", -1)
+                                        )
+                                        if len(existing_versions) > 1:
+                                            oldest_version = existing_versions[-1]
+                                            fs.delete(oldest_version._id)  
+                                            logger.info(
+                                                f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}"
+                                            )
                                 else:
                                     logger.error(
                                         f"El elemento 'div.pest-details' no se encontró en {href}."
                                     )
+                            else:
+                                non_scraped_urls.append(href)
+
+
 
                         except Exception as e:
                             logger.error(f"Error al procesar el enlace: {str(e)}")
@@ -156,73 +184,23 @@ def scraper_padil(url, sobrenombre):
                     logger.error(f"Error durante la búsqueda de '{keyword}': {str(e)}")
                     scraping_failed = True
                     break
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
-
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
-                )
-
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
 
 
-        if scraping_failed:
-            return Response(
-                {
-                    "message": "Error durante el scraping. Algunas URLs fallaron.",
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        else:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-
-            return response_data
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )  
+        response = process_scraper_data(all_scraper, url, sobrenombre)
+        return response
+        
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(
             {
                 "Tipo": "Web",
-                "Url": url,            
+                "Url": url,
                 "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
             },
@@ -246,7 +224,6 @@ def scraper_padil(url, sobrenombre):
                 "Tipo": "Web",
                 "Url": url,
                 "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-
                 "Mensaje": "Ocurrió un error al procesar los datos.",
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,

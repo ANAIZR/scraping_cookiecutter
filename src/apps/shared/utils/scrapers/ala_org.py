@@ -45,10 +45,10 @@ def scraper_ala_org(url, sobrenombre):
         while True:
             try:
                 WebDriverWait(driver, 30).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "ol li.search-result"))
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "#search-results-list li.search-result"))
                 )
 
-                lis = driver.find_elements(By.CSS_SELECTOR, "ol li.search-result")
+                lis = driver.find_elements(By.CSS_SELECTOR, "#search-results-list li.search-result")
                 
                 if not lis:
                     logger.warning("No se encontraron resultados en la búsqueda.")
@@ -97,8 +97,8 @@ def scraper_ala_org(url, sobrenombre):
                                     existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version["_id"]))
-                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                        fs.delete(oldest_version._id)  
+                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
 
                                     
                             except Exception as e:
@@ -118,7 +118,7 @@ def scraper_ala_org(url, sobrenombre):
                         logger.warning(f"Error al procesar un resultado de búsqueda: {e}")
                         total_failed_scrapes += 1
 
-                try:
+                """try:
                     next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
                     next_page_url = next_page_btn.get_attribute("href")
                     if next_page_url:
@@ -130,7 +130,30 @@ def scraper_ala_org(url, sobrenombre):
                         break
                 except Exception as e:
                     logger.warning("No se encontró el botón de siguiente página, terminando el scraping.")
-                    break
+                    break"""
+                
+                max_pages = 3  # Número máximo de páginas a navegar
+                page_count = 0  # Contador de páginas navegadas
+
+                while page_count < max_pages:
+                    try:
+                        next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
+                        next_page_url = next_page_btn.get_attribute("href")
+
+                        if next_page_url:
+                            logger.info(f"Navegando a la página {page_count + 1}/{max_pages}: {next_page_url}")
+                            driver.get(next_page_url)
+                            time.sleep(3)  # Espera para que la página cargue completamente
+                            page_count += 1  # Incrementa el contador
+                        else:
+                            logger.info("No hay más páginas de resultados.")
+                            break
+                    except Exception as e:
+                        logger.warning("No se encontró el botón de siguiente página, terminando el scraping.")
+                        break
+
+                logger.info("Se alcanzó el límite de navegación o no hay más páginas.")
+
 
             except Exception as e:
                 logger.error(f"Error al cargar los resultados: {e}")

@@ -175,23 +175,31 @@ def initialize_driver(retries=3):
 
 def connect_to_mongo(db_name=None, collection_name=None):
     logger = get_logger("MONGO_CONNECTION")
-
+    
     try:
-        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-        db_name = os.getenv("MONGO_DB_NAME", "scrapping-can")
-        collection_name = os.getenv("MONGO_COLLECTION_NAME", "collection")
+        # Cargar variables desde el .env
+        MONGO_USER = os.getenv("MONGO_USER","admin")
+        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD","SuperPassword123!")
+        MONGO_HOST = os.getenv("MONGO_HOST", "localhost")  # Default: localhost
+        MONGO_PORT = os.getenv("MONGO_PORT", "27017")  # Default: 27017
+        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE", "admin")  # Default: admin
 
-        logger.info(f"Conectando a MongoDB en {mongo_uri}, base de datos: {db_name}")
-        
-        client = MongoClient(mongo_uri)
+        db_name = db_name or os.getenv("MONGO_DB_NAME", "scrapping-can")
+        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME", "collection")
+
+        MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{db_name}?authSource={MONGO_AUTH_SOURCE}"
+
+        logger.info(f"🔗 Conectando a MongoDB en: {MONGO_HOST}:{MONGO_PORT} - DB: {db_name}")
+
+        client = MongoClient(MONGO_URI)
         db = client[db_name]
         fs = gridfs.GridFS(db)
 
-        logger.info(f"Conexión a MongoDB establecida con éxito: {db_name}")
+        logger.info(f"✅ Conexión a MongoDB establecida correctamente: {db_name}")
         return db[collection_name], fs
 
     except Exception as e:
-        logger.error(f"Error al conectar a MongoDB: {str(e)}")
+        logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
         raise
 
 
@@ -298,7 +306,7 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
             content_text.encode("utf-8"),
             source_url=url,
             scraping_date=datetime.now(),
-            contenido =all_scraper,
+            contenido =content_text,
             Etiquetas=["planta", "plaga"],
             url=url
         )
@@ -348,9 +356,11 @@ def process_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
         collection,fs = connect_to_mongo()
+        db_name = collection.database.name  # Nombre de la base de datos
+        collection_name = collection.name  # Nombre de la colección
+        logger.info(f"✅ Conectado a MongoDB en la base de datos: '{db_name}', colección: '{collection_name}'")
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
-
             collection.insert_one(
                 {
                     "scraping_date": datetime.now(),

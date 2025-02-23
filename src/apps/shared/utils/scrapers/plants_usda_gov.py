@@ -35,7 +35,7 @@ def scraper_plants_usda_gov(url, sobrenombre):
         characteristic = driver.find_element(
             By.CSS_SELECTOR, "div.sidebar-desktop li:first-child a"
         )
-        characteristic.click()
+        driver.execute_script("arguments[0].click();", characteristic)
 
         time.sleep(2)
 
@@ -90,11 +90,13 @@ def scraper_plants_usda_gov(url, sobrenombre):
                                     scraped_urls.append(href)
                                     total_scraped_links += 1
                                     existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version["_id"]))
-                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                        fs.delete(oldest_version._id) 
+                                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+
 
                                     
 
@@ -113,8 +115,28 @@ def scraper_plants_usda_gov(url, sobrenombre):
                         import traceback
                         traceback.print_exc()
                         urls_not_scraped.append(href)
+                max_pages = 3  # Número máximo de veces que se puede hacer clic en "Next"
+                page_count = 0  # Contador de páginas navegadas
 
-                try:
+                while page_count < max_pages:  # Se detiene después de 3 páginas
+                    try:
+                        next_page_button = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable(
+                                (By.CSS_SELECTOR, "li.usa-pagination__item.usa-pagination__arrow a.usa-pagination__next-page")
+                            )
+                        )
+                        driver.execute_script("arguments[0].click();", next_page_button)
+                        time.sleep(3)
+                        
+                        page_count += 1  # Incrementa el contador
+                        print(f"Navegación {page_count}: Se hizo clic en 'Next'.")
+                    except Exception as e:
+                        print("No se encontró el botón 'Next' o no es clickeable.")
+                        break  # Detiene el bucle si el botón no aparece
+
+                print("Se alcanzó el límite de navegación (3 páginas) o no hay más páginas.")
+
+                """try:
                     next_page_button = WebDriverWait(driver, 10).until(
                         EC.element_to_be_clickable(
                             (By.CSS_SELECTOR, "li.usa-pagination__item.usa-pagination__arrow a.usa-pagination__next-page")
@@ -123,7 +145,7 @@ def scraper_plants_usda_gov(url, sobrenombre):
                     driver.execute_script("arguments[0].click();", next_page_button)
                     time.sleep(3)
                 except Exception as e:
-                    break 
+                    break """
 
             except Exception as e:
                 break 
@@ -142,7 +164,6 @@ def scraper_plants_usda_gov(url, sobrenombre):
             all_scraper += "Enlaces no procesados:\n" + "\n".join(urls_not_scraped) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
-        logger.info("Scraping completado exitosamente.")
         return response
 
     except Exception as e:

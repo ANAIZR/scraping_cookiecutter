@@ -12,33 +12,21 @@ from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
 
+from celery import chain
+from django.core.cache import cache
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
-
-
     scraper_service = WebScraperService()
 
     try:
         scraper_url = ScraperURL.objects.get(url=url)
         sobrenombre = scraper_url.sobrenombre
 
-        logger.info(f"📌 Tipo de fecha_scraper antes de conversión: {type(scraper_url.fecha_scraper)}")
-        if scraper_url.fecha_scraper is None:
-            logger.warning(f"⚠️ 'fecha_scraper' es None para {url}. Se usará la fecha actual.")
-            scraper_url.fecha_scraper = timezone.now()
-
-        elif isinstance(scraper_url.fecha_scraper, datetime):
-            if timezone.is_naive(scraper_url.fecha_scraper):
-                scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
-        elif isinstance(scraper_url.fecha_scraper, date): 
-            scraper_url.fecha_scraper = datetime.combine(scraper_url.fecha_scraper, datetime.min.time())
-            scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
-        else:
-            logger.error(f"⚠️ Tipo inesperado en fecha_scraper: {type(scraper_url.fecha_scraper)}")
-            scraper_url.fecha_scraper = timezone.now()
-
-        scraper_url.save()  
+        scraper_url.estado_scrapeo = "en_progreso"
+        scraper_url.error_scrapeo = ""
+        scraper_url.fecha_scraper = timezone.now()
+        scraper_url.save()
 
     except ScraperURL.DoesNotExist:
         logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
@@ -54,15 +42,30 @@ def scraper_url_task(self, url):
         logger.error(f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}")
         scraper_url.estado_scrapeo = "fallido"
         scraper_url.error_scrapeo = result["error"]
-        scraper_url.save()
-        return {"status": "failed", "url": url, "error": result["error"]}
     else:
-        logger.info(f"Task {self.request.id}: Scraping exitoso para {url}, iniciando flujo de procesamiento...")
-        tarea_encadenada = chain(
-            process_scraped_data_task.s(url), generate_comparison_report_task.si(url)
-        )
+        logger.info(f"Task {self.request.id}: Scraping exitoso para {url}")
+        scraper_url.estado_scrapeo = "exitoso"
+        scraper_url.error_scrapeo = ""
+
+        # 🔥 Definir las URLs permitidas
+        urls_permitidas = {
+            "https://www.ippc.int/en/countries/south-africa/pestreports/",
+            "https://www.pestalerts.org/nappo/emerging-pest-alerts/"
+        }
+
+        tareas = [
+            process_scraped_data_task.s(url),
+            generate_comparison_report_task.si(url)
+        ]
+
+        if url in urls_permitidas:
+            tareas.append(check_new_species_and_notify.si([url]))
+
+        tarea_encadenada = chain(*tareas)
         tarea_encadenada.apply_async()
-        return {"status": "success", "url": url}
+
+    scraper_url.save()
+    return {"status": scraper_url.estado_scrapeo, "url": url}
 
 
 
@@ -81,30 +84,38 @@ def process_scraped_data_task(self, url):
 
 @shared_task(bind=True)
 def generate_comparison_report_task(self, url):
+
     if not url:
-        logger.error("No se recibió una URL válida en generate_comparison_report_task")
-        return None
+        logger.error("❌ No se recibió una URL válida en generate_comparison_report_task")
+        return {"status": "error", "message": "URL inválida"}
 
-    comparison_service = ScraperComparisonService()
-    result = comparison_service.get_comparison_for_url(url)
+    try:
+        comparison_service = ScraperComparisonService()
+        result = comparison_service.get_comparison_for_url(url)
 
-    if result.get("status") == "no_comparison":
-        logger.info(f"No hay suficientes registros para comparación en la URL: {url}")
-        return None
+        if result.get("status") == "no_comparison":
+            logger.info(f"🔍 No hay suficientes registros para comparar en la URL: {url}")
+            return result
 
-    elif result.get("status") == "missing_content":
-        logger.warning(f"Uno de los registros de {url} no tiene contenido para comparar.")
-        return None
+        elif result.get("status") == "missing_content":
+            logger.warning(f"⚠️ Uno de los registros de {url} no tiene contenido para comparar.")
+            return result
 
-    elif result.get("status") == "duplicate":
-        logger.info(f"La comparación entre las versiones ya existe y no ha cambiado para la URL {url}")
-        return None
+        elif result.get("status") == "duplicate":
+            logger.info(f"✅ La comparación entre versiones ya existe y no ha cambiado para la URL {url}")
+            return result
 
-    # Si hay cambios, devolver el resultado sin notificar a los usuarios
-    logger.info(f"Reporte de comparación generado o actualizado para {url}: {result}")
+        if result.get("status") == "changed":
+            logger.info(f"📊 Se generó un nuevo reporte de comparación para {url}:")
+            logger.info(f"🔹 Nuevas URLs: {result.get('info_agregada', [])}")
+            logger.info(f"🔸 URLs Eliminadas: {result.get('info_eliminada', [])}")
+            logger.info(f"📌 Estructura cambiada: {result.get('estructura_cambio', False)}")
 
-    return result  # ✅ Solo devolver los cambios detectados
+        return result
 
+    except Exception as e:
+        logger.error(f"❌ Error en generate_comparison_report_task para {url}: {str(e)}", exc_info=True)
+        return {"status": "error", "message": f"Error interno: {str(e)}"}
 
 
 @shared_task(bind=True)
@@ -128,13 +139,3 @@ def scraper_expired_urls_task(self):
     )
 
 
-@shared_task(bind=True)
-def check_species_for_selected_urls_task(self):
-    urls_para_revisar = list(ScraperURL.objects.filter(is_active=True).values_list("url", flat=True))
-
-    if not urls_para_revisar:
-        logger.info("No hay URLs activas para verificar.")
-        return
-
-    for url in urls_para_revisar:
-        process_scraped_data_task.delay(url)

@@ -260,15 +260,29 @@ class ScraperService:
     
     def save_species_to_postgres(self, structured_data, source_url, url, mongo_id, batch_size=250):
         try:
+            # Convertir strings en listas JSON válidas
             def ensure_list(value):
+                """Convierte strings JSON en listas reales y asegura que el valor sea una lista."""
                 if isinstance(value, str):
                     try:
-                        value = json.loads(value)
-                        if not isinstance(value, list):
-                            value = [value]
+                        parsed_value = json.loads(value)
+                        if not isinstance(parsed_value, list):
+                            return [parsed_value]
+                        return parsed_value
                     except json.JSONDecodeError:
-                        value = [value]
+                        return [value]  # Si falla la conversión, guarda como lista con un solo valor
                 return value if isinstance(value, list) else []
+
+            def ensure_dict(value):
+                """Convierte strings JSON en diccionarios reales y asegura que el valor sea un diccionario."""
+                if isinstance(value, str):
+                    try:
+                        parsed_value = json.loads(value)
+                        if isinstance(parsed_value, dict):
+                            return parsed_value
+                    except json.JSONDecodeError:
+                        return {}  # Si falla la conversión, devuelve un diccionario vacío
+                return value if isinstance(value, dict) else {}
 
             with transaction.atomic():
                 species_obj, created = Species.objects.update_or_create(
@@ -278,7 +292,7 @@ class ScraperService:
                         "common_names": json.dumps(ensure_list(structured_data.get("nombres_comunes", []))),
                         "synonyms": json.dumps(ensure_list(structured_data.get("sinonimos", []))),
                         "distribution": json.dumps(ensure_list(structured_data.get("distribucion", []))),
-                        "impact": structured_data.get("impacto", {}),
+                        "impact": ensure_dict(structured_data.get("impacto", {})),  # Guardar como JSON
                         "habitat": structured_data.get("habitat", ""),
                         "life_cycle": structured_data.get("ciclo_vida", ""),
                         "reproduction": structured_data.get("reproduccion", ""),
@@ -286,7 +300,7 @@ class ScraperService:
                         "symptoms": json.dumps(ensure_list(structured_data.get("sintomas", []))),
                         "affected_organs": json.dumps(ensure_list(structured_data.get("organos_afectados", []))),
                         "environmental_conditions": json.dumps(ensure_list(structured_data.get("condiciones_ambientales", []))),
-                        "prevention_control": structured_data.get("prevencion_control", {}),
+                        "prevention_control": ensure_dict(structured_data.get("prevencion_control", {})),  # Guardar como JSON
                         "uses": json.dumps(ensure_list(structured_data.get("usos", []))),
                         "scraper_source": ScraperURL.objects.get(url=url),
                     },
@@ -299,8 +313,6 @@ class ScraperService:
 
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
-
-
 
 
 class ScraperComparisonService:
@@ -321,164 +333,85 @@ class ScraperComparisonService:
             }
 
         doc1, doc2 = documents[:2]
-        object_id1 = str(doc1["_id"])
-        object_id2 = str(doc2["_id"])
+        object_id1, object_id2 = str(doc1["_id"]), str(doc2["_id"])
 
-        existing_report = ReportComparison.objects.filter(
-            scraper_source__url=url
-        ).first()
+        existing_report = ReportComparison.objects.filter(scraper_source__url=url).first()
 
-        if (
-            existing_report
-            and existing_report.object_id1 == object_id1
-            and existing_report.object_id2 == object_id2
-        ):
-            logger.info(
-                f"La comparación entre {object_id1} y {object_id2} ya existe y no ha cambiado."
-            )
-            return {
-                "status": "duplicate",
-                "message": "La comparación ya fue realizada anteriormente.",
-            }
+        if existing_report and existing_report.object_id1 == object_id1 and existing_report.object_id2 == object_id2:
+            logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe.")
+            return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
 
         return self.compare_and_save(url, doc1, doc2)
 
     def compare_and_save(self, url, doc1, doc2):
-        object_id1 = str(doc1["_id"])
-        object_id2 = str(doc2["_id"])
-        content1 = doc1.get("contenido", "")
-        content2 = doc2.get("contenido", "")
+
+        object_id1, object_id2 = str(doc1["_id"]), str(doc2["_id"])
+        content1, content2 = doc1.get("contenido", ""), doc2.get("contenido", "")
 
         if not content1 or not content2:
-            logger.warning(
-                f"Uno de los documentos ({object_id1}, {object_id2}) no tiene contenido."
-            )
-            return {
-                "status": "missing_content",
-                "message": "Uno de los registros no tiene contenido.",
-            }
+            logger.warning(f"Uno de los documentos ({object_id1}, {object_id2}) no tiene contenido.")
+            return {"status": "missing_content", "message": "Uno de los registros no tiene contenido."}
 
-        comparison_result = self.generate_comparison_with_ollama(
-            content1, content2, url, object_id1, object_id2
-        )
+        comparison_result = self.generate_comparison(content1, content2)
 
         if comparison_result and comparison_result.get("has_changes", False):
-            self.save_or_update_comparison_to_postgres(
-                url, object_id1, object_id2, comparison_result
-            )
-            return {
-                "status": "changed",
-                "message": "Se detectaron cambios en la comparación.",
-            }
+            self.save_or_update_comparison_to_postgres(url, object_id1, object_id2, comparison_result)
+            return {"status": "changed", "message": "Se detectaron cambios en la comparación."}
+
+        return {"status": "no_changes", "message": "No se detectaron cambios en la comparación."}
+
+    def generate_comparison(self, content1, content2):
+
+        urls1 = self.extract_urls(content1)
+        urls2 = self.extract_urls(content2)
+
+        new_urls = list(set(urls2) - set(urls1))
+        removed_urls = list(set(urls1) - set(urls2))
+
+        has_changes = bool(new_urls or removed_urls)
 
         return {
-            "status": "no_changes",
-            "message": "No se detectaron cambios en la comparación.",
+            "info_agregada": new_urls,
+            "info_eliminada": removed_urls,
+            "estructura_cambio": has_changes
         }
 
-    def generate_comparison_with_ollama(
-        self, content1, content2, url, object_id1, object_id2
-    ):
-
-        prompt = f"""
-        Compara los siguientes dos reportes extraídos de la misma URL y genera un resumen de los cambios:
-
-        **URL:** {url}
-        
-        **Reporte 1 (ObjectId: {object_id1}):**
-        {content1}
-
-        **Reporte 2 (ObjectId: {object_id2}):**
-        {content2}
-
-        **Instrucciones para el análisis:**
-        1. Identifica las diferencias clave entre los dos reportes.
-        2. Especifica cuánta información nueva se agregó en el segundo reporte.
-        3. Muestra qué se eliminó o modificó en comparación con el primer reporte.
-        4. Indica si la estructura general del reporte ha cambiado.
-        5. Devuelve un resumen en formato JSON con los cambios encontrados.
-
-        **Estructura esperada en JSON:**
-        {{
-            "info_agregada": "",
-            "info_eliminada": "",
-            "info_modificada": "",
-            "estructura_cambio": false
-        }}
-
-        Devuelve solo el JSON, sin texto adicional.
+    def extract_urls(self, content):
         """
+        Extrae las URLs de un reporte de scraping.
+        """
+        scraped_urls = []
+        lines = content.split("\n")
+        scraping_section = False
 
-        try:
-            response = requests.post(
-                "http://127.0.0.1:11434/api/chat",
-                json={
-                    "model": "llama3:8b",
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-                stream=True,
-            )
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error en la solicitud a Ollama: {str(e)}")
-            return None
+        for line in lines:
+            line = line.strip()
+            if "Enlaces scrapeados:" in line:
+                scraping_section = True
+                continue
+            elif "Enlaces no procesados:" in line:
+                break
 
-        full_response = ""
+            if scraping_section and line:
+                scraped_urls.append(line)
 
-        for line in response.iter_lines():
-            if line:
-                try:
-                    json_line = json.loads(line.decode("utf-8"))
-                    full_response += json_line.get("message", {}).get("content", "")
-                except json.JSONDecodeError:
-                    logger.error("Error al decodificar JSON:", line)
+        return scraped_urls
 
-        logger.info("🔍 Respuesta completa de Ollama:", full_response)
+    def save_or_update_comparison_to_postgres(self, url, object_id1, object_id2, comparison_result):
 
-        match = re.search(r"\{.*\}", full_response, re.DOTALL)
-        if match:
-            json_text = match.group(0)
-            try:
-                parsed_json = json.loads(json_text)
-                return parsed_json
-            except json.JSONDecodeError as e:
-                logger.error(f"❌ Error al convertir JSON después de limpiar: {str(e)}")
-                logger.error("📌 JSON detectado:", json_text)
-                return None
-        else:
-            logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
-            return None
+        scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
 
-    def save_or_update_comparison_to_postgres(
-        self, url, object_id1, object_id2, comparison_result
-    ):
-
-        try:
-            scraper_source, created = ScraperURL.objects.get_or_create(
-                url=url, defaults={"sobrenombre": "Fuente desconocida"}
-            )
-
-            with transaction.atomic():
-                report, created = ReportComparison.objects.update_or_create(
-                    scraper_source=scraper_source,
-                    defaults={
-                        "object_id1": object_id1,
-                        "object_id2": object_id2,
-                        "info_agregada": comparison_result.get("info_agregada", ""),
-                        "info_eliminada": comparison_result.get("info_eliminada", ""),
-                        "info_modificada": comparison_result.get("info_modificada", ""),
-                        "estructura_cambio": comparison_result.get(
-                            "estructura_cambio", False
-                        ),
-                    },
-                )
-                action = "creado" if created else "actualizado"
-                logger.info(
-                    f"Reporte de comparación {action} en PostgreSQL con ID: {report.id}"
-                )
-        except Exception as e:
-            logger.error(
-                f"Error al guardar o actualizar comparación en PostgreSQL: {str(e)}"
-            )
+        ReportComparison.objects.update_or_create(
+            scraper_source=scraper_source,
+            object_id1=object_id1,
+            object_id2=object_id2,
+            defaults={
+                "info_agregada": json.dumps(comparison_result["info_agregada"]),
+                "info_eliminada": json.dumps(comparison_result["info_eliminada"]),
+                "estructura_cambio": comparison_result["estructura_cambio"]
+            }
+        )
+        logger.info(f"Comparación guardada para la URL {url}.")
 
 
 def datos_son_validos(datos, min_campos=2):

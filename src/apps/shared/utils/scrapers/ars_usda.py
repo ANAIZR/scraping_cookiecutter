@@ -53,7 +53,7 @@ def scraper_ars_usda(url, sobrenombre):
                 logger.info(f"Extrayendo texto de PDF: {url}")
                 pdf_text = extract_text_from_pdf(url)
 
-                if pdf_text:
+                if pdf_text and pdf_text.strip():
                     object_id = fs.put(
                         pdf_text.encode("utf-8"),
                         source_url=url,
@@ -69,7 +69,7 @@ def scraper_ars_usda(url, sobrenombre):
                     existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version._id))
+                        fs.delete(oldest_version._id)  
                         logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
                 else:
                     non_scraped_urls.append(url)

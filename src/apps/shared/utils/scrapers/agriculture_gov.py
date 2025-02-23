@@ -113,7 +113,7 @@ def scraper_agriculture_gov(url, sobrenombre):
                             time.sleep(random.randint(2, 4))
                             content_text = driver.find_element(By.CSS_SELECTOR, "div.region-content").text.strip()
                         
-                        if content_text:
+                        if content_text and content_text.strip():
                             object_id = fs.put(
                                 content_text.encode("utf-8"),
                                 source_url=href,
@@ -133,8 +133,8 @@ def scraper_agriculture_gov(url, sobrenombre):
 
                             if len(existing_versions) > 1:
                                 oldest_version = existing_versions[-1]
-                                fs.delete(ObjectId(oldest_version["_id"]))
-                                logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
+                                fs.delete(oldest_version._id)  
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
                             
                             logger.info(f"Contenido extraído de {href}.")
                     except Exception as e:

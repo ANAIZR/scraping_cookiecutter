@@ -160,8 +160,8 @@ def scraper_cabi_digital(url, sobrenombre):
                                         existing_versions = list(fs.find({"source_url": absolut_href}).sort("scraping_date", -1))
                                         if len(existing_versions) > 1:
                                             oldest_version = existing_versions[-1]
-                                            fs.delete(ObjectId(oldest_version["_id"]))
-                                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                                            fs.delete(oldest_version._id)  
+                                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
                                         scraping_exitoso = True
                                 driver.back()
                                 WebDriverWait(driver, 30).until(
