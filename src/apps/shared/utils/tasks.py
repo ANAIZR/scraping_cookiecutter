@@ -15,30 +15,16 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
-
-
     scraper_service = WebScraperService()
 
     try:
         scraper_url = ScraperURL.objects.get(url=url)
         sobrenombre = scraper_url.sobrenombre
 
-        logger.info(f"📌 Tipo de fecha_scraper antes de conversión: {type(scraper_url.fecha_scraper)}")
-        if scraper_url.fecha_scraper is None:
-            logger.warning(f"⚠️ 'fecha_scraper' es None para {url}. Se usará la fecha actual.")
-            scraper_url.fecha_scraper = timezone.now()
-
-        elif isinstance(scraper_url.fecha_scraper, datetime):
-            if timezone.is_naive(scraper_url.fecha_scraper):
-                scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
-        elif isinstance(scraper_url.fecha_scraper, date): 
-            scraper_url.fecha_scraper = datetime.combine(scraper_url.fecha_scraper, datetime.min.time())
-            scraper_url.fecha_scraper = timezone.make_aware(scraper_url.fecha_scraper, timezone.get_current_timezone())
-        else:
-            logger.error(f"⚠️ Tipo inesperado en fecha_scraper: {type(scraper_url.fecha_scraper)}")
-            scraper_url.fecha_scraper = timezone.now()
-
-        scraper_url.save()  
+        scraper_url.estado_scrapeo = "en_progreso"
+        scraper_url.error_scrapeo = ""
+        scraper_url.fecha_scraper = timezone.now()
+        scraper_url.save()
 
     except ScraperURL.DoesNotExist:
         logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
@@ -54,15 +40,19 @@ def scraper_url_task(self, url):
         logger.error(f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}")
         scraper_url.estado_scrapeo = "fallido"
         scraper_url.error_scrapeo = result["error"]
-        scraper_url.save()
-        return {"status": "failed", "url": url, "error": result["error"]}
     else:
-        logger.info(f"Task {self.request.id}: Scraping exitoso para {url}, iniciando flujo de procesamiento...")
+        logger.info(f"Task {self.request.id}: Scraping exitoso para {url}")
+        scraper_url.estado_scrapeo = "exitoso"
+        scraper_url.error_scrapeo = ""
+
         tarea_encadenada = chain(
             process_scraped_data_task.s(url), generate_comparison_report_task.si(url)
         )
         tarea_encadenada.apply_async()
-        return {"status": "success", "url": url}
+
+    scraper_url.save()
+    return {"status": scraper_url.estado_scrapeo, "url": url}
+
 
 
 
