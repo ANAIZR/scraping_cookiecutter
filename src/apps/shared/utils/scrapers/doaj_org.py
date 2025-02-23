@@ -158,15 +158,17 @@ def scraper_doaj_org(url, sobrenombre):
 
                     try:
                         next_page_button = driver.find_element(By.CSS_SELECTOR, "a.doaj-pager-next.doaj-pager-next-bottom-pager")
-                        next_page_link = next_page_button.get_attribute("href")
+                        # next_page_link = next_page_button.get_attribute("href")
                         
-                        if next_page_link and page_number <= 2:
+                        if next_page_button and page_number <= 2:
                             logger.info(f"Yendo a la siguiente página: {page_number}")
                             # driver.get(next_page_link)
+                            # driver.execute_script("document.body.style.zoom='100%'")
+                            # WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                             next_page_button.click()
                             page_number += 1
                         else:
-                            logger.info(f"Detectada tercera página: {next_page_link}. Finalizando scraping tras procesar enlaces.")      
+                            logger.info(f"Detectada tercera página: Finalizando scraping tras procesar enlaces.")      
                             driver.get(url)
                             time.sleep(random.uniform(3, 6))               
                             break  # Rompe el bucle tras procesar la página 2
