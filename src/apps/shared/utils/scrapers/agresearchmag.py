@@ -10,10 +10,10 @@ from datetime import datetime
 from urllib.parse import urljoin
 from bson import ObjectId
 from ..functions import (
-    process_scraper_data_v2,
+    process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver,
+    driver_init,
     extract_text_from_pdf,
 )
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException
@@ -21,7 +21,7 @@ from selenium.common.exceptions import TimeoutException, ElementClickIntercepted
 logger = get_logger("scraper")
 
 def scraper_agresearchmag(url, sobrenombre):
-    driver = initialize_driver()
+    driver = driver_init()
     domain = "https://agresearchmag.ars.usda.gov"
     total_links_found = 0
     total_scraped_successfully = 0
@@ -115,7 +115,7 @@ def scraper_agresearchmag(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
