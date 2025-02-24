@@ -117,7 +117,6 @@ def generate_comparison_report_task(self, url):
         logger.error(f"❌ Error en generate_comparison_report_task para {url}: {str(e)}", exc_info=True)
         return {"status": "error", "message": f"Error interno: {str(e)}"}
 
-
 @shared_task(bind=True)
 def scraper_expired_urls_task(self):
     scraper_service = WebScraperService()
@@ -127,20 +126,19 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
+    all_tasks = []
     for url in urls:
-        try:
-            task_chain = chain(
-                scraper_url_task.s(url),
-                process_scraped_data_task.s(url),
-                generate_comparison_report_task.si(url),
-            )
-            task_chain.apply_async(link_error=handle_task_error.s(url))  # Pasar la URL al manejador de errores
-        except Exception as e:
-            logger.error(f"Error al iniciar el proceso de scraping para {url}: {e}")
+        task_chain = chain(
+            scraper_url_task.s(url),
+            process_scraped_data_task.s(url),
+            generate_comparison_report_task.si(url),
+        )
+        all_tasks.append(task_chain)
 
-    logger.info(
-        f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs."
-    )
+    full_pipeline = chain(*all_tasks)
+    full_pipeline.apply_async(link_error=handle_task_error.s())
+
+    logger.info(f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs.")
 
 @shared_task
 def handle_task_error(url, request, exc, traceback):
