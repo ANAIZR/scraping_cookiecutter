@@ -219,7 +219,7 @@
     "model": "shared.ScraperURL",
     "pk": 16,
     "fields": {
-      "url": "http://www.plantatlas.usf.edu",
+      "url": "https://plantatlas.usf.edu/",
       "sobrenombre": "ATLAS",
       "time_choices": 1,
       "mode_scrapeo": 11,
