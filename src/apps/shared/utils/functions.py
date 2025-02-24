@@ -126,7 +126,7 @@ def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
 
 def initialize_driver():
     options = webdriver.ChromeOptions()
-    #options.add_argument("--headless=new")  # Usa la nueva implementación de headless
+    options.add_argument("--headless=new")  # Usa la nueva implementación de headless
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
