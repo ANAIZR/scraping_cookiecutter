@@ -132,10 +132,13 @@ def scraper_expired_urls_task(self):
             scraper_url_task.s(url),
             process_scraped_data_task.s(url),
             generate_comparison_report_task.si(url),
-        ).apply_async()
+        ).apply_async(link_error=handle_task_error.s(url))
 
     logger.info(
         f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs."
     )
 
+@shared_task
+def handle_task_error(request, exc, traceback, url):
+    logger.error(f"Error en la cadena de tareas para {url}: {exc}")
 
