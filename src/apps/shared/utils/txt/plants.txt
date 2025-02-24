@@ -1,6 +1,1 @@
-Acanthococcus aceris
-dasistoma macrophylla
-Maple mosaic agent
-Acrospermum compressum
-Acrospermum cuneolum
-Actinocladium rhodosporum
+Fusarium

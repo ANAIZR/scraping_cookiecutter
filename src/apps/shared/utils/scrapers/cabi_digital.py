@@ -8,21 +8,20 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    initialize_driver,
+    uc_initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
+    process_scraper_data
 )
 from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
+from bson import ObjectId
 import ollama
 import json
-import re
 from datetime import datetime
-from django.db import IntegrityError
-
-from ...models.scraperURL import Species, ScraperURL
+from django.db import transaction, IntegrityError
 logger = get_logger("scraper")
 
 def text_to_json(content, source_url, url):
@@ -83,11 +82,12 @@ def text_to_json(content, source_url, url):
     """
 
     response = ollama.chat(
-        model="llama3:8b",
+        model="llama3:70b",
         messages=[{"role": "user", "content": prompt}]
     )
 
     raw_output = response["message"]["content"]
+    print("Respuesta completa del modelo:", raw_output)
 
     match = re.search(r"\{.*\}", raw_output, re.DOTALL)
 
@@ -107,21 +107,27 @@ def text_to_json(content, source_url, url):
         return None
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = initialize_driver()
-    species_urls = []  # Definir lista antes de usarla
+    driver = uc_initialize_driver()
+    total_scraped_links = 0
+    scraped_urls = []
+    non_scraped_urls = []
 
     try:
-        if login_cabi_scienceconnect(driver):
+        resultado_login = login_cabi_scienceconnect(driver)
+        print("Resultado de login_cabi_scienceconnect:", resultado_login)
+        if resultado_login:
             print("Login completado, continuando con el scraping...")
-    except:
-        logger.error("No se encontró el login")
+        else:
+            print("El login no se completó, se retornó un valor falso.")
+    except Exception as e:
+        logger.error("No se encontró el login. Error: " + str(e))
 
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
+        collection, fs = connect_to_mongo()
         keywords = load_keywords("plants.txt")
-
         if not keywords:
             return Response(
                 {
@@ -130,16 +136,44 @@ def scraper_cabi_digital(url, sobrenombre):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         logger.info("Página de CABI cargada exitosamente.")
-
         scraping_exitoso = False
         base_domain = "https://www.cabidigitallibrary.org"
         visited_urls = set()
 
+        try:
+            with open("cookies.pkl", "rb") as file:
+                cookies = pickle.load(file)
+                for cookie in cookies:
+                    driver.add_cookie(cookie)
+            driver.refresh()
+        except FileNotFoundError:
+            logger.info("No se encontraron cookies guardadas.")
+
+        try:
+            cookie_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, "#onetrust-pc-btn-handler")
+                )
+            )
+            driver.execute_script("arguments[0].click();", cookie_button)
+        except Exception:
+            logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
+        try:
+            preferences_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
+                )
+            )
+            driver.execute_script("arguments[0].click();", preferences_button)
+
+        except Exception:
+            logger.info(
+                "El botón de 'Guardar preferencias' no apareció o no fue clicable."
+            )
+
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
-
             try:
                 driver.get(url)
                 time.sleep(random.uniform(6, 10))
@@ -155,13 +189,13 @@ def scraper_cabi_digital(url, sobrenombre):
                 search_input.clear()
                 search_input.send_keys(keyword)
                 time.sleep(random.uniform(3, 6))
-                search_input.submit()
 
+                search_input.submit()
                 logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
                 continue
-
+            
             while True:
                 try:
                     WebDriverWait(driver, 60).until(
@@ -173,90 +207,81 @@ def scraper_cabi_digital(url, sobrenombre):
                     soup = BeautifulSoup(driver.page_source, "html.parser")
                     items = soup.select("ul.rlist li")
                     if not items:
-                        logger.warning(f"No se encontraron resultados para la palabra clave: {keyword}")
+                        logger.warning(
+                            f"No se encontraron resultados para la palabra clave: {keyword}"
+                        )
                         break
-
                     for item in items:
                         link = item.find("a")
                         if link and "href" in link.attrs:
                             href = link["href"]
                             if href.startswith("/doi/10.1079/cabicompendium"):
                                 absolut_href = f"{base_domain}{href}"
+                                driver.get(absolut_href)
+                                visited_urls.add(absolut_href)
+                                
+                                WebDriverWait(driver, 60).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+                                )
+                                time.sleep(random.uniform(6, 10))
+                                soup = BeautifulSoup(driver.page_source, "html.parser")
 
-                                try:
-                                    driver.get(absolut_href)
-                                    visited_urls.add(absolut_href)
+                                abstracts = soup.select_one("#abstracts")
+                                body = soup.select_one("#bodymatter>.core-container")
+                                abstract_text = abstracts.get_text(strip=True) if abstracts else "No abstract found"
+                                body_text = body.get_text(strip=True) if body else "No body found"
 
-                                    WebDriverWait(driver, 60).until(
-                                        EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+                                if abstract_text or body_text:
+                                    content_accumulated = f"{abstract_text}\n\n\n{body_text}"
+                                    content_accumulated += "-" * 100 + "\n\n"
+
+                                    print(f"Página procesada y guardada: {absolut_href}")
+                                    if content_accumulated:
+                                        structured_data = text_to_json(content_accumulated, absolut_href, url)
+                                        print("📌 Datos que se guardarán en PostgreSQL:", structured_data)
+                                        if structured_data:
+                                            try:
+                                                with transaction.atomic(): 
+                                                    scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
+
+                                                    species_obj = Species.objects.create(
+                                                        scientific_name=structured_data.get("nombre_cientifico", ""),
+                                                        common_names=structured_data.get("nombres_comunes", ""),
+                                                        synonyms=structured_data.get("sinonimos", ""),
+                                                        invasiveness_description=structured_data.get("descripcion_invasividad", ""),
+                                                        distribution=structured_data.get("distribucion", ""),
+                                                        impact=structured_data.get("impacto", {}),
+                                                        habitat=structured_data.get("habitat", ""),
+                                                        life_cycle=structured_data.get("ciclo_vida", ""),
+                                                        reproduction=structured_data.get("reproduccion", ""),
+                                                        hosts=structured_data.get("hospedantes", ""),
+                                                        symptoms=structured_data.get("sintomas", ""),
+                                                        affected_organs=structured_data.get("organos_afectados", ""),
+                                                        environmental_conditions=structured_data.get("condiciones_ambientales", ""),
+                                                        prevention_control=structured_data.get("prevencion_control", {}),
+                                                        uses=structured_data.get("usos", ""),
+                                                        source_url=full_url,
+                                                        scraper_source=scraper_source
+                                                    )
+
+                                                    species_urls.append(full_url)
+                                                    logger.info(f"Especie guardada en PostgreSQL con URL: {full_url}")
+
+                                                    scraping_exitoso = True
+
+                                            except IntegrityError:
+                                                logger.warning(f"La especie '{structured_data.get('nombre_cientifico', '')}' ya existe en la base de datos.")
+                                                continue
+
+                                driver.back()
+                                WebDriverWait(driver, 30).until(
+                                    EC.presence_of_element_located(
+                                        (By.CSS_SELECTOR, "ul.rlist li")
                                     )
-                                    time.sleep(random.uniform(6, 10))
-                                    soup = BeautifulSoup(driver.page_source, "html.parser")
-
-                                    abstracts = soup.select_one("#abstracts")
-                                    body = soup.select_one("#bodymatter>.core-container")
-                                    abstract_text = abstracts.get_text(strip=True) if abstracts else "No abstract found"
-                                    body_text = body.get_text(strip=True) if body else "No body found"
-
-                                    if abstract_text or body_text:
-                                        content_accumulated = f"URL:{absolut_href} \nTexto: {abstract_text}\n\n\n{body_text}"
-                                        content_accumulated += "-" * 100 + "\n\n"
-
-                                        print(f"Página procesada y guardada: {absolut_href}")
-
-                                        if content_accumulated:
-                                            structured_data = text_to_json(content_accumulated, absolut_href, url)
-                                            print("📌 Datos que se guardarán en PostgreSQL:", structured_data)
-
-                                            if structured_data:
-                                                try:
-                                                    with transaction.atomic():
-                                                        scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
-                                                        species_obj, created = Species.objects.update_or_create(
-                                                            source_url=absolut_href,
-                                                            defaults={
-                                                                "scientific_name": structured_data.get("nombre_cientifico", ""),
-                                                                "common_names": structured_data.get("nombres_comunes", ""),
-                                                                "synonyms": structured_data.get("sinonimos", ""),
-                                                                "invasiveness_description": structured_data.get("descripcion_invasividad", ""),
-                                                                "distribution": structured_data.get("distribucion", ""),
-                                                                "impact": structured_data.get("impacto", {}),
-                                                                "habitat": structured_data.get("habitat", ""),
-                                                                "life_cycle": structured_data.get("ciclo_vida", ""),
-                                                                "reproduction": structured_data.get("reproduccion", ""),
-                                                                "hosts": structured_data.get("hospedantes", ""),
-                                                                "symptoms": structured_data.get("sintomas", ""),
-                                                                "affected_organs": structured_data.get("organos_afectados", ""),
-                                                                "environmental_conditions": structured_data.get("condiciones_ambientales", ""),
-                                                                "prevention_control": structured_data.get("prevencion_control", {}),
-                                                                "uses": structured_data.get("usos", ""),
-                                                                "scraper_source": scraper_source
-                                                            }
-                                                        )
-
-                                                        species_urls.append(absolut_href)
-                                                        logger.info(f"Especie guardada en PostgreSQL con URL: {absolut_href}")
-
-                                                        scraping_exitoso = True
-                                                except IntegrityError:
-                                                    logger.warning(f"La especie '{structured_data.get('nombre_cientifico', '')}' ya existe en la base de datos.")
-                                                    continue
-
-                                except Exception as e:
-                                    logger.error(f"Error al procesar la URL {absolut_href}: {e}")
-
-                                finally:
-                                    try:
-                                        driver.back()
-                                        WebDriverWait(driver, 30).until(
-                                            EC.presence_of_element_located(
-                                                (By.CSS_SELECTOR, "ul.rlist li")
-                                            )
-                                        )
-                                        time.sleep(random.uniform(3, 6))
-                                    except Exception as e:
-                                        logger.error(f"Error al volver atrás en la navegación: {e}")
-
+                                )
+                                time.sleep(random.uniform(3, 6))
+                            else:
+                                non_scraped_urls.append(href)
                     try:
                         next_page_button = driver.find_element(
                             By.CSS_SELECTOR,
@@ -265,40 +290,58 @@ def scraper_cabi_digital(url, sobrenombre):
                         next_page_link = next_page_button.get_attribute("href")
 
                         if next_page_link:
-                            logger.info(f"Yendo a la siguiente página: {next_page_link}")
+                            logger.info(
+                                f"Yendo a la siguiente página: {next_page_link}"
+                            )
                             driver.get(next_page_link)
                         else:
-                            logger.info("No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave.")
-                            contin
+                            logger.info(
+                                "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
+                            )
+                            break
                     except NoSuchElementException:
-                        logger.info("No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave.")
+                        logger.info(
+                            "No se encontró el botón para la siguiente página. Finalizando búsqueda para esta palabra clave."
+                        )
                         driver.get(url)
-                        continue
+                        break
                 except TimeoutException:
-                    logger.warning(f"No se encontraron resultados para '{keyword}' después de esperar.")
+                    logger.warning(
+                        f"No se encontraron resultados para '{keyword}' después de esperar."
+                    )
                     break
 
         if scraping_exitoso:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Etiquetas": ["planta", "plaga"],
-                    "Mensaje": "Los datos han sido scrapeados correctamente.",
-                    "Urls_guardadas": species_urls
-                },
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos relevantes en el scraping.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+
+            all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+        response = process_scraper_data(all_scraper, url, sobrenombre)
+        return response
+        
+    except TimeoutException:
+        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+            },
+            status=status.HTTP_408_REQUEST_TIMEOUT,
+        )
+    except ConnectionError:
+        logger.error("Error de conexión a la URL.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "No se pudo conectar a la página web.",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
         return Response(
@@ -309,7 +352,7 @@ def scraper_cabi_digital(url, sobrenombre):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
     finally:
-        if driver:
-            driver.quit()
-            logger.info("Navegador cerrado")
+        driver.quit()
+        logger.info("Navegador cerrado")
