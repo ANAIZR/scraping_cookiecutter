@@ -1,5 +1,6 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from rest_framework.response import Response
 from rest_framework import status
@@ -54,7 +55,8 @@ def scraper_mycobank_org(url, sobrenombre):
                     time.sleep(5)
                     link = row.find_element(By.CSS_SELECTOR, "td a")
                     link_name = link.text.strip()
-                    link_href = link.get_attribute("href")
+                    base_link_href = link.get_attribute("href")
+                    unique_link_href = f"{base_link_href}_{index}"  
                     driver.execute_script("arguments[0].click();", link)
                     
                     time.sleep(5)
@@ -84,7 +86,7 @@ def scraper_mycobank_org(url, sobrenombre):
                     if content_text:
                         object_id = fs.put(
                             content_text.encode("utf-8"),
-                            source_url=link_href,
+                            source_url=unique_link_href,  # Usamos el href modificado
                             scraping_date=datetime.now(),
                             Etiquetas=["planta", "plaga"],
                             contenido=content_text,
@@ -94,7 +96,7 @@ def scraper_mycobank_org(url, sobrenombre):
 
                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
                         
-                        existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
+                        existing_versions = list(fs.find({"source_url": unique_link_href}).sort("scraping_date", -1))
 
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
@@ -111,10 +113,18 @@ def scraper_mycobank_org(url, sobrenombre):
                 break
 
             try:
-                next_button = driver.find_element(By.CSS_SELECTOR, "button[aria-label='Next page']")
+                print("Buscando el botón de siguiente página...")
+                # Espera hasta 10 segundos a que el botón sea clickeable
+                next_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button[aria-label='Next page']"))
+                )
+                print("Se encontró el botón de siguiente página, haciendo clic...")
                 driver.execute_script("arguments[0].click();", next_button)
                 time.sleep(5)
-                page += 1  # Incrementa el contador para reflejar el cambio de página
+                page += 1
+            except TimeoutException:
+                logger.error("Error: no se pudo hacer clic en el botón de siguiente página a tiempo.")
+                break
             except Exception as e:
                 logger.error("Error al intentar avanzar al siguiente paginador", e)
                 break
