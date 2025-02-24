@@ -1,11 +1,14 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from rest_framework.response import Response
 from rest_framework import status
 import time
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
@@ -19,28 +22,25 @@ def close_modal(driver):
             )
         )
         driver.execute_script("arguments[0].click();", close_button)
-
     except Exception as e:
         print(f"No se pudo cerrar el modal: {e}")
-
 
 def scraper_mycobank_org(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
-
+    total_scraped_successfully = 0
+    
     try:
         driver.get(url)
         WebDriverWait(driver, 60).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#search-btn"))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#search-btn"))
         )
-
         driver.execute_script("document.querySelector('#search-btn').click();")
-
         time.sleep(5)
-
+        
         while True:
             WebDriverWait(driver, 60).until(
                 EC.presence_of_all_elements_located(
@@ -55,8 +55,10 @@ def scraper_mycobank_org(url, sobrenombre):
                     time.sleep(5)
                     link = row.find_element(By.CSS_SELECTOR, "td a")
                     link_name = link.text.strip()
+                    base_link_href = link.get_attribute("href")
+                    unique_link_href = f"{base_link_href}_{index}"  
                     driver.execute_script("arguments[0].click();", link)
-
+                    
                     time.sleep(5)
                     popup_title = (
                         WebDriverWait(driver, 60)
@@ -78,37 +80,73 @@ def scraper_mycobank_org(url, sobrenombre):
                         .text
                     )
 
-                    content = (
-                        f"Title: {popup_title}\nContent:\n{popup_content}\n{'-'*50}\n"
-                    )
-                    all_scraper += content
+                    content_text = f"Title: {popup_title}\nContent:\n{popup_content}\n{'-'*50}\n"
+                    all_scraper += content_text
+                    
+                    if content_text:
+                        object_id = fs.put(
+                            content_text.encode("utf-8"),
+                            source_url=unique_link_href,  # Usamos el href modificado
+                            scraping_date=datetime.now(),
+                            Etiquetas=["planta", "plaga"],
+                            contenido=content_text,
+                            url=url
+                        )
+                        total_scraped_successfully += 1
 
+                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                        
+                        existing_versions = list(fs.find({"source_url": unique_link_href}).sort("scraping_date", -1))
+
+                        if len(existing_versions) > 1:
+                            oldest_version = existing_versions[-1]
+                            fs.delete(oldest_version._id)
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+
+                    
                     close_modal(driver)
-
+                    
                 except Exception as e:
                     print(f"Error al procesar la fila {index}: {e}")
                     continue
+            if page == 2:
+                break
+
             try:
+                print("Buscando el botón de siguiente página...")
+                # Espera hasta 10 segundos a que el botón sea clickeable
+                next_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button[aria-label='Next page']"))
+                )
+                print("Se encontró el botón de siguiente página, haciendo clic...")
+                driver.execute_script("arguments[0].click();", next_button)
+                time.sleep(5)
+                page += 1
+            except TimeoutException:
+                logger.error("Error: no se pudo hacer clic en el botón de siguiente página a tiempo.")
+                break
+            except Exception as e:
+                logger.error("Error al intentar avanzar al siguiente paginador", e)
+                break
+            """ try:
                 next_button = driver.find_element(
                     By.CSS_SELECTOR, "button[aria-label='Next page']"
                 )
-
                 driver.execute_script("arguments[0].click();", next_button)
                 time.sleep(5)
-
             except Exception as e:
-                print("Error al intentar avanzar al siguiente paginador", e)
-                break
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
+                logger.error("Error al intentar avanzar al siguiente paginador", e)
+                break """
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre, collection, fs)
         return response
 
     except Exception as e:
-        print(f"Ocurrió un error: {e}")
         return Response(
             {"error": "Ocurrió un error durante el scraping."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
+    
     finally:
         driver.quit()
+        logger.info("Navegador cerrado")

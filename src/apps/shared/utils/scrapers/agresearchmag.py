@@ -23,11 +23,14 @@ logger = get_logger("scraper")
 def scraper_agresearchmag(url, sobrenombre):
     driver = initialize_driver()
     domain = "https://agresearchmag.ars.usda.gov"
+    
     total_links_found = 0
     total_scraped_successfully = 0
     total_failed_scrapes = 0
+    
     scraped_urls = set()
     failed_urls = set()
+    visited_urls = set()  # 🔹 Asegura que cada URL solo se procese una vez
     object_ids = []
     all_scraper = ""
 
@@ -41,6 +44,7 @@ def scraper_agresearchmag(url, sobrenombre):
 
         collection, fs = connect_to_mongo()
 
+        # Extraer enlaces de la página principal
         panel = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "div.panel-body ul.als-wrapper"))
         )
@@ -70,9 +74,10 @@ def scraper_agresearchmag(url, sobrenombre):
                         text_center_divs = driver.find_elements(By.CSS_SELECTOR, "div.text-center a")
                         for link in text_center_divs:
                             href = link.get_attribute("href")
-                            if href:
+                            if href and href not in visited_urls:
                                 fullhref = domain + href if not href.startswith("http") else href
                                 scraped_urls.add(fullhref)
+                                visited_urls.add(fullhref)  # 🔹 Evita duplicados
                                 total_links_found += 1
                                 logger.info(f"Enlace extraído: {fullhref}")
                     else:
@@ -97,7 +102,7 @@ def scraper_agresearchmag(url, sobrenombre):
                 logger.info("No se encontró el botón 'siguiente' o ya no hay más elementos. Terminando.")
                 break
 
-        # Extraer enlaces de cada página visitada
+        # Extraer enlaces adicionales dentro de cada página visitada
         additional_scraped_urls = set()
         
         for href in scraped_urls:
@@ -110,16 +115,18 @@ def scraper_agresearchmag(url, sobrenombre):
                 panel_body = driver.find_elements(By.CSS_SELECTOR, "div.panel-body div.row div.panel-body a")
                 for link in panel_body:
                     inner_href = link.get_attribute("href")
-                    if inner_href:
+                    if inner_href and inner_href not in visited_urls:
                         full_inner_href = urljoin(domain, inner_href)
                         additional_scraped_urls.add(full_inner_href)
+                        visited_urls.add(full_inner_href)
                         logger.info(f"Enlace extraído dentro de la página: {full_inner_href}")
             except Exception as e:
                 logger.error(f"No se pudo extraer enlaces adicionales de {href}: {e}")
 
         scraped_urls.update(additional_scraped_urls)
-        
-        for href in scraped_urls:
+
+        # Procesar cada enlace encontrado
+        for href in scraped_urls.copy():
             try:
                 driver.get(href)
                 driver.execute_script("document.body.style.zoom='100%'")
@@ -147,22 +154,23 @@ def scraper_agresearchmag(url, sobrenombre):
                     )
                     object_ids.append(object_id)
                     total_scraped_successfully += 1
-
                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                    collection.insert_one(
-                        {
-                            "_id": object_id,
-                            "source_url": href,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                            "url": url,
-                        }
-                    )
+                else:
+                    raise Exception("Contenido vacío o no extraído correctamente")
+
             except Exception as e:
                 logger.error(f"No se pudo extraer contenido de {href}: {e}")
                 total_failed_scrapes += 1
                 failed_urls.add(href)
+                scraped_urls.remove(href)  # 🔹 Evita que URLs fallidas se cuenten en `scraped_urls`
+
+        # Formatear el reporte final
+        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
         response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response

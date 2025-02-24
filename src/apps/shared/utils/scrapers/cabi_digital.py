@@ -8,7 +8,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    initialize_driver,
+    uc_initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
@@ -23,7 +23,7 @@ logger = get_logger("scraper")
 
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = initialize_driver()
+    driver = uc_initialize_driver()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
@@ -67,7 +67,7 @@ def scraper_cabi_digital(url, sobrenombre):
                     (By.CSS_SELECTOR, "#onetrust-pc-btn-handler")
                 )
             )
-            cookie_button.click()
+            driver.execute_script("arguments[0].click();", cookie_button)
         except Exception:
             logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
         try:
@@ -76,7 +76,8 @@ def scraper_cabi_digital(url, sobrenombre):
                     (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
                 )
             )
-            preferences_button.click()
+            driver.execute_script("arguments[0].click();", preferences_button)
+
         except Exception:
             logger.info(
                 "El botón de 'Guardar preferencias' no apareció o no fue clicable."
