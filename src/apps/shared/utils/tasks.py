@@ -9,6 +9,7 @@ from src.apps.shared.utils.notify_change import check_new_species_and_notify
 import logging
 from django.utils import timezone
 
+from celery import chord
 
 from celery import chain
 
@@ -130,6 +131,7 @@ def generate_comparison_report_task(self, url):
         return {"status": "error", "message": f"Error interno: {str(e)}"}
 
 
+
 @shared_task(bind=True)
 def scraper_expired_urls_task(self):
     scraper_service = WebScraperService()
@@ -139,24 +141,23 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
-    full_chain = chain(
-        scraper_url_task.s(urls[0]),
-        process_scraped_data_task.s(urls[0]),
-        generate_comparison_report_task.si(urls[0])
-    )
-
-    for url in urls[1:]:
-        next_chain = chain(
+    subtasks = [
+        chain(
             scraper_url_task.s(url),
             process_scraped_data_task.s(url),
             generate_comparison_report_task.si(url)
         )
-        full_chain = chain(full_chain, next_chain)  
+        for url in urls
+    ]
 
-    if full_chain:
-        full_chain.apply_async(link_error=handle_task_error.s())
+    job = chord(subtasks)(final_task.s())
 
     logger.info(f"Scraping en secuencia iniciado para {len(urls)} URLs.")
+
+@shared_task
+def final_task():
+    logger.info("✅ Todas las tareas de scraping han finalizado.")
+
 
 
 
