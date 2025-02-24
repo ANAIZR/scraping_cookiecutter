@@ -125,7 +125,7 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
-    full_chain = None 
+    full_chain = None
 
     for url in urls:
         task_chain = chain(
@@ -135,15 +135,15 @@ def scraper_expired_urls_task(self):
         )
 
         if full_chain is None:
-            full_chain = task_chain  
+            full_chain = task_chain
         else:
-            full_chain = full_chain | task_chain  
+            full_chain = full_chain | task_chain
 
     if full_chain:
-        full_chain.apply_async(link_error=handle_task_error.si())  
-
+        full_chain.apply_async(link_error=handle_task_error) 
     logger.info(f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs.")
 
 @shared_task
-def handle_task_error(exc, traceback, request=None):
-    logger.error(f"Error en la cadena de tareas: {exc}")
+def handle_task_error(request=None, exc=None, traceback=None):
+    task_name = request.task if request and hasattr(request, "task") else "Tarea desconocida"
+    logger.error(f"Error en {task_name}: {exc}")
