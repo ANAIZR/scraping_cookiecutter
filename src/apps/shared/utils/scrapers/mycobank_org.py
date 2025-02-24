@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from bson import ObjectId
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
@@ -98,16 +98,27 @@ def scraper_mycobank_org(url, sobrenombre):
 
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
-                            fs.delete(ObjectId(oldest_version["_id"]))
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                            fs.delete(oldest_version._id)
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+
                     
                     close_modal(driver)
                     
                 except Exception as e:
                     print(f"Error al procesar la fila {index}: {e}")
                     continue
-            
+            if page == 2:
+                break
+
             try:
+                next_button = driver.find_element(By.CSS_SELECTOR, "button[aria-label='Next page']")
+                driver.execute_script("arguments[0].click();", next_button)
+                time.sleep(5)
+                page += 1  # Incrementa el contador para reflejar el cambio de página
+            except Exception as e:
+                logger.error("Error al intentar avanzar al siguiente paginador", e)
+                break
+            """ try:
                 next_button = driver.find_element(
                     By.CSS_SELECTOR, "button[aria-label='Next page']"
                 )
@@ -115,9 +126,9 @@ def scraper_mycobank_org(url, sobrenombre):
                 time.sleep(5)
             except Exception as e:
                 logger.error("Error al intentar avanzar al siguiente paginador", e)
-                break
+                break """
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre, collection, fs)
         return response
 
     except Exception as e:
