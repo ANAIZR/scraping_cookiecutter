@@ -8,16 +8,14 @@ from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.notify_change import check_new_species_and_notify
 import logging
 from django.utils import timezone
-from datetime import datetime, date
+
+
+from celery import chain
 
 logger = logging.getLogger(__name__)
 
-from celery import chain
-from django.core.cache import cache
-
-
 @shared_task(bind=True)
-def scraper_url_task(self, url):
+def scraper_url_task(self, url, manual=False):
     scraper_service = WebScraperService()
 
     try:
@@ -31,11 +29,11 @@ def scraper_url_task(self, url):
 
     except ScraperURL.DoesNotExist:
         logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
-        return None  # 🔥 Permitir que Celery continúe la cadena sin interrumpirla
+        return None  
 
     except Exception as e:
         logger.error(f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}")
-        return None  # 🔥 Permitir que Celery continúe la cadena sin interrumpirla
+        return None  
 
     result = scraper_service.scraper_one_url(url, sobrenombre)
 
@@ -44,44 +42,43 @@ def scraper_url_task(self, url):
         scraper_url.estado_scrapeo = "fallido"
         scraper_url.error_scrapeo = result["error"]
         scraper_url.save()
-        return None  # 🔥 Permitir que Celery continúe sin detener la cadena
+        return None  
 
     logger.info(f"Task {self.request.id}: Scraping exitoso para {url}")
     scraper_url.estado_scrapeo = "exitoso"
     scraper_url.error_scrapeo = ""
-
-    # 🔥 Definir las URLs permitidas
-    urls_permitidas = {
-        "https://www.ippc.int/en/countries/south-africa/pestreports/",
-        "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
-    }
-
-    tareas = [
-        process_scraped_data_task.s(),  # ✅ Ahora recibe None si hubo error en la anterior
-        generate_comparison_report_task.si(url),
-    ]
-
-    if url in urls_permitidas:
-        tareas.append(check_new_species_and_notify.si([url]))
-
-    tarea_encadenada = chain(*tareas)
-    tarea_encadenada.apply_async()
-
     scraper_url.save()
-    return url  # 🔥 Devuelve la URL para que Celery la pase a la siguiente tarea
 
+    if manual:
+        return chain(
+            process_scraped_data_task.s(url),
+            generate_comparison_report_task.si(url),
+        ).apply_async()
+
+    return url  
+
+
+URLS_PERMITIDAS = {
+    "https://www.ippc.int/en/countries/south-africa/pestreports/",
+    "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
+}
 
 @shared_task(bind=True)
-def process_scraped_data_task(self, url):
+def process_scraped_data_task(self, url, previous_result=None): 
     if not url:
         logger.warning(f"Task {self.request.id}: URL vacía o fallida, no se procesará.")
-        return None  
+        return None 
 
     scraper = ScraperService()
     scraper.extract_and_save_species(url)
-    check_new_species_and_notify([url])
 
-    return url 
+    if url in URLS_PERMITIDAS:
+        check_new_species_and_notify([url])
+
+    return url  
+
+
+
 
 
 @shared_task(bind=True)
@@ -142,15 +139,17 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
-    full_chain = scraper_url_task.s(urls[0]) | process_scraped_data_task.s() | generate_comparison_report_task.si(urls[0])
+    full_chain = scraper_url_task.s(urls[0]) | process_scraped_data_task.s(urls[0]) | generate_comparison_report_task.si(urls[0])
 
     for url in urls[1:]:
-        next_chain = scraper_url_task.s(url) | process_scraped_data_task.s() | generate_comparison_report_task.si(url)
-        full_chain |= next_chain  
+        next_chain = scraper_url_task.s(url) | process_scraped_data_task.s(url) | generate_comparison_report_task.si(url)
+        full_chain |= next_chain 
 
-    full_chain.apply_async(link_error=handle_task_error.s()) 
+    if full_chain:
+        full_chain.apply_async(link_error=handle_task_error.s())
 
     logger.info(f"Scraping en secuencia iniciado para {len(urls)} URLs.")
+
 
 @shared_task
 def handle_task_error(request=None, exc=None, traceback=None, *args, **kwargs):
