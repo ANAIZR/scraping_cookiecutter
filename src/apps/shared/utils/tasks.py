@@ -128,17 +128,20 @@ def scraper_expired_urls_task(self):
         return
 
     for url in urls:
-        chain(
-            scraper_url_task.s(url),
-            process_scraped_data_task.s(url),
-            generate_comparison_report_task.si(url),
-        ).apply_async(link_error=handle_task_error.s(url))
+        try:
+            task_chain = chain(
+                scraper_url_task.s(url),
+                process_scraped_data_task.s(url),
+                generate_comparison_report_task.si(url),
+            )
+            task_chain.apply_async(link_error=handle_task_error.s(url))  # Pasar la URL al manejador de errores
+        except Exception as e:
+            logger.error(f"Error al iniciar el proceso de scraping para {url}: {e}")
 
     logger.info(
         f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs."
     )
 
 @shared_task
-def handle_task_error(request, exc, traceback, url):
+def handle_task_error(url, request, exc, traceback):
     logger.error(f"Error en la cadena de tareas para {url}: {exc}")
-
