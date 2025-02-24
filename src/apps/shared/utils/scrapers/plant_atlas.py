@@ -9,13 +9,16 @@ from pymongo import MongoClient
 from datetime import datetime
 from bson import ObjectId
 import gridfs
+import requests
 import os
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
-    delete_old_documents,
     initialize_driver,
-    process_scraper_data_v2
+    process_scraper_data_v2,
+    connect_to_mongo,
+    get_random_user_agent,
+    get_logger
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -25,6 +28,61 @@ scraped_urls = []
 non_scraped_urls = []
 
 urls_to_scrape = []
+fs = None
+headers = None
+logger = get_logger("scraper")
+
+def extract_text(current_url):
+    global total_scraped_links
+    try:
+        response = requests.get(current_url, headers=headers)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        table_element = soup.find("table", class_=["datagrid", "details-table", "my-3"])
+        if not table_element:
+            logger.warning(f"No se encontró el elemento en {current_url}")
+            return ""
+        
+        body = table_element.select_one("tbody")
+
+        if body:
+            trs = body.select("tr")
+            
+            text = ""
+            for tr in trs:
+                tds = tr.select("tr")
+                for td in tds:
+                    text += f"{td.get_text(strip=True)};"
+                    text += "\n"
+
+            
+            body_text = table_element.get_text(separator=" ", strip=True)
+            
+            if body_text:
+                object_id = fs.put(
+                    body_text.encode("utf-8"),
+                    source_url=current_url,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=body_text,
+                    url=url_padre
+                )
+                total_scraped_links += 1
+                scraped_urls.append(current_url)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(ObjectId(oldest_version._id))
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+            else:
+                non_scraped_urls.append(current_url)
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error al procesar la URL {current_url}: {e}")
+
 
 def get_soup(driver, url):
     driver.get(url)
@@ -42,6 +100,7 @@ def process_cards(driver, soup, processed_cards):
     containers = soup.select("div.partner-list")
     for container in containers:
         cards = container.select("div.col-lg-3")
+        cards = cards[1:]
         for card in cards:
             try:
                 link_card = card.select_one("h3 > a")
@@ -55,16 +114,12 @@ def process_cards(driver, soup, processed_cards):
                 print(f"Processing card: {title}, Link: {link_card}")
                 if link_card:
                     all_scraper_page.extend(scraper_card_page(driver, link_card))
-
-                print("antes de agregar")
                 processed_cards.add(link_card)
-                print("despues de agregar")
 
             except Exception as e:
                 print(f"Error processing card: {e}")
 
     return all_scraper_page
-
 
 def scraper_card_page(driver, link_card):
     driver.get(link_card)
@@ -120,6 +175,10 @@ def scraper_card_page(driver, link_card):
                 print(f"Error during pagination: {e}")
                 break
 
+
+        for url in urls_to_scrape:
+            extract_text(url)
+
         return all_scraper_page
     except Exception as e:
         print(f"Error processing card page: {e}")
@@ -160,11 +219,16 @@ def save_to_mongodb(file_path, db, collection, fs, url):
 
 
 def scraper_plant_atlas(url, sobrenombre):
+    global url_padre,headers,fs,total_scraped_links,scraped_urls,non_scraped_urls
+    url_padre = url
     driver = None
     client = MongoClient("mongodb://localhost:27017/")
     db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
+    # collection = db["collection"]
+    # fs = gridfs.GridFS(db)
+
+    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    headers = {"User-Agent": get_random_user_agent()}
     all_scraper = ""
 
     try:
