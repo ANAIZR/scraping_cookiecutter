@@ -133,8 +133,6 @@ def generate_comparison_report_task(self, url):
         return {"status": "error", "message": f"Error interno: {str(e)}"}
 
 
-from celery import chord
-
 @shared_task(bind=True)
 def scraper_expired_urls_task(self):
     scraper_service = WebScraperService()
@@ -144,30 +142,17 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
-    task_chains = []
-    
-    for url in urls:
-        task_chain = chain(
-            scraper_url_task.s(url),
-            process_scraped_data_task.s(),
-            generate_comparison_report_task.si(url),
-        ).on_error(handle_task_error.s(url))  
+    full_chain = scraper_url_task.s(urls[0]) | process_scraped_data_task.s() | generate_comparison_report_task.si(urls[0])
 
-        task_chains.append(task_chain)
+    for url in urls[1:]:
+        next_chain = scraper_url_task.s(url) | process_scraped_data_task.s() | generate_comparison_report_task.si(url)
+        full_chain |= next_chain  
 
-    if task_chains:
-        chord(task_chains)(summary_task.si())  
+    full_chain.apply_async(link_error=handle_task_error.s()) 
 
-    logger.info(f"Scraping, conversión y comparación iniciada para {len(urls)} URLs.")
+    logger.info(f"Scraping en secuencia iniciado para {len(urls)} URLs.")
 
 @shared_task
-def summary_task():
-    logger.info("Todas las tareas de scraping han finalizado.")
-
-
-@shared_task
-def handle_task_error(request=None, exc=None, traceback=None):
-    task_name = (
-        request.task if request and hasattr(request, "task") else "Tarea desconocida"
-    )
+def handle_task_error(request=None, exc=None, traceback=None, *args, **kwargs):
+    task_name = request.task if request and hasattr(request, "task") else "Tarea desconocida"
     logger.error(f"Error en {task_name}: {exc}")
