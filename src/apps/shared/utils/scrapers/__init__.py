@@ -72,3 +72,4 @@ from .gc_ca import scraper_gc_ca
 from .agresearchmag import scraper_agresearchmag
 from .acir_aphis_usda import scraper_acir_aphis_usda
 from .notification_aphis import scraper_notification_aphis
+from .repository_cimmy import scraper_repository_cimmy

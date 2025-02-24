@@ -4,13 +4,13 @@ from urllib.parse import urljoin
 from rest_framework.response import Response
 from rest_framework import status
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
-    generate_directory,
 )
-
+from bson import ObjectId
+from datetime import datetime
 
 def scraper_agriculture(url, sobrenombre):
     logger = get_logger("scraper")
@@ -21,6 +21,9 @@ def scraper_agriculture(url, sobrenombre):
     nivel_2_links = []
     processed_links = {}  
     headers = {"User-Agent": get_random_user_agent()}
+    total_scraped_links = 0
+    scraped_urls = []
+    non_scraped_urls = []
 
     def extract_links(current_url):
         if processed_links.get(current_url, 0) >= 2:
@@ -63,6 +66,8 @@ def scraper_agriculture(url, sobrenombre):
 
 
     def extract_text(current_url):
+        nonlocal total_scraped_links
+
         if processed_links.get(current_url, 0) >= 1:
             logger.warning(f"Saltando URL (ya procesada 1 vez): {current_url}")
             return ""
@@ -77,6 +82,29 @@ def scraper_agriculture(url, sobrenombre):
             if not td_element:
                 logger.warning(f"No se encontró el td con la clase 'newsroom_2cols' en {current_url}")
                 return ""
+            
+            body_text = td_element.get_text(separator=" ", strip=True)
+            
+            if body_text:
+                object_id = fs.put(
+                    body_text.encode("utf-8"),
+                    source_url=current_url,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=body_text,
+                    url=url
+                )
+                total_scraped_links += 1
+                scraped_urls.append(current_url)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(ObjectId(oldest_version._id))
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+            else:
+                non_scraped_urls.append(current_url)
 
             return td_element.get_text(separator=" ", strip=True)
         except requests.exceptions.RequestException as e:
@@ -102,7 +130,14 @@ def scraper_agriculture(url, sobrenombre):
             if text:
                 all_scraper += f"URL: {link}\n{text}\n\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:

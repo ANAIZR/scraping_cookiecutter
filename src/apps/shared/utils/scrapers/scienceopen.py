@@ -15,11 +15,12 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    extract_text_from_pdf
+    process_scraper_data_v2
 )
 from rest_framework.response import Response
 from rest_framework import status
 from selenium.webdriver.common.keys import Keys
+from bson import ObjectId
 
 def scroll_down(driver):
     last_height = driver.execute_script("return document.body.scrollHeight")
@@ -36,6 +37,9 @@ logger = get_logger("scraper")
 def scraper_scienceopen(url, sobrenombre):
     driver = initialize_driver()
     urls_by_keyword = dict()
+    total_scraped_links = 0
+    scraped_urls = []
+    non_scraped_urls = []    
 
     try:
         driver.get(url)
@@ -85,10 +89,9 @@ def scraper_scienceopen(url, sobrenombre):
                 logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
-                scraping_failed = True
                 continue
 
-            content_accumulated = ""
+            page_number = 1
             while True:
                 scroll_down(driver)
                 print("Buscando resultados en la página.")
@@ -106,9 +109,16 @@ def scraper_scienceopen(url, sobrenombre):
                             logger.info(f"Enlace extraído: {href}")
                 
                     try:
-                        next_page_button = driver.find_element(By.CSS_SELECTOR, "button.so-b3.so--tall")
-                        driver.execute_script("arguments[0].click();", next_page_button)
-                        time.sleep(2)
+                        if page_number <= 2:
+                            next_page_button = driver.find_element(By.CSS_SELECTOR, "button.so-b3.so--tall")
+                            driver.execute_script("arguments[0].click();", next_page_button)
+                            page_number += 1
+                            time.sleep(2)
+                        else:
+                            logger.info(f"Detectada tercera página: Finalizando scraping tras procesar enlaces.")      
+                            driver.get(url)
+                            time.sleep(random.uniform(3, 6))               
+                            break  # Rompe el bucle tras procesar la página 2                            
                     except NoSuchElementException:
                         logger.info("No hay más páginas disponibles para esta palabra clave.")
                         break  
@@ -120,10 +130,6 @@ def scraper_scienceopen(url, sobrenombre):
                 fullhrefs = []
 
         for word in urls_by_keyword:
-            keyword_folder = generate_directory(word, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, word)
-            print(f"///////////////////Guardando información en el archivo: {keyword_file_path}")
-            
             for href in urls_by_keyword[word]:
                 if href:
                     driver.get(href)
@@ -135,26 +141,68 @@ def scraper_scienceopen(url, sobrenombre):
                     body_text = body.get_text(separator=" ", strip=True) if body else "No body found"
                     
                     if body_text:
-                        content_accumulated += f"URL:{href} \n\n\n{body_text}" + "-" * 100 + "\n\n"
-                        print(f"Página procesada y guardada: {href}")
-                        print(f"info guardada: {body_text}")
-                    
-        if content_accumulated:
-            with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                keyword_file.write(content_accumulated)
-                
-            with open(keyword_file_path, "rb") as file_data:
-                object_id = fs.put(
-                    file_data,
-                    filename=os.path.basename(keyword_file_path),
-                    metadata={"url": url, "keyword": keyword, "content": content_accumulated, "scraping_date": datetime.now()}
-                )
-            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                        object_id = fs.put(
+                            body_text.encode("utf-8"),
+                            source_url=href,
+                            scraping_date=datetime.now(),
+                            Etiquetas=["planta", "plaga"],
+                            contenido=body_text,
+                            url=url
+                        )
+                        total_scraped_links += 1
+                        scraped_urls.append(href)
+                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-        return Response({"Mensaje": "Los datos han sido scrapeados correctamente."}, status=status.HTTP_200_OK)
+                        existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                        if len(existing_versions) > 1:
+                            oldest_version = existing_versions[-1]
+                            fs.delete(ObjectId(oldest_version._id))
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                    else:
+                        non_scraped_urls.append(href)
+                            
+
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+    
+    except TimeoutException:
+        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
+            },
+            status=status.HTTP_408_REQUEST_TIMEOUT,
+        )
+    except ConnectionError:
+        logger.error("Error de conexión a la URL.")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "No se pudo conectar a la página web.",
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     except Exception as e:
-        logger.error(f"Error en el scraping: {str(e)}")
-        return Response({"Mensaje": "Ocurrió un error en el scraping."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        return Response(
+            {
+                "Tipo": "Web",
+                "Url": url,
+                "Mensaje": "Ocurrió un error al procesar los datos.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    
     finally:
         driver.quit()
         logger.info("Navegador cerrado")
