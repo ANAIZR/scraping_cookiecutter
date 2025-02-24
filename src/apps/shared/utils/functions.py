@@ -213,21 +213,19 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
         raise
 
 
-def generate_directory(url, output_dir=OUTPUT_DIR):
+def generate_directory(sobrenombre, output_dir=OUTPUT_DIR):
     logger = get_logger("GENERANDO DIRECTORIO")
     try:
-        folder_name = (
-            url.split("//")[-1].replace("/", "_").replace("?", "_").replace("=", "_")
-        )
+        folder_name = sobrenombre
         folder_path = os.path.join(output_dir, folder_name)
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
             logger.info(f"Directorio generado: {folder_path}")
-
         return folder_path
     except Exception as e:
         logger.error(f"Error al generar el directorio: {str(e)}")
         raise
+
 
 
 def get_next_versioned_filename(folder_path, base_name="archivo"):
