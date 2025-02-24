@@ -1,4 +1,4 @@
-from selenium import webdriver
+from urllib.parse import urljoin
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
@@ -7,18 +7,24 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from datetime import datetime
+from bson import ObjectId
 import gridfs
 import os
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
     delete_old_documents,
-    initialize_driver
+    initialize_driver,
+    process_scraper_data_v2
 )
 from rest_framework.response import Response
 from rest_framework import status
 
+total_scraped_links = 0
+scraped_urls = []
+non_scraped_urls = []
 
+urls_to_scrape = []
 
 def get_soup(driver, url):
     driver.get(url)
@@ -38,7 +44,7 @@ def process_cards(driver, soup, processed_cards):
         cards = container.select("div.col-lg-3")
         for card in cards:
             try:
-                link_card = card.select_one("a")
+                link_card = card.select_one("h3 > a")
                 if not link_card:
                     continue
                 link_card = link_card.get("href")
@@ -50,7 +56,9 @@ def process_cards(driver, soup, processed_cards):
                 if link_card:
                     all_scraper_page.extend(scraper_card_page(driver, link_card))
 
+                print("antes de agregar")
                 processed_cards.add(link_card)
+                print("despues de agregar")
 
             except Exception as e:
                 print(f"Error processing card: {e}")
@@ -76,22 +84,29 @@ def scraper_card_page(driver, link_card):
         )
 
         all_scraper_page = []
+        number_page = 1
         while True:
             soup = BeautifulSoup(driver.page_source, "html.parser")
             table = soup.select_one("#ctl00_cphBody_Grid1")
             if table:
-                rows = table.select("tr")
+                rows = table.select("tr.altrow")
                 for row in rows:
-                    cols = row.find_all("td")
-                    if cols:
-                        data = [col.text.strip() for col in cols]
-                        all_scraper_page.append(data)
+                    col = row.select_one("td.wideText")
+                    if col:
+                        link_tag = col.select_one("em a")
+                        if link_tag and link_tag.has_attr("href"):
+                            link = link_tag["href"]
+                            href = urljoin(link_card, link)
+                            print("href by quma: ", href)
+                            urls_to_scrape.append(href)
 
             try:
                 next_button = driver.find_element(
                     By.ID, "ctl00_cphBody_Grid1_ctl01_ibNext"
                 )
                 if next_button.is_enabled():
+                    number_page += 1
+                    print(f"=========================== Siguiente pagina: {number_page}")
                     next_button.click()
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located(
@@ -159,17 +174,16 @@ def scraper_plant_atlas(url, sobrenombre):
         processed_cards = set()
         all_scraper_page = process_cards(driver, soup, processed_cards)
 
-        all_scraper = "\n".join([", ".join(row) for row in all_scraper_page])
-        file_path = save_data_to_file(all_scraper, url, sobrenombre)
-
-        response_data = save_to_mongodb(file_path, db, collection, fs, url)
-
-        delete_old_documents(url, collection, fs)
-
-        return Response(
-            response_data,
-            status=status.HTTP_200_OK,
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+
     except Exception as e:
         return Response(
             {"message": f"Error: {e}"},
