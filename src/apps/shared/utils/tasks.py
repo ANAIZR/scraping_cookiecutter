@@ -31,59 +31,57 @@ def scraper_url_task(self, url):
 
     except ScraperURL.DoesNotExist:
         logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
-        return {"status": "failed", "url": url, "error": "ScraperURL no encontrado"}
+        return None  # 🔥 Permitir que Celery continúe la cadena sin interrumpirla
 
     except Exception as e:
-        logger.error(
-            f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}"
-        )
-        return {"status": "failed", "url": url, "error": str(e)}
+        logger.error(f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}")
+        return None  # 🔥 Permitir que Celery continúe la cadena sin interrumpirla
 
     result = scraper_service.scraper_one_url(url, sobrenombre)
 
     if "error" in result:
-        logger.error(
-            f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}"
-        )
+        logger.error(f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}")
         scraper_url.estado_scrapeo = "fallido"
         scraper_url.error_scrapeo = result["error"]
-    else:
-        logger.info(f"Task {self.request.id}: Scraping exitoso para {url}")
-        scraper_url.estado_scrapeo = "exitoso"
-        scraper_url.error_scrapeo = ""
+        scraper_url.save()
+        return None  # 🔥 Permitir que Celery continúe sin detener la cadena
 
-        # 🔥 Definir las URLs permitidas
-        urls_permitidas = {
-            "https://www.ippc.int/en/countries/south-africa/pestreports/",
-            "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
-        }
+    logger.info(f"Task {self.request.id}: Scraping exitoso para {url}")
+    scraper_url.estado_scrapeo = "exitoso"
+    scraper_url.error_scrapeo = ""
 
-        tareas = [
-            process_scraped_data_task.s(),
-            generate_comparison_report_task.si(url),
-        ]
+    # 🔥 Definir las URLs permitidas
+    urls_permitidas = {
+        "https://www.ippc.int/en/countries/south-africa/pestreports/",
+        "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
+    }
 
-        if url in urls_permitidas:
-            tareas.append(check_new_species_and_notify.si([url]))
+    tareas = [
+        process_scraped_data_task.s(),  # ✅ Ahora recibe None si hubo error en la anterior
+        generate_comparison_report_task.si(url),
+    ]
 
-        tarea_encadenada = chain(*tareas)
-        tarea_encadenada.apply_async()
+    if url in urls_permitidas:
+        tareas.append(check_new_species_and_notify.si([url]))
+
+    tarea_encadenada = chain(*tareas)
+    tarea_encadenada.apply_async()
 
     scraper_url.save()
-    return {"status": scraper_url.estado_scrapeo, "url": url}
+    return url  # 🔥 Devuelve la URL para que Celery la pase a la siguiente tarea
 
 
 @shared_task(bind=True)
 def process_scraped_data_task(self, url):
     if not url:
-        logger.error("No se recibió una URL válida en process_scraped_data_task")
-        return None
+        logger.warning(f"Task {self.request.id}: URL vacía o fallida, no se procesará.")
+        return None  
 
     scraper = ScraperService()
     scraper.extract_and_save_species(url)
     check_new_species_and_notify([url])
 
-    return url
+    return url 
 
 
 @shared_task(bind=True)
@@ -135,6 +133,8 @@ def generate_comparison_report_task(self, url):
         return {"status": "error", "message": f"Error interno: {str(e)}"}
 
 
+from celery import chord
+
 @shared_task(bind=True)
 def scraper_expired_urls_task(self):
     scraper_service = WebScraperService()
@@ -144,26 +144,25 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
-    full_chain = None
-
+    task_chains = []
+    
     for url in urls:
         task_chain = chain(
             scraper_url_task.s(url),
-            process_scraped_data_task.s(url),
+            process_scraped_data_task.s(),
             generate_comparison_report_task.si(url),
-        )
+        ).on_error(handle_task_error.s(url))  
 
-        if full_chain is None:
-            full_chain = task_chain
-        else:
-            full_chain = full_chain | task_chain
+        task_chains.append(task_chain)
 
-    if full_chain:
-        full_chain.apply_async(link_error=handle_task_error.si())  # ✅ Corrección aquí
+    if task_chains:
+        chord(task_chains)(summary_task.si())  
 
-    logger.info(
-        f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs."
-    )
+    logger.info(f"Scraping, conversión y comparación iniciada para {len(urls)} URLs.")
+
+@shared_task
+def summary_task():
+    logger.info("Todas las tareas de scraping han finalizado.")
 
 
 @shared_task
