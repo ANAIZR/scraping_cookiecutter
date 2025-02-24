@@ -125,16 +125,22 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
+    full_chain = None 
+
     for url in urls:
-        try:
-            task_chain = chain(
-                scraper_url_task.s(url),
-                process_scraped_data_task.s(url),
-                generate_comparison_report_task.si(url),
-            )
-            task_chain.apply_async(link_error=handle_task_error.si())  
-        except Exception as e:
-            logger.error(f"Error al iniciar el proceso de scraping para {url}: {e}")
+        task_chain = chain(
+            scraper_url_task.s(url),
+            process_scraped_data_task.s(url),
+            generate_comparison_report_task.si(url),
+        )
+
+        if full_chain is None:
+            full_chain = task_chain  
+        else:
+            full_chain = full_chain | task_chain  
+
+    if full_chain:
+        full_chain.apply_async(link_error=handle_task_error.si())  
 
     logger.info(f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs.")
 
