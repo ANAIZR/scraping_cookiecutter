@@ -47,7 +47,6 @@ def scraper_url_task(self, url):
         scraper_url.estado_scrapeo = "exitoso"
         scraper_url.error_scrapeo = ""
 
-        # 🔥 Definir las URLs permitidas
         urls_permitidas = {
             "https://www.ippc.int/en/countries/south-africa/pestreports/",
             "https://www.pestalerts.org/nappo/emerging-pest-alerts/"
@@ -137,5 +136,4 @@ def scraper_expired_urls_task(self):
     logger.info(
         f"Scraping, conversión y comparación secuencial iniciada para {len(urls)} URLs."
     )
-
 

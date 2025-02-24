@@ -8,6 +8,7 @@ class ScraperURLSerializer(serializers.ModelSerializer):
     )
     estado_scrapeo = serializers.CharField(read_only=True)
     error_scrapeo = serializers.CharField(read_only=True)
+    fecha_scraper = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", required=False, allow_null=True)
 
     class Meta:
         model = ScraperURL
