@@ -37,27 +37,20 @@ def extract_text(current_url):
     try:
         response = requests.get(current_url, headers=headers)
         response.raise_for_status()
+        print(f"Procesando URL by quma: {current_url}")
 
         soup = BeautifulSoup(response.content, "html.parser")
-        table_element = soup.find("table", class_=["datagrid", "details-table", "my-3"])
-        if not table_element:
-            logger.warning(f"No se encontró el elemento en {current_url}")
-            return ""
-        
-        body = table_element.select_one("tbody")
+        table_element = soup.find("table", class_="datagrid")
 
-        if body:
-            trs = body.select("tr")
+        if table_element:
+            trs = table_element.select("tr")
             
-            text = ""
+            body_text = ""
             for tr in trs:
-                tds = tr.select("tr")
+                tds = tr.select("td")
                 for td in tds:
-                    text += f"{td.get_text(strip=True)};"
-                    text += "\n"
-
-            
-            body_text = table_element.get_text(separator=" ", strip=True)
+                    body_text += f"{td.get_text(strip=True)};"
+                    body_text += "\n"
             
             if body_text:
                 object_id = fs.put(
@@ -161,7 +154,7 @@ def scraper_card_page(driver, link_card):
                 )
                 if next_button.is_enabled():
                     number_page += 1
-                    print(f"=========================== Siguiente pagina: {number_page}")
+                    print(f"=========================== Siguiente pagina: {number_page} ===========================")
                     next_button.click()
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located(
@@ -176,8 +169,8 @@ def scraper_card_page(driver, link_card):
                 break
 
 
-        for url in urls_to_scrape:
-            extract_text(url)
+        for url_page in urls_to_scrape:
+            extract_text(url_page)
 
         return all_scraper_page
     except Exception as e:
