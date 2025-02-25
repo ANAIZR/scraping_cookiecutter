@@ -49,9 +49,10 @@ def extract_text(current_url):
             for tr in trs:
                 tds = tr.select("td")
                 for td in tds:
-                    body_text += f"{td.get_text(strip=True)};"
-                    body_text += "\n"
-            
+                    body_text += f"{td.get_text(strip=True)}  "
+                body_text += ";\n"
+
+            print("texto scrapeado by quma: \n", body_text)
             if body_text:
                 object_id = fs.put(
                     body_text.encode("utf-8"),
@@ -176,40 +177,6 @@ def scraper_card_page(driver, link_card):
     except Exception as e:
         print(f"Error processing card page: {e}")
         return []
-
-
-def save_data_to_file(all_scraper, url, sobrenombre):
-    folder_path = generate_directory(url)
-    file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(all_scraper)
-
-    return file_path
-
-
-def save_to_mongodb(file_path, db, collection, fs, url):
-    with open(file_path, "rb") as file_data:
-        object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-    data = {
-        "Objeto": object_id,
-        "Tipo": "Web",
-        "Url": url,
-        "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Etiquetas": ["planta", "plaga"],
-    }
-    collection.insert_one(data)
-
-    response_data = {
-        "Tipo": "Web",
-        "Url": url,
-        "Fecha_scrapper": data["Fecha_scrapper"],
-        "Etiquetas": data["Etiquetas"],
-        "Mensaje": "Los datos han sido scrapeados correctamente.",
-    }
-    return response_data
-
 
 def scraper_plant_atlas(url, sobrenombre):
     global url_padre,headers,fs,total_scraped_links,scraped_urls,non_scraped_urls
