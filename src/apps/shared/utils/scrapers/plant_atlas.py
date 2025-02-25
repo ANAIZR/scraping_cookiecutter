@@ -8,12 +8,9 @@ from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from datetime import datetime
 from bson import ObjectId
-import gridfs
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
-import os
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
     initialize_driver,
     process_scraper_data_v2,
     connect_to_mongo,
@@ -27,6 +24,7 @@ total_scraped_links = 0
 scraped_urls = []
 non_scraped_urls = []
 
+url_padre = ""
 urls_to_scrape = []
 fs = None
 headers = None
@@ -115,6 +113,24 @@ def process_cards(driver, soup, processed_cards):
 
     return all_scraper_page
 
+def scrape_pages_in_parallel(url_list):
+    print("Scraping pages in parallel")
+    global non_scraped_urls
+    new_links = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_url = {
+            executor.submit(extract_text, url): (url)
+            for url in url_list
+        }
+        for future in as_completed(future_to_url):
+            try:
+                result_links = future.result()
+                new_links.extend(result_links)
+            except Exception as e:
+                logger.error(f"Error en tarea de scraping: {str(e)}")
+                non_scraped_urls += 1
+    return new_links
+
 def scraper_card_page(driver, link_card):
     driver.get(link_card)
     WebDriverWait(driver, 10).until(
@@ -169,9 +185,7 @@ def scraper_card_page(driver, link_card):
                 print(f"Error during pagination: {e}")
                 break
 
-
-        for url_page in urls_to_scrape:
-            extract_text(url_page)
+        urls_scrappeds = scrape_pages_in_parallel(urls_to_scrape)
 
         return all_scraper_page
     except Exception as e:
