@@ -80,7 +80,9 @@ from ...utils.scrapers import (
     scraper_agresearchmag,
     scraper_acir_aphis_usda,
     scraper_notification_aphis,
-    scraper_repository_cimmy
+    scraper_repository_cimmy,
+    scraper_notification_ippc,
+    scraper_aphis_usda_gov
 )
 
 SCRAPER_FUNCTIONS = {
@@ -157,7 +159,9 @@ SCRAPER_FUNCTIONS = {
     71: scraper_agresearchmag,
     72: scraper_acir_aphis_usda,
     73: scraper_notification_aphis,
-    74: scraper_repository_cimmy
+    74: scraper_repository_cimmy,
+    75: scraper_notification_ippc,
+    77: scraper_aphis_usda_gov
 }
 
 class ScraperAPIView(APIView):
