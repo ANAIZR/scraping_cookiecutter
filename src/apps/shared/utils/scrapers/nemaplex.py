@@ -49,7 +49,7 @@ def scraper_nemaplex(
             # Extraer columnas dentro de la fila
             columns = row.find_elements(By.TAG_NAME, "td")
             row_data = [col.text for col in columns]  # Obtener texto de cada columna
-            logger.info(f"Fila {index}: {row_data}")
+            # logger.info(f"Fila {index}: {row_data}")
             data.append(row_data)
 
             href = url + f"-{index}" 
