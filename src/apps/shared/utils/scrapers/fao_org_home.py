@@ -11,6 +11,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    extract_text_from_pdf
 )
 from datetime import datetime
 from bson import ObjectId
@@ -49,6 +50,33 @@ def scraper_fao_org_home(url, sobrenombre):
 
             soup = BeautifulSoup(response.content, "html.parser")
 
+            if url.endswith(".pdf"):
+                logger.info(f"Extrayendo texto de PDF: {url}")
+                pdf_text = extract_text_from_pdf(url)
+
+                if pdf_text:
+                    object_id = fs.put(
+                        pdf_text.encode("utf-8"),
+                        source_url=url,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=pdf_text,
+                        url=url_padre
+                    )
+                    total_scraped_links += 1
+                    scraped_urls.append(url)
+                    logger.info(f"Texto de PDF almacenado en MongoDB con object_id: {object_id}")
+
+                    existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version._id))
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                else:
+                    non_scraped_urls.append(url)
+                    total_non_scraped_links += 1
+                return []            
+
             if depth >= 2:
                 # Extraer solo el contenido principal
                 # main_content = soup.find("body", id="main-content")
@@ -77,8 +105,8 @@ def scraper_fao_org_home(url, sobrenombre):
                         existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
+                            file_id = oldest_version._id  # Esto obtiene el ID correcto
+                            fs.delete(file_id)  # Eliminar la versión más antigua
                             logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                     else:
                         non_scraped_urls.append(url)
@@ -88,9 +116,9 @@ def scraper_fao_org_home(url, sobrenombre):
                 inner_href = link.get("href")
                 full_url = urljoin(url, inner_href)
 
-                if full_url.lower().endswith(".pdf"):
-                    total_non_scraped_links += 1  
-                    non_scraped_urls.append(full_url)  
+                if (full_url.startswith("http://www.fao.org/countryprofiles/index/en/?") or full_url.startswith("https://www.fao.org/countryprofiles/index/en/?")):
+                    total_non_scraped_links += 1
+                    non_scraped_urls.append(full_url)
                     continue
 
                 if "forms" in full_url or "":  
