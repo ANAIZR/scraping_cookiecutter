@@ -906,7 +906,7 @@
     "model": "shared.ScraperURL",
     "pk": 64,
     "fields": {
-      "url": "http://www.catalogueoflife.org/annual-checklist/2007/search.php",
+      "url": "https://www.catalogueoflife.org/annual-checklist/2007/search.php",
       "mode_scrapeo": 39,
       "sobrenombre": "Catalogue_of_life",
       "time_choices": 1,

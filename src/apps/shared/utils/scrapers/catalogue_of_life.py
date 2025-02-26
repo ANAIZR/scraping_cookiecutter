@@ -3,7 +3,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
@@ -14,8 +14,14 @@ import os
 import random
 import time
 from bs4 import BeautifulSoup
+from datetime import datetime
+from bson import ObjectId
 
 logger = get_logger("scraper")
+non_scraped_urls = []  
+scraped_urls = []
+total_scraped_links = 0
+
 
 
 # Cargar palabras clave desde utils/txt/all.txt
@@ -33,6 +39,7 @@ def load_keywords(file_path="../txt/all.txt"):
 
 
 def scraper_catalogue_of_life(url, sobrenombre):
+    global total_scraped_links
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
@@ -91,7 +98,28 @@ def scraper_catalogue_of_life(url, sobrenombre):
                         )
                         if td_element:
                             cleaned_text = " ".join(td_element[0].get_text().split())
-                            all_scraper += cleaned_text + "\n"
+                            # all_scraper += cleaned_text + "\n"
+                            if cleaned_text:
+                                object_id = fs.put(
+                                    cleaned_text.encode("utf-8"),
+                                    source_url=href,
+                                    scraping_date=datetime.now(),
+                                    Etiquetas=["planta", "plaga"],
+                                    contenido=cleaned_text,
+                                    url=url
+                                )
+                                total_scraped_links += 1
+                                scraped_urls.append(href)
+                                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                                if len(existing_versions) > 1:
+                                    oldest_version = existing_versions[-1]
+                                    file_id = oldest_version._id  # Esto obtiene el ID correcto
+                                    fs.delete(file_id)  # Eliminar la versión más antigua
+                                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                            else:
+                                non_scraped_urls.append(href)
                         else:
                             logger.warning(
                                 f"No se encontró el tercer <td> para el enlace {href}"
@@ -120,8 +148,14 @@ def scraper_catalogue_of_life(url, sobrenombre):
                 f"Palabra clave {keyword} procesada. Regresando a la página principal."
             )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
+        all_scraper = (
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
