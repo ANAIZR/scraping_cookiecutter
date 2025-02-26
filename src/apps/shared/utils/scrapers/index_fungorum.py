@@ -12,6 +12,7 @@ from ..functions import (
     get_logger,
     initialize_driver,
 )
+urls_to_scrape = []  
 non_scraped_urls = []  
 scraped_urls = []
 
@@ -51,7 +52,10 @@ def scraper_index_fungorum(url, sobrenombre):
                 )
                 input_field.clear()
                 input_field.send_keys(term)
-                input_field.submit()
+
+                btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit']")
+                btn.click()
+
                 time.sleep(random.uniform(3, 6))
                 logger.info(f"Realizando búsqueda con la palabra clave: {term}")
 
@@ -61,39 +65,48 @@ def scraper_index_fungorum(url, sobrenombre):
                 time.sleep(random.uniform(3, 6))
                 logger.info("Búsqueda realizada con éxito")
 
-                links = driver.find_elements(By.CSS_SELECTOR, "a.LinkColour1")
+                number_page = 1
+                while True:
 
-                if not links:
-                    continue
+                    links = driver.find_elements(By.CSS_SELECTOR, "a.LinkColour1")
+                    if not links:
+                        continue
 
-                for index, link in enumerate(links, start=1):
-                    href = link.get_attribute("href")
-                    text = link.text.strip()
-
-                    driver.get(href)
-                    main = WebDriverWait(driver, 30).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, "table.mainbody")
-                        )
-                    )
+                    for link in links:
+                        href = link.get_attribute("href")
+                        if "NamesRecord" in href:
+                            urls_to_scrape.append(href)
+                            print("href by qumadev", href)
 
                     try:
-                        content = main.text
-                        all_scraper += content
-                    except Exception as e:
-                        pass
-
-                    driver.back()
-                    WebDriverWait(driver, 30).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, "table.mainbody")
+                        print("inicio de capturar el boton de next")
+                        next_link = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable((By.LINK_TEXT, "[Next >>]"))
                         )
-                    )  
+                        print("next_link by quma", next_link)
 
-                input_field = WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located((By.NAME, "SearchTerm"))
-                )
-                input_field.clear()  
+                        if next_link:
+                            number_page += 1
+                            print(f"=========================== Siguiente pagina: {number_page} ===========================")
+                            next_page_link = next_link.get_attribute("href")
+                            driver.get(next_page_link)
+
+                            WebDriverWait(driver, 10).until(
+                                EC.presence_of_element_located(
+                                    (By.CSS_SELECTOR, "table.mainbody")
+                                )
+                            )
+                        else:
+                            print("No more pages.")
+                            break
+                    except Exception as e:
+                        print(f"Error during pagination: {e}")
+                        break
+
+                    input_field = WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located((By.NAME, "SearchTerm"))
+                    )
+                    input_field.clear()  
 
             except Exception as e:
                 pass
