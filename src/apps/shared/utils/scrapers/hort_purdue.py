@@ -26,6 +26,7 @@ def scrape_single_url(url):
         response.raise_for_status() 
         soup = BeautifulSoup(response.text, "html.parser")
 
+        # Eliminamos etiquetas center si existen
         for center_tag in soup.find_all("center"):
             center_tag.decompose()
 
@@ -36,10 +37,10 @@ def scrape_single_url(url):
         return None
 
 def scraper_hort_purdue(url, sobrenombre):
-    all_scraper = ""
     all_links = set() 
     domain = "https://hort.purdue.edu/"
     urls_not_scraped = []
+    urls_scraped = []  # Aquí almacenamos las URLs que se procesaron correctamente
 
     try:
         if url in visited_url:
@@ -56,7 +57,7 @@ def scraper_hort_purdue(url, sobrenombre):
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
-        logger.info(f"Contenido de la página obtenido con BeautifulSoup.")
+        logger.info("Contenido de la página obtenido con BeautifulSoup.")
 
         links = soup.find_all("a", href=True)
         for link in links:
@@ -68,6 +69,8 @@ def scraper_hort_purdue(url, sobrenombre):
 
         logger.info(f"Se encontraron {len(all_links)} enlaces únicos.")
 
+        collection, fs = connect_to_mongo()
+
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_url = {executor.submit(scrape_single_url, link): link for link in all_links}
 
@@ -76,23 +79,42 @@ def scraper_hort_purdue(url, sobrenombre):
                 try:
                     body_text = future.result()
                     if body_text:
-                        all_scraper += f"Link: {link}\nBody:\n{body_text}\n\n"
+                        object_id = fs.put(
+                            body_text.encode("utf-8"),
+                            source_url=link,
+                            scraping_date=datetime.now(),
+                            Etiquetas=["planta", "plaga"],
+                            contenido=body_text,
+                            url=url
+                        )
+                        logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                        existing_versions = list(
+                            fs.find({"source_url": link}).sort("scraping_date", -1)
+                        )
+                        if len(existing_versions) > 1:
+                            oldest_version = existing_versions[-1]
+                            file_id = oldest_version._id  
+                            fs.delete(file_id)  
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+
+                        urls_scraped.append(link)
+                    else:
+                        urls_not_scraped.append(link)
                 except Exception as e:
                     logger.error(f"Error al procesar el enlace {link}: {e}")
                     urls_not_scraped.append(link)
 
         all_scraper = (
-            f"Resumen del scraping:\n"
-            f"Total de URLs procesadas: {len(all_links) - len(urls_not_scraped)}\n"
-            f"Total de URLs no procesadas: {len(urls_not_scraped)}\n\n"
-            f"{'-'*80}\n\n"
-        ) + all_scraper
+            "Resumen del scraping:\n"
+            f"Total de URLs encontradas: {len(all_links)}\n"
+            f"Total de URLs procesadas exitosamente: {len(urls_scraped)}\n"
+            f"URLs procesadas exitosamente:\n{chr(10).join(urls_scraped)}\n\n"
+            f"Total de URLs no procesadas: {len(urls_not_scraped)}\n"
+            f"URLs no procesadas:\n{chr(10).join(urls_not_scraped)}\n"
+        )
 
-        if urls_not_scraped:
-            all_scraper += "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
-
-        collection, fs = connect_to_mongo()
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
 
         return response
 

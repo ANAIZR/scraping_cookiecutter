@@ -137,9 +137,10 @@ def scraper_repository_cimmy(url, sobrenombre):
                             )
 
                             if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                fs.delete(oldest_version._id)  
-                                logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
+                                    oldest_version = existing_versions[-1]
+                                    file_id = oldest_version._id 
+                                    fs.delete(file_id)  
+                                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
 
                             logger.info(f"Contenido extraído de {href}.")
 
