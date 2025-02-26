@@ -11,8 +11,8 @@ load_dotenv()
 print(f"EMAIL: {os.getenv('EMAIL')}")
 print(f"PASSWORD: {os.getenv('PASSWORD')}")
 CREDENTIALS = {
-    "email": os.getenv("EMAIL"),
-    "password": os.getenv("PASSWORD")
+    "email": os.getenv("EMAIL","admin@comunidadandina.org"),
+    "password": os.getenv("PASSWORD","Bpgei2MxfFKyWE5")
 }
 
 def login_cabi_scienceconnect(driver):
@@ -21,6 +21,8 @@ def login_cabi_scienceconnect(driver):
 
     try:
         driver.get("https://cabi.scienceconnect.io/login")
+        print(f"Usando EMAIL: {CREDENTIALS['email']}")
+        print(f"Usando PASSWORD: {CREDENTIALS['password']}")
         time.sleep(random.uniform(3, 6))
 
         email_input = WebDriverWait(driver, 30).until(

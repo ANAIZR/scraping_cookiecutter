@@ -8,7 +8,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    driver_init,
+    initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
@@ -22,10 +22,11 @@ logger = get_logger("scraper")
 
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = driver_init()
+    driver = initialize_driver()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
+    all_scraper=""
 
     try:
         if login_cabi_scienceconnect(driver):
