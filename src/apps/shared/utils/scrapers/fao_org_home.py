@@ -116,7 +116,7 @@ def scraper_fao_org_home(url, sobrenombre):
                 inner_href = link.get("href")
                 full_url = urljoin(url, inner_href)
 
-                if full_url.startswith("http://www.fao.org/countryprofiles/index/en/?"):
+                if (full_url.startswith("http://www.fao.org/countryprofiles/index/en/?") or full_url.startswith("https://www.fao.org/countryprofiles/index/en/?")):
                     total_non_scraped_links += 1
                     non_scraped_urls.append(full_url)
                     continue
