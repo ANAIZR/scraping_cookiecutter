@@ -76,8 +76,9 @@ def scraper_aphis_usda(url, sobrenombre):
 
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
-                    fs.delete(oldest_version._id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+                    file_id = oldest_version._id  
+                    fs.delete(file_id)  
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
 
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
@@ -111,8 +112,9 @@ def scraper_aphis_usda(url, sobrenombre):
 
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
-                            fs.delete(ObjectId(oldest_version["_id"]))
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                            file_id = oldest_version._id  
+                            fs.delete(file_id)  
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                     else:
                         total_non_scraped_links += 1
                         non_scraped_urls.append(full_url)

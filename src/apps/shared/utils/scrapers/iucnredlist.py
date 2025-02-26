@@ -112,9 +112,11 @@ def scraper_iucnredlist(url, sobrenombre):
                         existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
 
                         if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            fs.delete(oldest_version._id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+                                oldest_version = existing_versions[-1]
+                                file_id = oldest_version._id 
+                                fs.delete(file_id)  
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+
                     else:
                         urls_not_scraped.add(href)
                         logger.warning(f"⚠️ No se extrajo contenido de {href}")

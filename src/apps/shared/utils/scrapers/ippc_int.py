@@ -25,7 +25,7 @@ logger = get_logger("scraper")
 def scraper_ippc_int(url, sobrenombre):
     logger = get_logger("IPPC INT")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
@@ -62,8 +62,10 @@ def scraper_ippc_int(url, sobrenombre):
                 existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
-                    fs.delete(oldest_version._id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                                            
+                    file_id = oldest_version._id 
+                    fs.delete(file_id) 
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}") 
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al procesar el enlace {url}: {e}")

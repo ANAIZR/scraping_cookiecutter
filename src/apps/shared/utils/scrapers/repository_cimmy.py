@@ -38,10 +38,10 @@ def scraper_repository_cimmy(url, sobrenombre):
         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
         time.sleep(5)
 
-        logger.info("Página cargada correctamente.")
+        print(f"✅ Página cargada correctamente.")
 
         domain = "https://repository.cimmyt.org"
-        keywords = load_keywords("plants.txt")
+        keywords = load_keywords("prueba.txt")
 
         for keyword in keywords:
             try:
@@ -55,9 +55,9 @@ def scraper_repository_cimmy(url, sobrenombre):
                     search_button = WebDriverWait(driver, 15).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "button.btn.btn-primary.search-button"))
                     )
-                    logger.info("✅ Se encontró el botón de búsqueda con Selenium")
+                    print(f"✅ Se encontró el botón de búsqueda con Selenium")
                 except TimeoutException:
-                    logger.error("❌ No se encontró el botón con Selenium después de la espera")
+                    print(f"No se encontró el botón con Selenium después de la espera")
                     continue
 
                 try:
@@ -68,7 +68,6 @@ def scraper_repository_cimmy(url, sobrenombre):
                 time.sleep(random.uniform(3, 6))
 
                 while True:
-                    # Extraer enlaces de la página actual
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
                     results = soup.select("ds-listable-object-component-loader")
@@ -77,9 +76,13 @@ def scraper_repository_cimmy(url, sobrenombre):
                         link = result.find("a", href=True)
                         if link and link["href"]:
                             href = urljoin(domain, link["href"])
-                            if href not in visited_urls: 
+                            if href not in scraped_urls and href not in failed_urls:
                                 scraped_urls.add(href)
                                 total_links_found += 1
+                            else:
+                                failed_urls.add(href)
+                                total_failed_scrapes += 1
+                                
 
                     try:
                         next_button = WebDriverWait(driver, 10).until(
@@ -87,72 +90,80 @@ def scraper_repository_cimmy(url, sobrenombre):
                         )
 
                         if next_button.get_attribute("aria-disabled") == "true":
-                            logger.info("Botón 'Next' deshabilitado. Fin de paginación.")
+                            print("🔚 Botón 'Next' deshabilitado. Fin de paginación.")
                             break
 
                         driver.execute_script("arguments[0].click();", next_button)
                         time.sleep(random.uniform(3, 6))
 
                     except (TimeoutException, NoSuchElementException):
-                        logger.info("No se encontró botón 'Next' o no es clickeable. Fin de paginación.")
+                        print("No se encontró botón 'Next' o no es clickeable. Fin de paginación.")
                         break
 
-                for href in scraped_urls:
-                    if href in visited_urls: 
-                        continue
-                    
-                    visited_urls.add(href)  
-
-                    try:
-                        if href.endswith(".pdf"):
-                            logger.info(f"***Extrayendo texto de {href}")
-                            content_text = extract_text_from_pdf(href)
-                        else:
-                            driver.get(href)
-                            driver.execute_script("document.body.style.zoom='100%'")
-                            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
-                            time.sleep(5)
-
-                            WebDriverWait(driver, 30).until(
-                                EC.presence_of_element_located((By.CSS_SELECTOR, "div.col-xs-12.col-md-7"))
-                            )
-                            time.sleep(random.randint(2, 4))
-                            content_text = driver.find_element(By.CSS_SELECTOR, "div.col-xs-12.col-md-7").text.strip()
-
-                        if content_text:
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=href,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=url
-                            )
-
-                            object_ids.append(object_id)
-                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                            existing_versions = list(
-                                fs.find({"source_url": href}).sort("scraping_date", -1)
-                            )
-
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                fs.delete(oldest_version._id)  
-                                logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
-
-                            logger.info(f"Contenido extraído de {href}.")
-
-                    except Exception as e:
-                        logger.error(f"No se pudo extraer contenido de {href}: {e}")
-                        total_failed_scrapes += 1
-                        failed_urls.add(href)
+                driver.get(url)
+                driver.execute_script("document.body.style.zoom='100%'")
+                WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                time.sleep(5)
 
             except Exception as e:
-                logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
+                print(f"⚠️ Error durante la búsqueda con palabra clave '{keyword}': {e}")
                 continue
 
-        total_scraped_successfully = len(object_ids)
+        print(f"🔍 Total de URLs únicas para scrapear: {len(scraped_urls)}")  
+
+        for href in scraped_urls.copy():
+            try:
+                print(f"🔎 Procesando: {href}")  
+
+                if href.endswith(".pdf"):
+                    print(f"📄 Extrayendo texto de PDF: {href}")
+                    content_text = extract_text_from_pdf(href)
+                else:
+                    driver.get(href)
+                    driver.execute_script("document.body.style.zoom='100%'")
+                    WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                    time.sleep(5)
+
+                    WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.col-xs-12.col-md-7"))
+                    )
+                    time.sleep(random.randint(2, 4))
+                    content_text = driver.find_element(By.CSS_SELECTOR, "div.col-xs-12.col-md-7").text.strip()
+
+                if content_text:
+                    object_id = fs.put(
+                        content_text.encode("utf-8"),
+                        source_url=href,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=content_text,
+                        url=url
+                    )
+
+                    object_ids.append(object_id)
+                    total_scraped_successfully += 1
+                    print(f"✅ Contenido guardado en MongoDB: {href}")  
+
+                    existing_versions = list(
+                        fs.find({"source_url": href}).sort("scraping_date", -1)
+                    )
+
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version._id))
+                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version._id}")
+                            
+                    logger.info(f"Contenido extraído de {href}.")
+
+                else:
+                    print(f"⚠️ El contenido de {href} está vacío.")
+                    total_failed_scrapes += 1
+                    failed_urls.add(href)
+
+            except Exception as e:
+                print(f"❌ No se pudo extraer contenido de {href}: {e}")
+                total_failed_scrapes += 1
+                failed_urls.add(href)
 
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
@@ -164,9 +175,9 @@ def scraper_repository_cimmy(url, sobrenombre):
         return response
 
     except Exception as e:
-        logger.error(f"Error general durante el scraping: {str(e)}")
+        print(f"⚠️ Error general durante el scraping: {str(e)}")
         return {"error": str(e)}
 
     finally:
         driver.quit()
-        logger.info("Navegador cerrado.")
+        print("🚪 Navegador cerrado.")

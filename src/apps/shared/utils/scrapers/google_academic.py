@@ -26,7 +26,7 @@ logger = get_logger("scraper")
 def scraper_google_academic(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = driver_init()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     keywords = load_keywords("plants.txt")
     total_links_found = 0
