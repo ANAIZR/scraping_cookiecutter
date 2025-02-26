@@ -82,7 +82,8 @@ from ...utils.scrapers import (
     scraper_notification_aphis,
     scraper_repository_cimmy,
     scraper_notification_ippc,
-    scraper_aphis_usda_gov
+    scraper_aphis_usda_gov,
+    scraper_pest_report
 )
 
 SCRAPER_FUNCTIONS = {
@@ -161,7 +162,8 @@ SCRAPER_FUNCTIONS = {
     73: scraper_notification_aphis,
     74: scraper_repository_cimmy,
     75: scraper_notification_ippc,
-    77: scraper_aphis_usda_gov
+    77: scraper_aphis_usda_gov,
+    78:scraper_pest_report    
 }
 
 class ScraperAPIView(APIView):

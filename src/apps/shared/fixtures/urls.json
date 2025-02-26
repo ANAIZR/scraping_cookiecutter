@@ -1257,7 +1257,7 @@
     "model": "shared.ScraperURL",
     "pk": 94,
     "fields": {
-      "url": "https://doaj.org/",
+      "url": "http://www.doaj.org/",
       "sobrenombre": "doaj_org",
       "time_choices": 1,
       "mode_scrapeo": 68,
@@ -1365,6 +1365,19 @@
       "sobrenombre": "aphis_usda_gov",
       "time_choices": 1,
       "mode_scrapeo": 77,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 104,
+    "fields": {
+      "url": "https://www.pestalerts.org/nappo/official-pest-reports/",
+      "sobrenombre": "pest_report",
+      "time_choices": 1,
+      "mode_scrapeo": 78,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
