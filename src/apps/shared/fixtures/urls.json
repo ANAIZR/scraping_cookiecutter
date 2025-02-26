@@ -1257,7 +1257,7 @@
     "model": "shared.ScraperURL",
     "pk": 94,
     "fields": {
-      "url": "https://doaj.org/",
+      "url": "http://www.doaj.org/",
       "sobrenombre": "doaj_org",
       "time_choices": 1,
       "mode_scrapeo": 68,
