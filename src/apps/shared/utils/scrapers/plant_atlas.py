@@ -196,12 +196,8 @@ def scraper_plant_atlas(url, sobrenombre):
     global url_padre,headers,fs,total_scraped_links,scraped_urls,non_scraped_urls
     url_padre = url
     driver = None
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    # collection = db["collection"]
-    # fs = gridfs.GridFS(db)
 
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     headers = {"User-Agent": get_random_user_agent()}
     all_scraper = ""
 
