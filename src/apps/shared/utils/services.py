@@ -13,6 +13,7 @@ import re
 import inspect
 from django.db import transaction
 from django.utils import timezone
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,13 @@ logger = logging.getLogger(__name__)
 class WebScraperService:
     def get_expired_urls(self):
         return ScraperURL.objects.filter(
-            is_active=True, fecha_scraper__lt=datetime.now()
-        ).values_list("url", flat=True)
+            is_active=True
+        ).filter(
+            Q(fecha_scraper__lt=datetime.now()) | 
+            Q(fecha_scraper__isnull=True) | 
+            Q(estado_scrapeo="fallido")
+        ).exclude(estado_scrapeo="en_progreso").values_list("url", flat=True)
+
 
     def scraper_one_url(self, url, sobrenombre):
         try:
