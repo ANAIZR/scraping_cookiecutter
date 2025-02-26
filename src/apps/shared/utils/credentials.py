@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-
+print(f"EMAIL: {os.getenv('EMAIL')}")
+print(f"PASSWORD: {os.getenv('PASSWORD')}")
 CREDENTIALS = {
     "email": os.getenv("EMAIL"),
     "password": os.getenv("PASSWORD")

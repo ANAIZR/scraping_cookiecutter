@@ -8,7 +8,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    initialize_driver,
+    driver_init,
     get_logger,
     connect_to_mongo,
     load_keywords,
@@ -17,13 +17,12 @@ from ..functions import (
 from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
-from bson import ObjectId
 
 logger = get_logger("scraper")
 
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = initialize_driver()
+    driver = driver_init()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
@@ -67,7 +66,7 @@ def scraper_cabi_digital(url, sobrenombre):
                     (By.CSS_SELECTOR, "#onetrust-pc-btn-handler")
                 )
             )
-            cookie_button.click()
+            driver.execute_script("arguments[0].click();", cookie_button)
         except Exception:
             logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
         try:
@@ -76,7 +75,8 @@ def scraper_cabi_digital(url, sobrenombre):
                     (By.CSS_SELECTOR, "#accept-recommended-btn-handler")
                 )
             )
-            preferences_button.click()
+            driver.execute_script("arguments[0].click();", preferences_button)
+
         except Exception:
             logger.info(
                 "El botón de 'Guardar preferencias' no apareció o no fue clicable."
@@ -121,7 +121,11 @@ def scraper_cabi_digital(url, sobrenombre):
                             f"No se encontraron resultados para la palabra clave: {keyword}"
                         )
                         break
+                    visited_counts =0
+                    max_visits = 5
                     for item in items:
+                        if visited_counts>=max_visits:
+                            break
                         link = item.find("a")
                         if link and "href" in link.attrs:
                             href = link["href"]
@@ -160,9 +164,12 @@ def scraper_cabi_digital(url, sobrenombre):
                                         existing_versions = list(fs.find({"source_url": absolut_href}).sort("scraping_date", -1))
                                         if len(existing_versions) > 1:
                                             oldest_version = existing_versions[-1]
-                                            fs.delete(oldest_version._id)  
-                                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+                                            file_id = oldest_version._id  
+                                            fs.delete(file_id)  
+                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+
                                         scraping_exitoso = True
+                                visited_counts+=1
                                 driver.back()
                                 WebDriverWait(driver, 30).until(
                                     EC.presence_of_element_located(
@@ -172,6 +179,9 @@ def scraper_cabi_digital(url, sobrenombre):
                                 time.sleep(random.uniform(3, 6))
                             else:
                                 non_scraped_urls.append(href)
+                    if visited_counts >= max_visits:
+                        logger.info("🔴 Se alcanzó el límite de 5 enlaces visitados. No se paginará más.")
+                        break
                     try:
                         next_page_button = driver.find_element(
                             By.CSS_SELECTOR,

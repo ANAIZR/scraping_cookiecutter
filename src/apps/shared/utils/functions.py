@@ -20,6 +20,8 @@ from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
 from config.settings.base import PROXIES
+from pyvirtualdisplay import Display
+
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
@@ -134,6 +136,8 @@ def driver_init():
 
 def initialize_driver(retries=3):
     logger = get_logger("INICIALIZANDO EL DRIVER")
+    display = Display(visible=0, size=(1920, 1080))  
+    display.start()
     for attempt in range(retries):
         try:
             logger.info(
