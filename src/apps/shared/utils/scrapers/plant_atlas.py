@@ -1,4 +1,4 @@
-from selenium import webdriver
+from urllib.parse import urljoin
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
@@ -7,17 +7,73 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from datetime import datetime
-import gridfs
-import os
+from bson import ObjectId
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import requests
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
-    initialize_driver
+    initialize_driver,
+    process_scraper_data_v2,
+    connect_to_mongo,
+    get_random_user_agent,
+    get_logger
 )
 from rest_framework.response import Response
 from rest_framework import status
 
+total_scraped_links = 0
+scraped_urls = []
+non_scraped_urls = []
+
+url_padre = ""
+urls_to_scrape = []
+fs = None
+headers = None
+logger = get_logger("scraper")
+
+def extract_text(current_url):
+    global total_scraped_links
+    try:
+        response = requests.get(current_url, headers=headers)
+        response.raise_for_status()
+        print(f"Procesando URL by quma: {current_url}")
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        table_element = soup.find("table", class_="datagrid")
+
+        if table_element:
+            trs = table_element.select("tr")
+            
+            body_text = ""
+            for tr in trs:
+                tds = tr.select("td")
+                for td in tds:
+                    body_text += f"{td.get_text(strip=True)}  "
+                body_text += ";\n"
+
+            print("texto scrapeado by quma: \n", body_text)
+            if body_text:
+                object_id = fs.put(
+                    body_text.encode("utf-8"),
+                    source_url=current_url,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=body_text,
+                    url=url_padre
+                )
+                total_scraped_links += 1
+                scraped_urls.append(current_url)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    fs.delete(ObjectId(oldest_version._id))
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+            else:
+                non_scraped_urls.append(current_url)
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error al procesar la URL {current_url}: {e}")
 
 
 def get_soup(driver, url):
@@ -36,9 +92,10 @@ def process_cards(driver, soup, processed_cards):
     containers = soup.select("div.partner-list")
     for container in containers:
         cards = container.select("div.col-lg-3")
+        cards = cards[1:]
         for card in cards:
             try:
-                link_card = card.select_one("a")
+                link_card = card.select_one("h3 > a")
                 if not link_card:
                     continue
                 link_card = link_card.get("href")
@@ -49,7 +106,6 @@ def process_cards(driver, soup, processed_cards):
                 print(f"Processing card: {title}, Link: {link_card}")
                 if link_card:
                     all_scraper_page.extend(scraper_card_page(driver, link_card))
-
                 processed_cards.add(link_card)
 
             except Exception as e:
@@ -57,6 +113,23 @@ def process_cards(driver, soup, processed_cards):
 
     return all_scraper_page
 
+def scrape_pages_in_parallel(url_list):
+    print("Scraping pages in parallel")
+    global non_scraped_urls
+    new_links = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_url = {
+            executor.submit(extract_text, url): (url)
+            for url in url_list
+        }
+        for future in as_completed(future_to_url):
+            try:
+                result_links = future.result()
+                new_links.extend(result_links)
+            except Exception as e:
+                logger.error(f"Error en tarea de scraping: {str(e)}")
+                non_scraped_urls += 1
+    return new_links
 
 def scraper_card_page(driver, link_card):
     driver.get(link_card)
@@ -76,22 +149,29 @@ def scraper_card_page(driver, link_card):
         )
 
         all_scraper_page = []
+        number_page = 1
         while True:
             soup = BeautifulSoup(driver.page_source, "html.parser")
             table = soup.select_one("#ctl00_cphBody_Grid1")
             if table:
-                rows = table.select("tr")
+                rows = table.select("tr.altrow")
                 for row in rows:
-                    cols = row.find_all("td")
-                    if cols:
-                        data = [col.text.strip() for col in cols]
-                        all_scraper_page.append(data)
+                    col = row.select_one("td.wideText")
+                    if col:
+                        link_tag = col.select_one("em a")
+                        if link_tag and link_tag.has_attr("href"):
+                            link = link_tag["href"]
+                            href = urljoin(link_card, link)
+                            print("href by quma: ", href)
+                            urls_to_scrape.append(href)
 
             try:
                 next_button = driver.find_element(
                     By.ID, "ctl00_cphBody_Grid1_ctl01_ibNext"
                 )
                 if next_button.is_enabled():
+                    number_page += 1
+                    print(f"=========================== Siguiente pagina: {number_page} ===========================")
                     next_button.click()
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located(
@@ -105,51 +185,20 @@ def scraper_card_page(driver, link_card):
                 print(f"Error during pagination: {e}")
                 break
 
+        urls_scrappeds = scrape_pages_in_parallel(urls_to_scrape)
+
         return all_scraper_page
     except Exception as e:
         print(f"Error processing card page: {e}")
         return []
 
-
-def save_data_to_file(all_scraper, url, sobrenombre):
-    folder_path = generate_directory(url)
-    file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
-
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(all_scraper)
-
-    return file_path
-
-
-def save_to_mongodb(file_path, db, collection, fs, url):
-    with open(file_path, "rb") as file_data:
-        object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-    data = {
-        "Objeto": object_id,
-        "Tipo": "Web",
-        "Url": url,
-        "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Etiquetas": ["planta", "plaga"],
-    }
-    collection.insert_one(data)
-
-    response_data = {
-        "Tipo": "Web",
-        "Url": url,
-        "Fecha_scrapper": data["Fecha_scrapper"],
-        "Etiquetas": data["Etiquetas"],
-        "Mensaje": "Los datos han sido scrapeados correctamente.",
-    }
-    return response_data
-
-
 def scraper_plant_atlas(url, sobrenombre):
+    global url_padre,headers,fs,total_scraped_links,scraped_urls,non_scraped_urls
+    url_padre = url
     driver = None
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["scrapping-can"]
-    collection = db["collection"]
-    fs = gridfs.GridFS(db)
+
+    collection, fs = connect_to_mongo()
+    headers = {"User-Agent": get_random_user_agent()}
     all_scraper = ""
 
     try:
@@ -159,17 +208,16 @@ def scraper_plant_atlas(url, sobrenombre):
         processed_cards = set()
         all_scraper_page = process_cards(driver, soup, processed_cards)
 
-        all_scraper = "\n".join([", ".join(row) for row in all_scraper_page])
-        file_path = save_data_to_file(all_scraper, url, sobrenombre)
-
-        response_data = save_to_mongodb(file_path, db, collection, fs, url)
-
-        delete_old_documents(url, collection, fs)
-
-        return Response(
-            response_data,
-            status=status.HTTP_200_OK,
+        all_scraper = (
+            f"Total enlaces scrapeados: {total_scraped_links}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+
     except Exception as e:
         return Response(
             {"message": f"Error: {e}"},

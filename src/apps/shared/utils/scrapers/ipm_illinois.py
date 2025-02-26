@@ -1,128 +1,132 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+import requests
+from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from pymongo import MongoClient
-from datetime import datetime
-import gridfs
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
-    delete_old_documents,
+    process_scraper_data_v2,
+    connect_to_mongo,
+    get_logger,
+    extract_text_from_pdf,
+    initialize_driver,
 )
-import os
-import hashlib
-import requests
-import pdfplumber
-from io import BytesIO
-import urllib3
+from datetime import datetime
+from bson import ObjectId
+from urllib.parse import urljoin
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
-def scraper_pdf_content_and_save(pdf_url, collection, fs, sobrenombre):
-    try:
-        response = requests.get(pdf_url, stream=True, verify=False, timeout=10)
-        response.raise_for_status()
+def scraper_ipm_illinoes(url, sobrenombre):
+    logger = get_logger("scraper")
+    logger.info(f"Iniciando scraping para URL: {url}")
+    domain = "https://ipm.illinois.edu/diseases"
 
-        pdf_folder = generate_directory(hashlib.md5(pdf_url.encode()).hexdigest())
-        pdf_buffer = BytesIO(response.content)
+    all_scraper = ""
+    total_links_found = 0
+    total_scraped_successfully = 0
+    total_failed_scrapes = 0
+    scraped_urls = set()
+    failed_urls = set()
+    object_ids = []
 
-        with pdfplumber.open(pdf_buffer) as pdf:
-            text_content = "\n".join(
-                [
-                    f"--- Página {i + 1} ---\n{page.extract_text()}"
-                    for i, page in enumerate(pdf.pages)
-                ]
-            )
-
-        file_path = get_next_versioned_filename(pdf_folder, base_name="contenido_pdf")
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(text_content)
-
-        with open(file_path, "rb") as file_data:
-            object_id = fs.put(file_data, filename=os.path.basename(file_path))
-
-            data = {
-                "Objeto": object_id,
-                "Tipo": "PDF",
-                "Url": pdf_url,
-                "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            collection.insert_one(data)
-
-            delete_old_documents(pdf_url, collection, fs)
-
-            response_data = {
-                "Tipo": "PDF",
-                "Url": pdf_url,
-                "Archivo_guardado": file_path,
-                "Fecha_scrapper": data["Fecha_scrapper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "El contenido del PDF ha sido procesado y guardado correctamente.",
-            }
-            return response_data
-
-    except Exception as e:
-        print(f"Error al guardar contenido PDF: {e}")
-        return {"error": str(e)}
-
-
-def scraper_all_pdfs_from_page(url, collection, fs):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+    collection, fs = connect_to_mongo()
+    driver = initialize_driver()
 
     try:
         driver.get(url)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table:nth-child(3)"))
-        )
-        table_content = driver.find_element(By.CSS_SELECTOR, "table:nth-child(3)")
-        pdf_links = table_content.find_elements(By.CSS_SELECTOR, "a[href$='.pdf']")
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
 
-        main_folder = generate_directory(hashlib.md5(url.encode()).hexdigest())
+        second_tbody = driver.find_element(By.CSS_SELECTOR, "table:nth-of-type(3) tbody")
+        logger.info(f"📄 Segundo tbody encontrado: {second_tbody}")
 
-        responses = []
-        for link in pdf_links:
-            pdf_url = link.get_attribute("href")
-            pdf_response = scraper_pdf_content_and_save(
-                pdf_url, main_folder, collection, fs
-            )
-            responses.append(pdf_response)
+        paragraphs = second_tbody.find_elements(By.CSS_SELECTOR, "table p")
 
-        return {
-            "Tipo": "Web",
-            "Url": url,
-            "Fecha_scrapper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Mensaje": "El scraping de PDFs desde la página se completó correctamente.",
-            "Resultados": responses,
-        }
+        logger.info(f"🔍 Total de <p> encontrados dentro del tbody: {len(paragraphs)}")
 
-    except Exception as e:
-        print(f"Error durante el scraping: {e}")
-        return {"error": str(e)}
+        collected_links = []  # Para almacenar las URLs recolectadas
 
-    finally:
-        driver.quit()
+        for p in paragraphs:
+            try:
+                a_tag = p.find_element(By.TAG_NAME, "a") if p.find_elements(By.TAG_NAME, "a") else None
+                if a_tag:
+                    href = a_tag.get_attribute("href")
+                    if not href.startswith("http"):
+                        href = urljoin(domain, href)
 
+                    collected_links.append(href)
+                    total_links_found += 1
+            except Exception as e:
+                logger.error(f"⚠️ Error obteniendo <a> dentro de <p>: {e}")
 
-def scraper_ipm_illinoes(url):
-    try:
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client["scrapping-can"]
-        collection = db["collection"]
-        fs = gridfs.GridFS(db)
+        logger.info(f"Enlaces recolectados ({len(collected_links)}): {collected_links}")
 
-        response = scraper_all_pdfs_from_page(url, collection, fs)
+        if not collected_links:
+            logger.error("⚠️ No se encontraron enlaces dentro del segundo tbody.")
+            return process_scraper_data_v2("No se encontraron enlaces dentro del segundo tbody.", url, sobrenombre)
+
+        for href in collected_links:
+            try:
+                logger.info(f"Scrapeando URL: {href}")
+
+                content_text = None
+
+                if href.endswith(".pdf"):
+                    logger.info(f"***Extrayendo texto de PDF: {href}")
+                    content_text = extract_text_from_pdf(href)
+                else:
+                    driver.get(href)
+                    WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                    content_text = page_soup.body.text.strip()
+
+                if content_text:
+                    object_id = fs.put(
+                        content_text.encode("utf-8"),
+                        source_url=href,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=content_text,
+                        url=url
+                    )
+                    object_ids.append(object_id)
+                    scraped_urls.add(href) 
+                    total_scraped_successfully += 1
+
+                    existing_versions = list(
+                        fs.find({"source_url": href}).sort("scraping_date", -1)
+                    )
+
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        fs.delete(ObjectId(oldest_version["_id"]))
+
+                        logger.info(f"Se eliminó la versión más antigua: {oldest_version['_id']}")
+
+                    logger.info(f"✅ Enlace procesado con éxito: {href}")
+
+                else:
+                    raise ValueError("No se pudo extraer contenido")
+
+            except Exception as e:
+                logger.error(f"❌ Error al procesar {href}: {e}")
+
+                if href not in scraped_urls:
+                    failed_urls.add(href)
+                    total_failed_scrapes += 1
+
+        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"Error general durante el scraping: {str(e)}")
+        return process_scraper_data_v2(f"Error general durante el scraping: {str(e)}", url, sobrenombre)
+
+    finally:
+        driver.quit()
+        logger.info("✅ Navegador cerrado.")

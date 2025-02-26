@@ -73,3 +73,6 @@ from .agresearchmag import scraper_agresearchmag
 from .acir_aphis_usda import scraper_acir_aphis_usda
 from .notification_aphis import scraper_notification_aphis
 from .repository_cimmy import scraper_repository_cimmy
+from .notification_ippc import scraper_notification_ippc
+from .notification_aphis_usda_gov import scraper_aphis_usda_gov
+from .pest_report import scraper_pest_report
