@@ -5,13 +5,15 @@ import os
 from rest_framework.response import Response
 from rest_framework import status
 import time
+import random
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
 )
-
+non_scraped_urls = []  
+scraped_urls = []
 
 def load_search_terms(file_path):
     try:
@@ -24,7 +26,7 @@ def load_search_terms(file_path):
 
 def scraper_index_fungorum(url, sobrenombre):
     search_terms = load_search_terms(
-        os.path.join(os.path.dirname(__file__), "../txt/fungi.txt")
+        os.path.join(os.path.dirname(__file__), "../txt/plants.txt")
     )
 
     if not search_terms:
@@ -47,19 +49,17 @@ def scraper_index_fungorum(url, sobrenombre):
                 input_field = WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((By.NAME, "SearchTerm"))
                 )
-
                 input_field.clear()
-
                 input_field.send_keys(term)
-
-                btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit']")
-                btn.click()
-                time.sleep(4)
+                input_field.submit()
+                time.sleep(random.uniform(3, 6))
+                logger.info(f"Realizando búsqueda con la palabra clave: {term}")
 
                 WebDriverWait(driver, 60).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "table.mainbody"))
                 )
-                time.sleep(8)
+                time.sleep(random.uniform(3, 6))
+                logger.info("Búsqueda realizada con éxito")
 
                 links = driver.find_elements(By.CSS_SELECTOR, "a.LinkColour1")
 
@@ -97,8 +97,16 @@ def scraper_index_fungorum(url, sobrenombre):
 
             except Exception as e:
                 pass
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
+
+
+        all_scraper = (
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
 
