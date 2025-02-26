@@ -122,7 +122,11 @@ def scraper_cabi_digital(url, sobrenombre):
                             f"No se encontraron resultados para la palabra clave: {keyword}"
                         )
                         break
+                    visited_counts =0
+                    max_visits = 5
                     for item in items:
+                        if visited_counts>=max_visits:
+                            break
                         link = item.find("a")
                         if link and "href" in link.attrs:
                             href = link["href"]
@@ -173,6 +177,9 @@ def scraper_cabi_digital(url, sobrenombre):
                                 time.sleep(random.uniform(3, 6))
                             else:
                                 non_scraped_urls.append(href)
+                    if visited_counts >= max_visits:
+                        logger.info("🔴 Se alcanzó el límite de 5 enlaces visitados. No se paginará más.")
+                        break
                     try:
                         next_page_button = driver.find_element(
                             By.CSS_SELECTOR,
