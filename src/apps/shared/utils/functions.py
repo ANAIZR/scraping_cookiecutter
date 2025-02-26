@@ -171,6 +171,8 @@ def initialize_driver(retries=3):
             return driver
         except Exception as e:
             logger.error(f"Error al iniciar el navegador: {e}")
+            display.stop()
+
             if attempt < retries - 1:
                 time.sleep(5)
             else:
