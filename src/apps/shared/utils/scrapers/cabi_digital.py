@@ -26,6 +26,7 @@ def scraper_cabi_digital(url, sobrenombre):
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
+    all_scraper=""
 
     try:
         if login_cabi_scienceconnect(driver):

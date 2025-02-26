@@ -21,6 +21,8 @@ def login_cabi_scienceconnect(driver):
 
     try:
         driver.get("https://cabi.scienceconnect.io/login")
+        print(f"Usando EMAIL: {CREDENTIALS['email']}")
+        print(f"Usando PASSWORD: {CREDENTIALS['password']}")
         time.sleep(random.uniform(3, 6))
 
         email_input = WebDriverWait(driver, 30).until(
