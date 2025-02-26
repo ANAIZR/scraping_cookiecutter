@@ -8,11 +8,11 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    uc_initialize_driver,
+    driver_init,
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data_v2
+    process_scraper_data
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -23,7 +23,7 @@ logger = get_logger("scraper")
 
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = uc_initialize_driver()
+    driver = driver_init()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
@@ -220,7 +220,7 @@ def scraper_cabi_digital(url, sobrenombre):
             f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
-        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
         
     except TimeoutException:
