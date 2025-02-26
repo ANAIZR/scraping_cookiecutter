@@ -12,21 +12,27 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data
+    process_scraper_data_v2
 )
 from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
 from bson import ObjectId
+from ...models.scraperURL import Species,ScraperURL
 import ollama
 import json
-from datetime import datetime
-from django.db import transaction, IntegrityError
+from pymongo import MongoClient
+import gridfs  
+
 logger = get_logger("scraper")
+import requests
+import json
 
 def text_to_json(content, source_url, url):
+    print("📩 Enviando a Ollama para conversión:", len(content), "caracteres")
+
     prompt = f"""
-    Organiza el siguiente contenido en el formato JSON especificado.
+    Organiza el siguiente contenido en formato JSON con la estructura correcta.
     
     **Contenido:**
     {content}
@@ -61,7 +67,7 @@ def text_to_json(content, source_url, url):
       "frecuencia": "Mensual"
     }}
 
-    **Instrucciones:**
+     **Instrucciones:**
     1. Extrae el nombre científico y los nombres comunes de la especie.
     2. Lista los sinónimos científicos si están disponibles.
     3. Proporciona una descripción de la invasividad de la especie.
@@ -81,47 +87,143 @@ def text_to_json(content, source_url, url):
     Devuelve solo el JSON con los datos extraídos, sin texto adicional.
     """
 
-    response = ollama.chat(
-        model="llama3:70b",
-        messages=[{"role": "user", "content": prompt}]
-    )
+    api_url = "http://localhost:11434/api/generate"
 
-    raw_output = response["message"]["content"]
-    print("Respuesta completa del modelo:", raw_output)
+    payload = {
+        "model": "llama3:70b",
+        "prompt": prompt,
+        "stream": False
+    }
 
-    match = re.search(r"\{.*\}", raw_output, re.DOTALL)
+    headers = {"Content-Type": "application/json"}
 
-    if match:
-        clean_output = match.group(0)  
-        try:
-            json_output = json.loads(clean_output)
-            print("✅ JSON convertido correctamente:", json_output)
-            return json_output  
-        except json.JSONDecodeError as e:
-            print("❌ Error al convertir a JSON:", e)
-            print("🚨 JSON detectado pero inválido:", clean_output)
+    try:
+        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+        response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
+
+        json_output = response.json()
+        print("✅ Respuesta de Ollama:", json_output)
+
+        if "response" in json_output:
+            return json.loads(json_output["response"])
+        else:
+            print("❌ Ollama no devolvió una respuesta válida:", json_output)
             return None
-    else:
-        print("❌ No se encontró JSON válido en la respuesta de Ollama.")
-        print("🚨 Respuesta original:", raw_output)
+
+    except requests.exceptions.RequestException as e:
+        print(f"🚨 Error al conectar con Ollama: {e}")
         return None
+def limpiar_datos_json(structured_data):
+    campos_lista = ["common_names", "synonyms", "hosts", "symptoms", "affected_organs", "uses"]
+    for campo in campos_lista:
+        if isinstance(structured_data.get(campo, ""), str):
+            try:
+                structured_data[campo] = json.loads(structured_data[campo].replace("'", '"'))
+            except json.JSONDecodeError:
+                structured_data[campo] = []
+
+    campos_dict = ["impact", "prevention_control"]
+    for campo in campos_dict:
+        if isinstance(structured_data.get(campo, ""), str):
+            try:
+                structured_data[campo] = json.loads(structured_data[campo])
+            except json.JSONDecodeError:
+                structured_data[campo] = {}
+
+    return structured_data
+from django.db.models import JSONField
+
+def procesar_y_guardar_en_postgres(object_id):
+    try:
+        logger.info(f"🔍 Procesando Object ID: {object_id}")
+
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client["scrapping-can"]
+        fs = gridfs.GridFS(db)
+
+        file_data = fs.get(ObjectId(object_id))  
+        content = file_data.read().decode("utf-8")  
+        logger.info(f"📄 Contenido extraído desde MongoDB:\n{content[:500]}...") 
+
+        source_url = file_data.source_url  
+        url = file_data.url  
+
+        logger.info(f"📄 Obteniendo contenido de MongoDB (ID: {object_id})...")
+
+        structured_data = text_to_json(content, source_url, url)
+        logger.info(f"✅ JSON generado por Ollama:\n{structured_data}")
+
+        if structured_data:
+            logger.info("✅ JSON generado correctamente, guardando en PostgreSQL...")
+            structured_data = limpiar_datos_json(structured_data) 
+
+            scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
+
+            species_obj, created = Species.objects.update_or_create(
+                source_url=source_url, 
+                defaults={  
+                    "scientific_name": structured_data.get("nombre_cientifico", ""),
+                    "common_names": structured_data.get("nombres_comunes", ""),
+                    "synonyms": structured_data.get("sinonimos", ""),
+                    "invasiveness_description": structured_data.get("descripcion_invasividad", ""),
+                    "distribution": structured_data.get("distribucion", ""),
+                    "impact": json.dumps(structured_data.get("impacto", {})),  # Convertir a JSON si es un dict
+                    "habitat": structured_data.get("habitat", ""),
+                    "life_cycle": structured_data.get("ciclo_vida", ""),
+                    "reproduction": structured_data.get("reproduccion", ""),
+                    "hosts": structured_data.get("hospedantes", ""),
+                    "symptoms": structured_data.get("sintomas", ""),
+                    "affected_organs": structured_data.get("organos_afectados", ""),
+                    "environmental_conditions": structured_data.get("condiciones_ambientales", ""),
+                    "prevention_control": json.dumps(structured_data.get("prevencion_control", {})),  # Convertir a JSON
+                    "uses": structured_data.get("usos", ""),
+                    "scraper_source": scraper_source
+                }
+            )
+
+            if created:
+                logger.info(f"✅ Nueva especie creada en PostgreSQL con URL: {source_url}")
+            else:
+                logger.info(f"🔄 Especie actualizada en PostgreSQL con URL: {source_url}")
+
+            return species_obj.id 
+
+        else:
+            logger.error("❌ Error en la conversión a JSON.")
+            return None
+
+    except Exception as e:
+        logger.warning(f"🚨 Error al obtener contenido desde MongoDB o guardar en PostgreSQL: {e}")
+        return None
+
+
+def procesar_todos_los_scrapeos_y_guardar(object_ids):
+    logger.info(f"🔄 Procesando {len(object_ids)} documentos y guardando en PostgreSQL...")
+    if not object_ids:
+        logger.error("❌ No hay Object IDs para procesar. Verifica el scraping.")
+        return
+    
+    for obj_id in object_ids:
+        logger.info(f"📌 Procesando Object ID: {obj_id}")  # Verificar si entra aquí
+        try:
+            procesar_y_guardar_en_postgres(obj_id)
+        except Exception as e:
+            print(f"🚨 Error al procesar Object ID {obj_id}: {e}")
+
+    print("✅ Procesamiento finalizado.")
 
 def scraper_cabi_digital(url, sobrenombre):
     driver = uc_initialize_driver()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
+    object_ids = []
 
     try:
-        resultado_login = login_cabi_scienceconnect(driver)
-        print("Resultado de login_cabi_scienceconnect:", resultado_login)
-        if resultado_login:
+        if login_cabi_scienceconnect(driver):
             print("Login completado, continuando con el scraping...")
-        else:
-            print("El login no se completó, se retornó un valor falso.")
-    except Exception as e:
-        logger.error("No se encontró el login. Error: " + str(e))
-
+    except:
+        logger.error("No se encontro el login")
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
@@ -211,7 +313,11 @@ def scraper_cabi_digital(url, sobrenombre):
                             f"No se encontraron resultados para la palabra clave: {keyword}"
                         )
                         break
+                    visited_counts =0
+                    max_visits = 5
                     for item in items:
+                        if visited_counts>=max_visits:
+                            break
                         link = item.find("a")
                         if link and "href" in link.attrs:
                             href = link["href"]
@@ -237,42 +343,29 @@ def scraper_cabi_digital(url, sobrenombre):
 
                                     print(f"Página procesada y guardada: {absolut_href}")
                                     if content_accumulated:
-                                        structured_data = text_to_json(content_accumulated, absolut_href, url)
-                                        print("📌 Datos que se guardarán en PostgreSQL:", structured_data)
-                                        if structured_data:
-                                            try:
-                                                with transaction.atomic(): 
-                                                    scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
+                                        object_id = fs.put(
+                                            content_accumulated.encode("utf-8"),
+                                            source_url=absolut_href,
+                                            scraping_date=datetime.now(),
+                                            Etiquetas=["planta", "plaga"],
+                                            contenido=content_accumulated,
+                                            url=url
+                                        )
+                                        total_scraped_links += 1
+                                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                                        object_ids.append(object_id) 
+                                        existing_versions = list(fs.find({"source_url": absolut_href}).sort("scraping_date", -1))
+                                        if len(existing_versions) > 1:
+                                            oldest_version = existing_versions[-1]
+                                            
+                                            # ✅ Acceder al `_id` correctamente
+                                            file_id = oldest_version._id  # Esto obtiene el ID correcto
+                                            fs.delete(file_id)  # Eliminar la versión más antigua
+                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")  # Log correcto
 
-                                                    species_obj = Species.objects.create(
-                                                        scientific_name=structured_data.get("nombre_cientifico", ""),
-                                                        common_names=structured_data.get("nombres_comunes", ""),
-                                                        synonyms=structured_data.get("sinonimos", ""),
-                                                        invasiveness_description=structured_data.get("descripcion_invasividad", ""),
-                                                        distribution=structured_data.get("distribucion", ""),
-                                                        impact=structured_data.get("impacto", {}),
-                                                        habitat=structured_data.get("habitat", ""),
-                                                        life_cycle=structured_data.get("ciclo_vida", ""),
-                                                        reproduction=structured_data.get("reproduccion", ""),
-                                                        hosts=structured_data.get("hospedantes", ""),
-                                                        symptoms=structured_data.get("sintomas", ""),
-                                                        affected_organs=structured_data.get("organos_afectados", ""),
-                                                        environmental_conditions=structured_data.get("condiciones_ambientales", ""),
-                                                        prevention_control=structured_data.get("prevencion_control", {}),
-                                                        uses=structured_data.get("usos", ""),
-                                                        source_url=full_url,
-                                                        scraper_source=scraper_source
-                                                    )
 
-                                                    species_urls.append(full_url)
-                                                    logger.info(f"Especie guardada en PostgreSQL con URL: {full_url}")
-
-                                                    scraping_exitoso = True
-
-                                            except IntegrityError:
-                                                logger.warning(f"La especie '{structured_data.get('nombre_cientifico', '')}' ya existe en la base de datos.")
-                                                continue
-
+                                        scraping_exitoso = True
+                                visited_counts+=1
                                 driver.back()
                                 WebDriverWait(driver, 30).until(
                                     EC.presence_of_element_located(
@@ -282,6 +375,9 @@ def scraper_cabi_digital(url, sobrenombre):
                                 time.sleep(random.uniform(3, 6))
                             else:
                                 non_scraped_urls.append(href)
+                    if visited_counts >= max_visits:
+                        logger.info("🔴 Se alcanzó el límite de 5 enlaces visitados. No se paginará más.")
+                        break
                     try:
                         next_page_button = driver.find_element(
                             By.CSS_SELECTOR,
@@ -312,15 +408,17 @@ def scraper_cabi_digital(url, sobrenombre):
                     break
 
         if scraping_exitoso:
-
+            logger.info(f"🚀 Object IDs recopilados para procesamiento: {object_ids}") 
             all_scraper = (
             f"Total enlaces scrapeados: {total_scraped_links}\n"
             f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
             f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
-        )
-        response = process_scraper_data(all_scraper, url, sobrenombre)
-        return response
+            )
+            procesar_todos_los_scrapeos_y_guardar(object_ids)
+            
+            response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+            return response
         
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")

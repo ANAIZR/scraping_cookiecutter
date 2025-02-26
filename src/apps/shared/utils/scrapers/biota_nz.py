@@ -1,34 +1,33 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import os
 import time
+import pickle
 import random
-import requests
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-
     initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
-    get_random_user_agent,
+    process_scraper_data_v2,
+    get_random_user_agent
 )
 from rest_framework.response import Response
 from rest_framework import status
-from selenium.common.exceptions import TimeoutException
 from bson import ObjectId
-import re
-logger = get_logger("scraper")
+from ...models.scraperURL import Species,ScraperURL
 import ollama
 import json
-from datetime import datetime
-from django.db import transaction, IntegrityError
+import requests
 
-from ...models.scraperURL import Species, ScraperURL
+logger = get_logger("scraper")
 
 def text_to_json(content, source_url, url):
+    print("📩 Enviando a Ollama para conversión:", len(content), "caracteres")
+
     prompt = f"""
     Organiza el siguiente contenido en el formato JSON especificado.
     
@@ -86,11 +85,12 @@ def text_to_json(content, source_url, url):
     """
 
     response = ollama.chat(
-        model="llama3:8b",
+        model="llama3:70b",
         messages=[{"role": "user", "content": prompt}]
     )
 
     raw_output = response["message"]["content"]
+    print("Respuesta completa del modelo:", raw_output)
 
     match = re.search(r"\{.*\}", raw_output, re.DOTALL)
 
@@ -108,14 +108,79 @@ def text_to_json(content, source_url, url):
         print("❌ No se encontró JSON válido en la respuesta de Ollama.")
         print("🚨 Respuesta original:", raw_output)
         return None
+def procesar_y_guardar_en_postgres(object_id):
+    try:
+        print(f"🔍 Procesando Object ID: {object_id}")  # Asegurar que entra aquí
 
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client["scrapping-can"]
+        fs = gridfs.GridFS(db)
+
+        # Obtener contenido desde MongoDB
+        file_data = fs.get(ObjectId(object_id))  
+        content = file_data.read().decode("utf-8")  
+        source_url = file_data.source_url  
+        url = file_data.url  
+
+        print(f"📄 Obteniendo contenido de MongoDB (ID: {object_id})...")
+
+        # Llamar a la función de conversión para generar el JSON estructurado
+        structured_data = text_to_json(content, source_url, url)
+
+        if structured_data:
+            print("✅ JSON generado correctamente, guardando en PostgreSQL...")
+
+            # Obtener o crear la fuente del scraping
+            scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
+
+            # Guardar en PostgreSQL usando el modelo Django
+            species_obj = Species.objects.create(
+                scientific_name=structured_data.get("nombre_cientifico", ""),
+                common_names=structured_data.get("nombres_comunes", ""),
+                synonyms=structured_data.get("sinonimos", ""),
+                invasiveness_description=structured_data.get("descripcion_invasividad", ""),
+                distribution=structured_data.get("distribucion", ""),
+                impact=json.dumps(structured_data.get("impacto", {})),  # Convertir a JSON si es un dict
+                habitat=structured_data.get("habitat", ""),
+                life_cycle=structured_data.get("ciclo_vida", ""),
+                reproduction=structured_data.get("reproduccion", ""),
+                hosts=structured_data.get("hospedantes", ""),
+                symptoms=structured_data.get("sintomas", ""),
+                affected_organs=structured_data.get("organos_afectados", ""),
+                environmental_conditions=structured_data.get("condiciones_ambientales", ""),
+                prevention_control=json.dumps(structured_data.get("prevencion_control", {})),  # Convertir a JSON
+                uses=structured_data.get("usos", ""),
+                source_url=source_url,
+                scraper_source=scraper_source
+            )
+
+            print(f"✅ Especie guardada en PostgreSQL con URL: {source_url}")
+            return species_obj.id  # Devolver el ID de la especie guardada en PostgreSQL
+
+        else:
+            print("❌ Error en la conversión a JSON.")
+            return None
+
+    except Exception as e:
+        print(f"🚨 Error al obtener contenido desde MongoDB o guardar en PostgreSQL: {e}")
+        return None
+
+
+# 📌 Función para procesar automáticamente todos los ObjectId guardados
+def procesar_todos_los_scrapeos_y_guardar(object_ids):
+    print(f"🔄 Procesando {len(object_ids)} documentos y guardando en PostgreSQL...")
+    for obj_id in object_ids:
+        procesar_y_guardar_en_postgres(obj_id)
+    print("✅ Procesamiento completado.")
 
 
 def scraper_biota_nz(url, sobrenombre):
     driver = initialize_driver()
     base_domain = "https://biotanz.landcareresearch.co.nz"
     species_urls = []  
-
+    total_scraped_links = 0
+    collection, fs = connect_to_mongo()
+    object_ids = []
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
@@ -165,8 +230,11 @@ def scraper_biota_nz(url, sobrenombre):
                     if not items:
                         logger.warning(f"No se encontraron resultados para la palabra clave: {keyword}")
                         break
-
+                    visited_counts =0
+                    max_visits = 5
                     for item in items:
+                        if visited_counts>=max_visits:
+                            break
                         link_element = item.select_one("div.col-12 > a[href]")
                         if link_element:
                             href = link_element["href"]
@@ -195,43 +263,32 @@ def scraper_biota_nz(url, sobrenombre):
                                 print("📌 Contenido extraído antes de pasar a Ollama:\n", content_accumulated)
 
                                 if content_accumulated:
-                                    structured_data = text_to_json(content_accumulated, full_url, url)
-                                    print("📌 Datos que se guardarán en PostgreSQL:", structured_data)
+                                    object_id = fs.put(
+                                        content_accumulated.encode("utf-8"),
+                                        source_url=full_url,
+                                        scraping_date=datetime.now(),
+                                        Etiquetas=["planta", "plaga"],
+                                        contenido=content_accumulated,
+                                        url=url
+                                    )
+                                    total_scraped_links += 1
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                                    object_ids.append(object_id) 
+                                    existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
+                                    if len(existing_versions) > 1:
+                                        oldest_version = existing_versions[-1]
+                                            
+                                            # ✅ Acceder al `_id` correctamente
+                                        file_id = oldest_version._id  # Esto obtiene el ID correcto
+                                        fs.delete(file_id)  # Eliminar la versión más antigua
+                                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")  # Log correcto
+                                        scraping_exitoso = True
 
-                                    if structured_data:
-                                        try:
-                                            with transaction.atomic():  # Manejo seguro de la transacción
-                                                scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
-
-                                                species_obj = Species.objects.create(
-                                                    scientific_name=structured_data.get("nombre_cientifico", ""),
-                                                    common_names=structured_data.get("nombres_comunes", ""),
-                                                    synonyms=structured_data.get("sinonimos", ""),
-                                                    invasiveness_description=structured_data.get("descripcion_invasividad", ""),
-                                                    distribution=structured_data.get("distribucion", ""),
-                                                    impact=structured_data.get("impacto", {}),
-                                                    habitat=structured_data.get("habitat", ""),
-                                                    life_cycle=structured_data.get("ciclo_vida", ""),
-                                                    reproduction=structured_data.get("reproduccion", ""),
-                                                    hosts=structured_data.get("hospedantes", ""),
-                                                    symptoms=structured_data.get("sintomas", ""),
-                                                    affected_organs=structured_data.get("organos_afectados", ""),
-                                                    environmental_conditions=structured_data.get("condiciones_ambientales", ""),
-                                                    prevention_control=structured_data.get("prevencion_control", {}),
-                                                    uses=structured_data.get("usos", ""),
-                                                    source_url=full_url,
-                                                    scraper_source=scraper_source
-                                                )
-
-                                                species_urls.append(full_url)
-                                                logger.info(f"Especie guardada en PostgreSQL con URL: {full_url}")
-
-                                                scraping_exitoso = True
-
-                                        except IntegrityError:
-                                            logger.warning(f"La especie '{structured_data.get('nombre_cientifico', '')}' ya existe en la base de datos.")
-                                            continue
-
+                                        
+                                visited_counts+=1
+                                if visited_counts >= max_visits:
+                                    logger.info("🔴 Se alcanzó el límite de 5 enlaces visitados. No se paginará más.")
+                                    break
                     try:
                         next_page = WebDriverWait(driver, 10).until(
                             EC.element_to_be_clickable((By.XPATH, "//a[contains(@class, 'paging-hyperlink') and contains(text(), 'Next')]"))
@@ -246,27 +303,12 @@ def scraper_biota_nz(url, sobrenombre):
                     break
 
         if scraping_exitoso:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Etiquetas": ["planta", "plaga"],
-                    "Mensaje": "Los datos han sido scrapeados correctamente.",
-                    "Urls_guardadas": species_urls
-                },
-                status=status.HTTP_200_OK,
-            )
+            procesar_todos_los_scrapeos_y_guardar(object_ids)
+            all_scraper="listo"
 
-        else:
-            return Response(
-                {
-                    "Tipo": "Web",
-                    "Url": url,
-                    "Mensaje": "No se encontraron datos relevantes en el scraping.",
-                },
-                status=status.HTTP_204_NO_CONTENT,
-            )
+            response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+            return response
+        
 
     except Exception as e:
         logger.error(f"Error al procesar datos del scraper: {str(e)}")
