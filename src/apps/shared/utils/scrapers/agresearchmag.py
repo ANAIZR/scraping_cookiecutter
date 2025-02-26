@@ -149,6 +149,13 @@ def scraper_agresearchmag(url, sobrenombre):
                         contenido=content_text,
                         url=url
                     )
+                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                 
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        file_id = oldest_version._id  
+                        fs.delete(file_id)  
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                     object_ids.append(object_id)
                     total_scraped_successfully += 1
                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
