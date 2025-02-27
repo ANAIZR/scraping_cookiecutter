@@ -8,11 +8,11 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    uc_initialize_driver,
+    initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data
+    process_scraper_data_v2
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -23,10 +23,12 @@ logger = get_logger("scraper")
 
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = uc_initialize_driver()
+    driver = initialize_driver()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
+    all_scraper = ""
+    object_ids = []
 
     try:
         if login_cabi_scienceconnect(driver):
@@ -162,13 +164,17 @@ def scraper_cabi_digital(url, sobrenombre):
                                         )
                                         total_scraped_links += 1
                                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                        object_ids.append(object_id) 
                                         existing_versions = list(fs.find({"source_url": absolut_href}).sort("scraping_date", -1))
                                         if len(existing_versions) > 1:
                                             oldest_version = existing_versions[-1]
-                                            fs.delete(ObjectId(oldest_version.id))  # 🔴 Corrección aquí
-                                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")  # 🔴 Corrección aquí
+                                            file_id = oldest_version._id  # Esto obtiene el ID correcto
+                                            fs.delete(file_id)  # Eliminar la versión más antigua
+                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
 
                                         scraping_exitoso = True
+                                visited_counts+=1
                                 driver.back()
                                 WebDriverWait(driver, 30).until(
                                     EC.presence_of_element_located(
@@ -218,7 +224,7 @@ def scraper_cabi_digital(url, sobrenombre):
             f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
         
     except TimeoutException:

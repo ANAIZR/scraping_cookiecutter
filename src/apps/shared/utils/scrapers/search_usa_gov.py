@@ -19,7 +19,6 @@ from ..functions import (
 from bson import ObjectId
 from rest_framework.response import Response
 from rest_framework import status
-from ..credentials import login_cabi_scienceconnect
 
 logger = get_logger("scraper")
 
