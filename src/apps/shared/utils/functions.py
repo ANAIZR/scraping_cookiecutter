@@ -20,7 +20,6 @@ from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
 from config.settings.base import PROXIES
-#from pyvirtualdisplay import Display
 
 
 USER_AGENTS = [
@@ -136,8 +135,7 @@ def driver_init():
 
 def initialize_driver(retries=3):
     logger = get_logger("INICIALIZANDO EL DRIVER")
-    #display = Display(visible=0, size=(1920, 1080))  
-    #display.start()
+
     for attempt in range(retries):
         try:
             logger.info(
@@ -145,7 +143,7 @@ def initialize_driver(retries=3):
             )
             options = uc.ChromeOptions()
             options.binary_location = "/usr/bin/google-chrome"
-            #options.add_argument("--headless")
+            options.add_argument("--headless")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
@@ -171,7 +169,6 @@ def initialize_driver(retries=3):
             return driver
         except Exception as e:
             logger.error(f"Error al iniciar el navegador: {e}")
-            #display.stop()
 
             if attempt < retries - 1:
                 time.sleep(5)
