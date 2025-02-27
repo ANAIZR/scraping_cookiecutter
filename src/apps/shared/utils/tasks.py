@@ -12,9 +12,8 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 from celery import chain
-from django.core.cache import cache
 
-from celery import group
+
 @shared_task(bind=True)
 def scraper_url_task(self, url):
     scraper_service = WebScraperService()
@@ -59,12 +58,19 @@ def scraper_url_task(self, url):
         "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
     }
 
-    tareas = [process_scraped_data_task.s(url), generate_comparison_report_task.s(url)]
+    tareas = [
+        process_scraped_data_task.si(url).set(ignore_result=True),
+        generate_comparison_report_task.s().set(ignore_result=True),
+    ]
 
     if url in urls_permitidas:
-        tareas.append(check_new_species_and_notify.s([url]))
+        tareas.append(check_new_species_and_notify.s().set(ignore_result=True))
 
-    chain(*tareas).apply_async()
+    # Solo ejecutar la cadena si el scraping fue exitoso
+    if scraper_url.estado_scrapeo == "exitoso":
+        chain(*tareas).apply_async()
+    else:
+        logger.warning(f"No se ejecuta `chain()` porque el scraping falló para {url}.")
 
     return {
         "status": scraper_url.estado_scrapeo,
@@ -135,24 +141,22 @@ def generate_comparison_report_task(self, url):
         )
         return {"status": "error", "message": f"Error interno: {str(e)}"}
 
+
 @shared_task(bind=True)
 def scraper_expired_urls_task(self):
     scraper_service = WebScraperService()
     urls = scraper_service.get_expired_urls()
 
-    if not urls or len(urls) == 0:
+    if not urls:
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
     try:
-        logger.info(f"Iniciando scraping con un máximo de 2 tareas en paralelo...")
+        logger.info(f"Iniciando scraping en secuencia para {len(urls)} URLs...")
 
-        for url in urls:
-            logger.info(f"Encolando scraping para URL: {url}")
+        task_chain = chain(*[scraper_url_task.si(url) for url in urls])
+        task_chain.apply_async()
 
-        task_group = group(scraper_url_task.si(url) for url in urls).chunks(2)
-        task_group.apply_async()
-
-        logger.info("Tareas encoladas con concurrencia controlada.")
+        logger.info("Tareas encoladas en secuencia.")
     except Exception as e:
-        logger.error(f"Error al encolar scraper en grupo: {str(e)}")
+        logger.error(f"Error al encolar scraper en secuencia: {str(e)}")
