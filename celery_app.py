@@ -24,3 +24,7 @@ app.conf.beat_schedule = {
 }
 
 
+
+app.conf.update(
+    worker_prefetch_multiplier=1,  
+)
