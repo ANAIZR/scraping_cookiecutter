@@ -15,7 +15,6 @@ from django.conf import settings
 from src.apps.users.permissions import IsAdminUser
 from rest_framework.permissions import IsAuthenticated
 
-
 class UsuarioView(viewsets.ModelViewSet):
     queryset = User.all_objects.all()
     permission_classes = [IsAuthenticated]
@@ -32,25 +31,20 @@ class UsuarioView(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
-        user.is_active = False
-        user.deleted_at = timezone.now()
-        user.save()
+        soft_delete_user_task.apply_async((user.id,))
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         user = self.get_object()
-        is_active_new = request.data.get("is_active", None)
-
         serializer = self.get_serializer(user, data=request.data, partial=True)
+        
         if serializer.is_valid():
-            serializer.save()
+            serializer.save()  
 
-        if is_active_new is not None and is_active_new is True:
-            user.is_active = True
-            user.deleted_at = None
-            user.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(status=status.HTTP_200_OK)
 
 
 class PasswordResetRequestView(generics.GenericAPIView):
