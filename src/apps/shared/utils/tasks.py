@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 from celery import chain
 from django.core.cache import cache
 
+from celery import group
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
@@ -130,7 +131,6 @@ def generate_comparison_report_task(self, url):
         )
         return {"status": "error", "message": f"Error interno: {str(e)}"}
 
-
 @shared_task(bind=True)
 def scraper_expired_urls_task(self):
     scraper_service = WebScraperService()
@@ -140,16 +140,12 @@ def scraper_expired_urls_task(self):
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
-    for url in urls:
-        try:
-            logger.info(f"Iniciando scraping para {url}...")
-            
-            scraper_url_task.apply_async(args=[url])
+    try:
+        logger.info(f"Iniciando scraping con un máximo de 2 tareas en paralelo...")
 
-            logger.info(f"Scraping encolado para {url}. Esperando a que termine antes de procesar la siguiente.")
+        task_group = group(scraper_url_task.si(url) for url in urls)
+        task_group.apply_async()
 
-        except Exception as e:
-            logger.error(f"Error al encolar scraper para {url}: {str(e)}")
-
-    logger.info(f"Se han encolado tareas de scraping para {len(urls)} URLs.")
-
+        logger.info("Tareas encoladas con concurrencia controlada.")
+    except Exception as e:
+        logger.error(f"Error al encolar scraper en grupo: {str(e)}")
