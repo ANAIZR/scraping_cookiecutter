@@ -11,8 +11,8 @@ load_dotenv()
 print(f"EMAIL: {os.getenv('EMAIL')}")
 print(f"PASSWORD: {os.getenv('PASSWORD')}")
 CREDENTIALS = {
-    "email": os.getenv("EMAIL","admin@comunidadandina.org"),
-    "password": os.getenv("PASSWORD","Bpgei2MxfFKyWE5")
+    "email": os.getenv("EMAIL"),
+    "password": os.getenv("PASSWORD")
 }
 
 def login_cabi_scienceconnect(driver):

@@ -23,4 +23,8 @@ app.conf.beat_schedule = {
     }
 }
 
+app.conf.update(
+    worker_concurrency=2  
+)
+
 
