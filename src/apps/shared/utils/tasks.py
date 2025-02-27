@@ -15,7 +15,6 @@ from celery import chain
 from django.core.cache import cache
 
 from celery import group
-
 @shared_task(bind=True)
 def scraper_url_task(self, url):
     scraper_service = WebScraperService()
@@ -50,7 +49,7 @@ def scraper_url_task(self, url):
         scraper_url.save()
         return {"status": "failed", "url": url, "error": result["error"]}
 
-    logger.info(f"Task {self.request.id}: Scraping exitoso para {url}")
+    logger.info(f"Task {self.request.id}: Scraping exitoso para {url}, resultado: {result}")
     scraper_url.estado_scrapeo = "exitoso"
     scraper_url.error_scrapeo = ""
     scraper_url.save()
@@ -60,14 +59,19 @@ def scraper_url_task(self, url):
         "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
     }
 
-    tareas = [process_scraped_data_task.s(url), generate_comparison_report_task.si(url)]
+    tareas = [process_scraped_data_task.s(url), generate_comparison_report_task.s(url)]
 
     if url in urls_permitidas:
-        tareas.append(check_new_species_and_notify.si([url]))
+        tareas.append(check_new_species_and_notify.s([url]))
 
     chain(*tareas).apply_async()
 
-    return {"status": scraper_url.estado_scrapeo, "url": url}
+    return {
+        "status": scraper_url.estado_scrapeo,
+        "url": url,
+        "data": result if result else "No data scraped"
+    }
+
 
 
 @shared_task(bind=True)
@@ -136,14 +140,17 @@ def scraper_expired_urls_task(self):
     scraper_service = WebScraperService()
     urls = scraper_service.get_expired_urls()
 
-    if not urls:
+    if not urls or len(urls) == 0:
         logger.info("No hay URLs expiradas para scrapear.")
         return
 
     try:
         logger.info(f"Iniciando scraping con un máximo de 2 tareas en paralelo...")
 
-        task_group = group(scraper_url_task.si(url) for url in urls)
+        for url in urls:
+            logger.info(f"Encolando scraping para URL: {url}")
+
+        task_group = group(scraper_url_task.si(url) for url in urls).chunks(2)
         task_group.apply_async()
 
         logger.info("Tareas encoladas con concurrencia controlada.")

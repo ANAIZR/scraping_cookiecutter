@@ -19,12 +19,8 @@ def debug_task(self):
 app.conf.beat_schedule = {
     "scrape-expired-urls-weekly": {
         "task": "src.apps.shared.utils.tasks.scraper_expired_urls_task",  
-        "schedule": crontab(hour=1, minute=40, day_of_week=4),  
+        "schedule": crontab(hour=1, minute=58, day_of_week=4),  
     }
 }
-
-app.conf.update(
-    worker_concurrency=2  
-)
 
 
