@@ -77,3 +77,4 @@ from .notification_ippc import scraper_notification_ippc
 from .notification_aphis_usda_gov import scraper_aphis_usda_gov
 from .pest_report import scraper_pest_report
 from .biblioteca_sibe import scraper_biblioteca_sibe
+from .defensa_sag import scraper_defensa_sag

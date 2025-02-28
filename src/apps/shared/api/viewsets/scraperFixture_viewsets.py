@@ -84,6 +84,7 @@ from ...utils.scrapers import (
     scraper_notification_ippc,
     scraper_aphis_usda_gov,
     scraper_pest_report,
+    scraper_defensa_sag,
     scraper_biblioteca_sibe
 )
 
@@ -165,6 +166,7 @@ SCRAPER_FUNCTIONS = {
     75: scraper_notification_ippc,
     77: scraper_aphis_usda_gov,
     78:scraper_pest_report,
+    79: scraper_defensa_sag,
     80: scraper_biblioteca_sibe    
 }
 
