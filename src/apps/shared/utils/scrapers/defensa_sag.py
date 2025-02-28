@@ -56,17 +56,17 @@ def scraper_defensa_sag(url, sobrenombre):
                     span_text = span_element.text.strip()
 
                     row.click()
-                    time.sleep(2) 
+                    time.sleep(2)
 
                     print(f"🟢 El nombre del tr es: {span_text}")
                     logger.info(f"🟢 El nombre del tr es: {span_text}")
 
-                    index += 2
+                    index += 2 
 
                 except NoSuchElementException:
                     print(f"⚠️ No se encontró el span en la fila {index}.")
                     logger.warning(f"⚠️ No se encontró el span en la fila {index}.")
-                    index += 2
+                    index += 2 
 
                 except StaleElementReferenceException:
                     print(f"🔄 Elemento obsoleto en la fila {index}, reintentando...")
