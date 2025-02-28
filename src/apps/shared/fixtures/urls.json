@@ -350,7 +350,7 @@
     "model": "shared.ScraperURL",
     "pk": 26,
     "fields": {
-      "url": "http://www.ala.org.au/",
+      "url": "https://www.ala.org.au/",
       "sobrenombre": "ALA_ORG",
       "time_choices": 1,
       "mode_scrapeo": 14,

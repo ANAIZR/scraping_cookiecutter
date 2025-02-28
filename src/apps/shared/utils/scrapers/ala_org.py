@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from urllib.parse import urlparse, parse_qs
 import time
 from ..functions import (
     process_scraper_data_v2,
@@ -38,16 +39,18 @@ def scraper_ala_org(url, sobrenombre):
         except Exception as e:
             logger.error(f"No se pudo hacer clic en el botón de búsqueda: {e}")
             return {"error": "No se encontró el botón de búsqueda"}
+        
         object_ids = []
         failed_urls = []
+
         while True:
             try:
                 WebDriverWait(driver, 30).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "ol li.search-result"))
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "#search-results-list li.search-result"))
                 )
 
-                lis = driver.find_elements(By.CSS_SELECTOR, "ol li.search-result")
-
+                lis = driver.find_elements(By.CSS_SELECTOR, "#search-results-list li.search-result")
+                
                 if not lis:
                     logger.warning("No se encontraron resultados en la búsqueda.")
                     break  
@@ -92,28 +95,14 @@ def scraper_ala_org(url, sobrenombre):
                                     total_scraped_successfully += 1
 
                                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                                    if len(existing_versions) > 1:
+                                            oldest_version = existing_versions[-1]
+                                            file_id = oldest_version._id  
+                                            fs.delete(file_id)  
+                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
 
-                                    collection.insert_one(
-                                        {
-                                            "_id": object_id,
-                                            "source_url": href,
-                                            "scraping_date": datetime.now(),
-                                            "Etiquetas": ["planta", "plaga"],
-                                            "url": url,
-                                        }
-                                    )
-
-                                    existing_versions = list(
-                                        collection.find({"source_url": href}).sort("scraping_date", -1)
-                                    )
-
-                                    if len(existing_versions) > 2:
-                                        oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version["_id"]))
-                                        collection.delete_one({"_id": ObjectId(oldest_version["_id"])});
-                                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}'")
                                     
-                                    logger.info(f"Contenido extraído de {href}.")
                             except Exception as e:
                                 logger.warning(f"No se pudo extraer contenido de {href}: {e}")
                                 total_failed_scrapes += 1
@@ -135,6 +124,13 @@ def scraper_ala_org(url, sobrenombre):
                     next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
                     next_page_url = next_page_btn.get_attribute("href")
                     if next_page_url:
+                        parsed_url = urlparse(next_page_url)
+                        query_params = parse_qs(parsed_url.query)
+                        offset_value = int(query_params.get("offset", [0])[0])
+
+                        if offset_value >= 30: 
+                            logger.info(f"Se alcanzó el límite de offset ({offset_value}), terminando el scraping.")
+                            break
                         logger.info(f"Navegando a la siguiente página: {next_page_url}")
                         driver.get(next_page_url)
                         time.sleep(3)
@@ -144,10 +140,44 @@ def scraper_ala_org(url, sobrenombre):
                 except Exception as e:
                     logger.warning("No se encontró el botón de siguiente página, terminando el scraping.")
                     break
+                
+                max_pages = 3  
+                page_count = 0  
+
+                while page_count < max_pages:
+                    try:
+                        next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
+                        next_page_url = next_page_btn.get_attribute("href")
+
+                        if next_page_url:
+                            parsed_url = urlparse(next_page_url)
+                            query_params = parse_qs(parsed_url.query)
+                            offset_value = int(query_params.get("offset", [0])[0])
+
+                            if offset_value >= 30:  
+                                logger.info(f"Se alcanzó el límite de offset ({offset_value}), terminando el scraping.")
+                                break
+                            logger.info(f"Navegando a la página {page_count + 1}/{max_pages}: {next_page_url}")
+                            driver.get(next_page_url)
+                            time.sleep(3)  
+                            page_count += 1  
+                        else:
+                            logger.info("No hay más páginas de resultados.")
+                            break
+                    except Exception as e:
+                        logger.warning("No se encontró el botón de siguiente página, terminando el scraping.")
+                        break
+
+                logger.info("Se alcanzó el límite de navegación o no hay más páginas.")
+
 
             except Exception as e:
                 logger.error(f"Error al cargar los resultados: {e}")
                 break
+        
+        if total_scraped_successfully == 0:
+            return {"error": "No se pudieron scrapeear datos correctamente."}
+        
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
         all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
