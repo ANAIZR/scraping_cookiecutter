@@ -350,7 +350,7 @@
     "model": "shared.ScraperURL",
     "pk": 26,
     "fields": {
-      "url": "http://www.ala.org.au/",
+      "url": "https://www.ala.org.au/",
       "sobrenombre": "ALA_ORG",
       "time_choices": 1,
       "mode_scrapeo": 14,
@@ -1378,6 +1378,19 @@
       "sobrenombre": "pest_report",
       "time_choices": 1,
       "mode_scrapeo": 78,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 106,
+    "fields": {
+      "url": "https://bibliotecasibe.ecosur.mx/sibe/",
+      "sobrenombre": "biblioteca_sibe",
+      "time_choices": 1,
+      "mode_scrapeo": 80,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}

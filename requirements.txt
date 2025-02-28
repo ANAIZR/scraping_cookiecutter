@@ -27,7 +27,7 @@ sqlparse==0.5.1
 tzdata==2024.1
 uritemplate==4.1.1
 setuptools
-selenium
+selenium>=4.9.0
 webdriver-manager
 beautifulsoup4
 pdfplumber
@@ -46,3 +46,4 @@ python-dotenv
 pypdf
 pyPDF2
 chardet
+selenium-recaptcha-solver
