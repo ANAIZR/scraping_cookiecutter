@@ -160,7 +160,7 @@ def scraper_index_fungorum(url, sobrenombre):
                         )
                         next_page_link = next_link.get_attribute("href")
 
-                        if next_page_link and number_page < 1:
+                        if next_page_link:
                             next_link.click()
                             time.sleep(random.uniform(3,6))
                             number_page += 1
