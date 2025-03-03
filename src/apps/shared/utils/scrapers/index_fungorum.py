@@ -1,5 +1,6 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 import os
 from rest_framework.response import Response
@@ -81,11 +82,27 @@ def scraper_index_fungorum(url, sobrenombre):
                     try:
                         print("inicio de capturar el boton de next")
                         next_link = WebDriverWait(driver, 10).until(
-                            EC.element_to_be_clickable((By.LINK_TEXT, "[Next >>]"))
+                            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(),'[Next >>]')]"))
                         )
+                        next_page_link = next_link.get_attribute("href")
+
+                        if next_page_link:
+                            next_link.click()
+                            time.sleep(random.uniform(3,6))
+                            number_page += 1
+                            print(f"=========================== Siguiente página: {number_page} ===========================")
+                            driver.get(next_page_link)
+                            WebDriverWait(driver, 10).until(
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "table.mainbody"))
+                            )
+                        else:
+                            print("No more pages.")
+                            break
+                    except (TimeoutException, NoSuchElementException):
+                        break
                         print("next_link by quma", next_link)
 
-                        if next_link:
+                        """ if next_link:
                             number_page += 1
                             print(f"=========================== Siguiente pagina: {number_page} ===========================")
                             next_page_link = next_link.get_attribute("href")
@@ -98,7 +115,7 @@ def scraper_index_fungorum(url, sobrenombre):
                             )
                         else:
                             print("No more pages.")
-                            break
+                            break """
                     except Exception as e:
                         print(f"Error during pagination: {e}")
                         break
