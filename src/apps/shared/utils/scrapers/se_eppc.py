@@ -5,25 +5,34 @@ from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
 import time
+from urllib.parse import urljoin
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
 )
 
-def scraper_se_eppc(
-    url,
-    sobrenombre,
-):
+def scraper_se_eppc(url, sobrenombre):
     logger = get_logger("scraper")
-    logger.info(f"Iniciando scraping para URL: {url}")
+    logger.info(f"🚀 Iniciando scraping para URL: {url}")
+
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
+
+    total_urls_found = 0
+    total_urls_scraped = 0
+    total_non_scraped_links = 0
     all_scraper = ""
+    found_urls = set()      
+    scraped_urls = []       
+    failed_urls = []        
+    object_ids = []        
+
     try:
         driver.get(url)
-
         WebDriverWait(driver, 30).until(
             EC.presence_of_element_located(
                 (By.CSS_SELECTOR, "div.content1 table tbody")
@@ -32,39 +41,116 @@ def scraper_se_eppc(
         soup = BeautifulSoup(driver.page_source, "html.parser")
         tr_tags = soup.select("div.content1 table tbody tr")
 
+        if not tr_tags:
+            logger.warning("⚠️ No se encontraron filas <tr> en la tabla.")
+            return Response(
+                {
+                    "status": "no_content",
+                    "message": "No se encontraron filas en la tabla.",
+                },
+                status=status.HTTP_204_NO_CONTENT,
+            )
+
         for index, tr in enumerate(tr_tags[1:], start=2):
             try:
                 first_td = tr.select_one("td:first-child a")
                 if first_td:
                     href = first_td.get("href")
-                    driver.get(href)
-                    time.sleep(5)
-                    nav_fact_sheets = WebDriverWait(driver, 60).until(
-                        EC.presence_of_element_located(
-                            (
-                                By.CSS_SELECTOR,
-                                "div.container ul.nav li:nth-child(1)",
+                    if href:
+                        href = urljoin(url, href)
+
+                        if href in found_urls:
+                            continue
+
+                        found_urls.add(href)
+                        total_urls_found += 1
+                        logger.info(f"🔗 URL encontrada: {href}")
+
+                        driver.get(href)
+                        time.sleep(5)
+
+                        try:
+                            about_tab = WebDriverWait(driver, 10).until(
+                                EC.element_to_be_clickable(
+                                    (By.LINK_TEXT, "About This Subject")
+                                )
                             )
-                        )
-                    )
-                    nav_fact_sheets.click()
-                    time.sleep(5)
-                    soup = BeautifulSoup(driver.page_source, "html.parser")
-                    content = soup.find("#overview")
-                    if content:
-                        all_scraped += content.text
-                    else:
-                        continue
+                            driver.execute_script("arguments[0].click();", about_tab)
+                            time.sleep(3)
+                        except Exception as e:
+                            logger.warning(
+                                f"⚠️ No se pudo hacer clic en 'About This Subject' en {href}: {e}"
+                            )
+                            if href not in scraped_urls and href not in failed_urls:
+                                failed_urls.append(href)
+                                total_non_scraped_links += 1
+                            continue
+
+                        soup = BeautifulSoup(driver.page_source, "html.parser")
+                        container = soup.select_one("div.container")
+
+                        if container:
+                            overview = container.select_one("#overview")
+                            if overview:
+                                page_text = overview.get_text(separator="\n", strip=True)
+                                if page_text:
+                                    object_id = fs.put(
+                                        page_text.encode("utf-8"),
+                                        source_url=href,
+                                        scraping_date=datetime.now(),
+                                        Etiquetas=["planta", "plaga"],
+                                        contenido=page_text,
+                                        url=url,
+                                    )
+                                    total_urls_scraped += 1
+                                    scraped_urls.append(href)
+                                    object_ids.append(object_id)
+                                    logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                                    existing_versions = list(
+                                        fs.find({"source_url": href}).sort("scraping_date", -1)
+                                    )
+                                    if len(existing_versions) > 1:
+                                        oldest_version = existing_versions[-1]
+                                        file_id = oldest_version._id  
+                                        fs.delete(file_id)  
+                                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                                else:
+                                    logger.warning(f"⚠️ El contenido de #overview en {href} está vacío.")
+                                    if href not in scraped_urls and href not in failed_urls:
+                                        failed_urls.append(href)
+                                        total_non_scraped_links += 1
+                            else:
+                                logger.warning(f"⚠️ No se encontró #overview dentro de div.container en {href}.")
+                                if href not in scraped_urls and href not in failed_urls:
+                                    failed_urls.append(href)
+                                    total_non_scraped_links += 1
+                        else:
+                            logger.warning(f"⚠️ No se encontró 'div.container' en {href}.")
+                            if href not in scraped_urls and href not in failed_urls:
+                                failed_urls.append(href)
+                                total_non_scraped_links += 1
+
             except Exception as e:
-                import traceback
+                logger.error(f"❌ Error al procesar el enlace {href}: {e}")
+                if href not in scraped_urls and href not in failed_urls:
+                    failed_urls.append(href)
+                    total_non_scraped_links += 1
 
-                traceback.print_exc()
+        all_scraper += f"Total enlaces encontrados: {total_urls_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_urls_scraped}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_non_scraped_links}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
-        logger.info("Scraping completado exitosamente.")
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        logger.info("🚀 Scraping completado exitosamente.")
         return response
+
     except Exception as e:
+        logger.error(f"❌ Error durante el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         driver.quit()
+        logger.info("🛑 Navegador cerrado.")
