@@ -46,7 +46,6 @@ def scraper_notification_ippc(url, sobrenombre):
             page_source = driver.page_source
             soup = BeautifulSoup(page_source, "html.parser")
 
-            # Seleccionar solo los enlaces dentro del primer <td> de filas con clase 'odd' o 'even'
             results_divs = soup.select("tbody tr.odd td:first-child a, tbody tr.even td:first-child a")
             print(f"**********Resultados: {results_divs}")
 
@@ -54,7 +53,7 @@ def scraper_notification_ippc(url, sobrenombre):
                 href = urljoin(domain, link["href"])
                 
                 if href not in visited_urls:
-                    visited_urls.add(href)  # ✅ Evita duplicados
+                    visited_urls.add(href)
                     scraped_urls.add(href)
                     total_links_found += 1
                     print(f"✅ Enlace agregado: {href}")
@@ -123,7 +122,7 @@ def scraper_notification_ippc(url, sobrenombre):
                 logger.error(f"No se pudo extraer contenido de {href}.")
                 total_failed_scrapes += 1
                 failed_urls.add(href)
-                scraped_urls.remove(href)  # Evita que una URL fallida cuente como scrapeada
+                scraped_urls.remove(href)
                 
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"

@@ -1,12 +1,13 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from urllib.parse import urlparse, parse_qs
 import time
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver,
+    driver_init,
 )
 import random
 from datetime import datetime
@@ -16,7 +17,7 @@ from urllib.parse import urljoin
 def scraper_ala_org(url, sobrenombre):
     logger = get_logger("ALA_ORG")
     logger.info(f"Iniciando scraping para URL: {url}")
-    driver = initialize_driver()
+    driver = driver_init()
     collection, fs = connect_to_mongo()
     total_links_found = 0
     total_scraped_successfully = 0
@@ -119,10 +120,17 @@ def scraper_ala_org(url, sobrenombre):
                         logger.warning(f"Error al procesar un resultado de búsqueda: {e}")
                         total_failed_scrapes += 1
 
-                """try:
+                try:
                     next_page_btn = driver.find_element(By.CSS_SELECTOR, "li.next a")
                     next_page_url = next_page_btn.get_attribute("href")
                     if next_page_url:
+                        parsed_url = urlparse(next_page_url)
+                        query_params = parse_qs(parsed_url.query)
+                        offset_value = int(query_params.get("offset", [0])[0])
+
+                        if offset_value >= 30: 
+                            logger.info(f"Se alcanzó el límite de offset ({offset_value}), terminando el scraping.")
+                            break
                         logger.info(f"Navegando a la siguiente página: {next_page_url}")
                         driver.get(next_page_url)
                         time.sleep(3)
@@ -131,10 +139,10 @@ def scraper_ala_org(url, sobrenombre):
                         break
                 except Exception as e:
                     logger.warning("No se encontró el botón de siguiente página, terminando el scraping.")
-                    break"""
+                    break
                 
-                max_pages = 3  # Número máximo de páginas a navegar
-                page_count = 0  # Contador de páginas navegadas
+                max_pages = 3  
+                page_count = 0  
 
                 while page_count < max_pages:
                     try:
@@ -142,10 +150,17 @@ def scraper_ala_org(url, sobrenombre):
                         next_page_url = next_page_btn.get_attribute("href")
 
                         if next_page_url:
+                            parsed_url = urlparse(next_page_url)
+                            query_params = parse_qs(parsed_url.query)
+                            offset_value = int(query_params.get("offset", [0])[0])
+
+                            if offset_value >= 30:  
+                                logger.info(f"Se alcanzó el límite de offset ({offset_value}), terminando el scraping.")
+                                break
                             logger.info(f"Navegando a la página {page_count + 1}/{max_pages}: {next_page_url}")
                             driver.get(next_page_url)
-                            time.sleep(3)  # Espera para que la página cargue completamente
-                            page_count += 1  # Incrementa el contador
+                            time.sleep(3)  
+                            page_count += 1  
                         else:
                             logger.info("No hay más páginas de resultados.")
                             break

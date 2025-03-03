@@ -72,6 +72,8 @@ from .ecoport import scraper_ecoport
 from .pestnet import scraper_pestnet
 from .scienceopen import scraper_scienceopen
 from .doaj_org import scraper_doaj_org
+from .biblioteca_sibe import scraper_biblioteca_sibe
+
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -146,5 +148,6 @@ SCRAPER_FUNCTIONS = {
     74: scraper_repository_cimmy,
     75: scraper_ippc_int,
     76: scraper_cahfsa,
-    77: scraper_aphis_usda_gov
+    77: scraper_aphis_usda_gov,
+    80: scraper_biblioteca_sibe
 }

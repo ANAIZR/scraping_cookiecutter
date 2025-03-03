@@ -46,19 +46,23 @@ def scraper_apsnet(url, sobrenombre):
                 driver.get(url)
                 time.sleep(2)
 
+                # Ejecutar JavaScript antes de buscar elementos
                 driver.execute_script("document.body.style.zoom='100%'")
                 WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                 time.sleep(5)
 
+                # Obtener el HTML con BeautifulSoup para verificar el DOM
                 page_source = driver.page_source
                 soup = BeautifulSoup(page_source, "html.parser")
 
+                # Verificar si el input de búsqueda está en el DOM
                 search_input_soup = soup.select_one("input#text1")
                 if not search_input_soup:
                     logger.warning("❌ No se encontró el input de búsqueda en el DOM con BeautifulSoup.")
                 else:
                     logger.info("✅ Input de búsqueda encontrado en el DOM con BeautifulSoup.")
 
+                # Buscar el input de búsqueda con Selenium
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "input#text1"))
                 )
@@ -99,6 +103,7 @@ def scraper_apsnet(url, sobrenombre):
                         driver.get(link)
                         time.sleep(random.uniform(3,6))
 
+                        # Ejecutar JavaScript antes de buscar contenido
                         driver.execute_script("document.body.style.zoom='100%'")
                         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                         time.sleep(5)

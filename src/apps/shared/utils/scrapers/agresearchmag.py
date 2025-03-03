@@ -14,7 +14,6 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    extract_text_from_pdf,
 )
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException
 
@@ -30,7 +29,7 @@ def scraper_agresearchmag(url, sobrenombre):
     
     scraped_urls = set()
     failed_urls = set()
-    visited_urls = set()  
+    visited_urls = set()
     object_ids = []
     all_scraper = ""
 
@@ -76,7 +75,7 @@ def scraper_agresearchmag(url, sobrenombre):
                             if href and href not in visited_urls:
                                 fullhref = domain + href if not href.startswith("http") else href
                                 scraped_urls.add(fullhref)
-                                visited_urls.add(fullhref) 
+                                visited_urls.add(fullhref)
                                 total_links_found += 1
                                 logger.info(f"Enlace extraído: {fullhref}")
                     else:
@@ -149,13 +148,6 @@ def scraper_agresearchmag(url, sobrenombre):
                         contenido=content_text,
                         url=url
                     )
-                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                 
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id  
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                     object_ids.append(object_id)
                     total_scraped_successfully += 1
                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")

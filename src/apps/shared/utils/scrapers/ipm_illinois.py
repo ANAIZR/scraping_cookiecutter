@@ -11,12 +11,14 @@ from ..functions import (
     driver_init,
 )
 from datetime import datetime
+from rest_framework.response import Response
+from rest_framework import status
 from bson import ObjectId
 from urllib.parse import urljoin
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
-def scraper_ipm_illinois(url, sobrenombre):
+def scraper_ipm_illinoes(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
     domain = "https://ipm.illinois.edu/diseases"
@@ -62,7 +64,7 @@ def scraper_ipm_illinois(url, sobrenombre):
 
         if not collected_links:
             logger.error("⚠️ No se encontraron enlaces dentro del segundo tbody.")
-            return Response({"error": "No se encontraron enlaces dentro del segundo tbody."}, status=status.HTTP_404_NOT_FOUND)
+            return process_scraper_data("No se encontraron enlaces dentro del segundo tbody.", url, sobrenombre)
 
         for href in collected_links:
             try:
