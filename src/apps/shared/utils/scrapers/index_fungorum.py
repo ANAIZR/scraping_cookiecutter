@@ -45,27 +45,12 @@ def extract_text(current_url):
         print(f"Procesando URL by quma: {current_url}")
 
         soup = BeautifulSoup(response.content, "html.parser")
-        """ table_element = soup.select_one("table.mainbody tbody tr:nth-child(2)[valign='top']")
-        print("tabla a pintar", table_element) """
-
-        """ table_element = soup.select_one("table.mainbody tbody tr:nth-child(2)[valign='top']")
-        print("Table:", table_element) """
 
         table_element = soup.find("table", class_="mainbody")
-        print("Table:", table_element)
+        # print("Table:", table_element)
         if table_element:
-            rows = table_element.find_all("tr:nth-child(2)[valign='top']")
-            print("Fila con valign='top':", rows) #None
 
-        if table_element:
-            # trs = table_element.select("tr")
-            trs = table_element.select("tr")
-            
-            tr_main = trs[2]
-            print("objetos a pintar",tr_main)
-
-            # content_main = tr_main.select_one("td>table>tbody>tr")
-            body_text = tr_main.get_text(separator=" ", strip=True)
+            body_text = table_element.get_text(separator=" ", strip=True)
             print("texto by qumadev: ",body_text)
             if body_text:
                 object_id = fs.put(
