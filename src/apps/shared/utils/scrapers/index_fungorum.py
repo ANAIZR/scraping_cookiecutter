@@ -3,19 +3,30 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 import os
+from bs4 import BeautifulSoup
+import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from rest_framework.response import Response
 from rest_framework import status
 import time
 import random
+from datetime import datetime
+from bson import ObjectId
 from ..functions import (
     process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    get_random_user_agent
 )
 urls_to_scrape = []  
 non_scraped_urls = []  
 scraped_urls = []
+
+url_padre=""
+fs = None
+headers = None
+logger = get_logger("scraper")
 
 def load_search_terms(file_path):
     try:
@@ -26,7 +37,71 @@ def load_search_terms(file_path):
         return []
 
 
+def extract_text(current_url):
+    global scraped_urls
+    try:
+        response = requests.get(current_url, headers=headers)
+        response.raise_for_status()
+        print(f"Procesando URL by quma: {current_url}")
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        table_element = soup.find("table", class_="mainbody")
+
+        if table_element:
+            trs = table_element.select("tr")
+            
+            body = trs[1]
+            body_text = body.get_text(separator=" ", strip=True)
+
+            if body_text:
+                object_id = fs.put(
+                    body_text.encode("utf-8"),
+                    source_url=current_url,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=body_text,
+                    url=url_padre
+                )
+                scraped_urls += 1
+                scraped_urls.append(current_url)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    file_id = oldest_version._id  # Esto obtiene el ID correcto
+                    fs.delete(file_id)  # Eliminar la versión más antigua
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+            else:
+                non_scraped_urls.append(current_url)
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error al procesar la URL {current_url}: {e}")
+
+
+def scrape_pages_in_parallel(url_list):
+    print("Scraping pages in parallel")
+    global non_scraped_urls
+    new_links = []
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_url = {
+            executor.submit(extract_text, url): (url)
+            for url in url_list
+        }
+        for future in as_completed(future_to_url):
+            try:
+                result_links = future.result()
+                new_links.extend(result_links)
+            except Exception as e:
+                logger.error(f"Error en tarea de scraping: {str(e)}")
+                non_scraped_urls += 1
+    return new_links
+
 def scraper_index_fungorum(url, sobrenombre):
+    global url_padre,headers,fs,scraped_urls,non_scraped_urls
+
+    url_padre = url
+
     search_terms = load_search_terms(
         os.path.join(os.path.dirname(__file__), "../txt/plants.txt")
     )
@@ -41,6 +116,7 @@ def scraper_index_fungorum(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     collection, fs = connect_to_mongo("scrapping-can", "collection")
+    headers = {"User-Agent": get_random_user_agent()}
     all_scraper = ""
     try:
         driver.get(url)
@@ -68,7 +144,6 @@ def scraper_index_fungorum(url, sobrenombre):
 
                 number_page = 1
                 while True:
-
                     links = driver.find_elements(By.CSS_SELECTOR, "a.LinkColour1")
                     if not links:
                         continue
@@ -100,22 +175,6 @@ def scraper_index_fungorum(url, sobrenombre):
                             break
                     except (TimeoutException, NoSuchElementException):
                         break
-                        print("next_link by quma", next_link)
-
-                        """ if next_link:
-                            number_page += 1
-                            print(f"=========================== Siguiente pagina: {number_page} ===========================")
-                            next_page_link = next_link.get_attribute("href")
-                            driver.get(next_page_link)
-
-                            WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located(
-                                    (By.CSS_SELECTOR, "table.mainbody")
-                                )
-                            )
-                        else:
-                            print("No more pages.")
-                            break """
                     except Exception as e:
                         print(f"Error during pagination: {e}")
                         break
@@ -124,6 +183,14 @@ def scraper_index_fungorum(url, sobrenombre):
                         EC.presence_of_element_located((By.NAME, "SearchTerm"))
                     )
                     input_field.clear()  
+
+                urls_scrappeds = scrape_pages_in_parallel(urls_to_scrape)
+
+                driver.get(url)
+
+                input_field = WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.NAME, "SearchTerm"))
+                )
 
             except Exception as e:
                 pass
