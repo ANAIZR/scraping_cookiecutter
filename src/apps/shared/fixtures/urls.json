@@ -265,7 +265,7 @@
     "model": "shared.ScraperURL",
     "pk": 20,
     "fields": {
-      "url": "http://www.indexfungorum.org/names/names.asp",
+      "url": "https://www.indexfungorum.org/names/names.asp",
       "sobrenombre": "FUNGORUM",
       "time_choices": 1,
       "mode_scrapeo": 30,
