@@ -12,20 +12,24 @@ from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver,
+    driver_init,
 )
-
 
 def scraper_se_eppc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"🚀 Iniciando scraping para URL: {url}")
 
-    driver = initialize_driver()
+    driver = driver_init()
     collection, fs = connect_to_mongo()
 
-    urls_found = set()
-    urls_scraped = set()
-    urls_not_scraped = set()
+    total_urls_found = 0
+    total_urls_scraped = 0
+    total_non_scraped_links = 0
+    all_scraper = ""
+    found_urls = set()      
+    scraped_urls = []       
+    failed_urls = []        
+    object_ids = []        
 
     try:
         driver.get(url)
@@ -55,10 +59,11 @@ def scraper_se_eppc(url, sobrenombre):
                     if href:
                         href = urljoin(url, href)
 
-                        if href in urls_found:
-                            continue  # Evitar procesar la misma URL más de una vez
+                        if href in found_urls:
+                            continue
 
-                        urls_found.add(href)
+                        found_urls.add(href)
+                        total_urls_found += 1
                         logger.info(f"🔗 URL encontrada: {href}")
 
                         driver.get(href)
@@ -76,7 +81,9 @@ def scraper_se_eppc(url, sobrenombre):
                             logger.warning(
                                 f"⚠️ No se pudo hacer clic en 'About This Subject' en {href}: {e}"
                             )
-                            urls_not_scraped.add(href)
+                            if href not in scraped_urls and href not in failed_urls:
+                                failed_urls.append(href)
+                                total_non_scraped_links += 1
                             continue
 
                         soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -84,11 +91,8 @@ def scraper_se_eppc(url, sobrenombre):
 
                         if container:
                             overview = container.select_one("#overview")
-
                             if overview:
-                                page_text = overview.get_text(
-                                    separator="\n", strip=True
-                                )
+                                page_text = overview.get_text(separator="\n", strip=True)
                                 if page_text:
                                     object_id = fs.put(
                                         page_text.encode("utf-8"),
@@ -98,61 +102,49 @@ def scraper_se_eppc(url, sobrenombre):
                                         contenido=page_text,
                                         url=url,
                                     )
+                                    total_urls_scraped += 1
+                                    scraped_urls.append(href)
+                                    object_ids.append(object_id)
+                                    logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                                    urls_scraped.add(href)
-                                    logger.info(
-                                        f"✅ Contenido almacenado en MongoDB con ID: {object_id}"
-                                    )
                                     existing_versions = list(
-                                        fs.find({"source_url": href}).sort(
-                                            "scraping_date", -1
-                                        )
+                                        fs.find({"source_url": href}).sort("scraping_date", -1)
                                     )
-
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
-                                        file_id = oldest_version._id 
+                                        file_id = oldest_version._id  
                                         fs.delete(file_id)  
                                         logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
                                 else:
-                                    logger.warning(
-                                        f"⚠️ El contenido de #overview en {href} está vacío."
-                                    )
-                                    urls_not_scraped.add(href)
+                                    logger.warning(f"⚠️ El contenido de #overview en {href} está vacío.")
+                                    if href not in scraped_urls and href not in failed_urls:
+                                        failed_urls.append(href)
+                                        total_non_scraped_links += 1
                             else:
-                                logger.warning(
-                                    f"⚠️ No se encontró #overview dentro de div.container en {href}."
-                                )
-                                urls_not_scraped.add(href)
+                                logger.warning(f"⚠️ No se encontró #overview dentro de div.container en {href}.")
+                                if href not in scraped_urls and href not in failed_urls:
+                                    failed_urls.append(href)
+                                    total_non_scraped_links += 1
                         else:
-                            logger.warning(
-                                f"⚠️ No se encontró 'div.container' en {href}."
-                            )
-                            urls_not_scraped.add(href)
+                            logger.warning(f"⚠️ No se encontró 'div.container' en {href}.")
+                            if href not in scraped_urls and href not in failed_urls:
+                                failed_urls.append(href)
+                                total_non_scraped_links += 1
 
             except Exception as e:
                 logger.error(f"❌ Error al procesar el enlace {href}: {e}")
-                urls_not_scraped.add(href)
+                if href not in scraped_urls and href not in failed_urls:
+                    failed_urls.append(href)
+                    total_non_scraped_links += 1
 
-        all_scraper = (
-            f"📌 **Reporte de scraping:**\n"
-            f"🔍 URLs encontradas: {len(urls_found)}\n"
-            f"✅ URLs scrapeadas: {len(urls_scraped)}\n"
-            f"⚠️ URLs no scrapeadas: {len(urls_not_scraped)}\n\n"
-        )
-
-        if urls_scraped:
-            all_scraper += (
-                "✅ **URLs scrapeadas:**\n" + "\n".join(urls_scraped) + "\n\n"
-            )
-
-        if urls_not_scraped:
-            all_scraper += (
-                "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
-            )
+        all_scraper += f"Total enlaces encontrados: {total_urls_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_urls_scraped}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_non_scraped_links}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
+        logger.info("🚀 Scraping completado exitosamente.")
         return response
 
     except Exception as e:

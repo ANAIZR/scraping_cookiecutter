@@ -12,7 +12,6 @@ from ..functions import (
 from bson import ObjectId
 from datetime import datetime
 
-
 def scraper_bugwood(url, sobrenombre, max_depth=3):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
@@ -22,14 +21,18 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
     total_urls_found = 0
     total_urls_scraped = 0
     total_non_scraped_links = 0
-    urls_not_scraped = []
+
     visited_urls = set()
     urls_to_scrape = []
+    object_ids = []
+
+    scraped_urls = []
+    failed_urls = []
 
     base_domain = "https://wiki.bugwood.org"
 
     def scrape_page(current_url, current_depth):
-        nonlocal total_urls_found, total_urls_scraped, all_scraper, total_non_scraped_links
+        nonlocal total_urls_found, total_urls_scraped, total_non_scraped_links
 
         if current_url in visited_urls or current_depth > max_depth:
             return []
@@ -58,7 +61,6 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
             response.raise_for_status()
 
             soup = BeautifulSoup(response.text, "html.parser")
-
             links = soup.find_all("a", href=True)
             extracted_links = []
 
@@ -91,7 +93,6 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
             container_div = soup.find("div", class_="container")
             if container_div:
                 content_text = container_div.get_text(strip=True)
-
                 if content_text:
                     object_id = fs.put(
                         content_text.encode("utf-8"),
@@ -102,10 +103,11 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
                         url=url
                     )
                     total_urls_scraped += 1
+                    scraped_urls.append(current_url)
+                    object_ids.append(object_id)
                     logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
 
                     existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
-
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
                         file_id = oldest_version._id  
@@ -113,15 +115,19 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
                         logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                 else:
                     total_non_scraped_links += 1
-                    urls_not_scraped.append(current_url)
+                    failed_urls.append(current_url)
                     logger.warning(f"⚠️ No se almacenó contenido vacío para: {current_url}")
+            else:
+                total_non_scraped_links += 1
+                failed_urls.append(current_url)
+                logger.warning(f"⚠️ No se encontró el contenedor en: {current_url}")
 
             return extracted_links
 
         except requests.RequestException as e:
             logger.error(f"❌ Error al procesar la URL: {current_url}, error: {str(e)}")
             total_non_scraped_links += 1
-            urls_not_scraped.append(current_url)
+            failed_urls.append(current_url)
             return []
 
     def scrape_pages_in_parallel(url_list):
@@ -148,17 +154,11 @@ def scraper_bugwood(url, sobrenombre, max_depth=3):
             urls_to_scrape.clear()
             scrape_pages_in_parallel(current_batch)
 
-        all_scraper = (
-            f"📌 **Resumen del scraping:**\n"
-            f"🔗 Total de URLs encontradas: {total_urls_found}\n"
-            f"✅ Total de URLs scrapeadas: {total_urls_scraped}\n"
-            f"⚠️ Total de URLs no scrapeadas: {total_non_scraped_links}\n\n"
-            f"{'-'*80}\n\n"
-        ) + all_scraper
-
-        if urls_not_scraped:
-            all_scraper += "⚠️ URLs no scrapeadas:\n\n"
-            all_scraper += "\n".join(urls_not_scraped) + "\n"
+        all_scraper += f"Total enlaces encontrados: {total_urls_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_urls_scraped}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_non_scraped_links}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
         logger.info("🚀 Scraping completado exitosamente.")

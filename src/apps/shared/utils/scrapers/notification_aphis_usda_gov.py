@@ -6,8 +6,6 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    load_keywords,
-    extract_text_from_pdf,
 )
 import time
 import random
@@ -44,7 +42,7 @@ def scraper_aphis_usda_gov(url, sobrenombre):
             current_url = driver.current_url
             parsed_url = urlparse(current_url)
             query_params = parse_qs(parsed_url.query)
-            current_page = int(query_params.get("page", [1])[0])  # Si no tiene 'page', es la primera
+            current_page = int(query_params.get("page", [1])[0]) 
 
             page_source = driver.page_source
             soup = BeautifulSoup(page_source, "html.parser")
@@ -57,7 +55,7 @@ def scraper_aphis_usda_gov(url, sobrenombre):
             for article in article_divs:
                 link = article.select_one("a[href]")
                 if link and link["href"]:
-                    href = urljoin(url, link["href"])  
+                    href = urljoin(url, link["href"])
                     
                     if href not in visited_urls:
                         visited_urls.add(href)

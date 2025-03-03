@@ -13,7 +13,7 @@ from .flmnh_ufl import scraper_flmnh_ufl
 from .iucnredlist import scraper_iucnredlist
 from .ala_org import scraper_ala_org
 from .pnw_hand_books import scraper_pnw_hand_books
-from .ipm_illinois import scraper_ipm_illinois
+from .ipm_illinois import scraper_ipm_illinoes
 from .pest_alerts import scraper_pest_alerts
 from .cabi_digital import scraper_cabi_digital
 from .ndrs_org import scraper_ndrs_org
@@ -72,6 +72,8 @@ from .ecoport import scraper_ecoport
 from .pestnet import scraper_pestnet
 from .scienceopen import scraper_scienceopen
 from .doaj_org import scraper_doaj_org
+from .biblioteca_sibe import scraper_biblioteca_sibe
+
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
     2: scraper_coleoptera_neotropical,
@@ -88,7 +90,7 @@ SCRAPER_FUNCTIONS = {
     13: scraper_iucnredlist,
     14: scraper_ala_org,
     15: scraper_pnw_hand_books,
-    16: scraper_ipm_illinois,
+    16: scraper_ipm_illinoes,
     17: scraper_pest_alerts,
     18: scraper_cabi_digital,
     19: scraper_ndrs_org,
@@ -146,5 +148,6 @@ SCRAPER_FUNCTIONS = {
     74: scraper_repository_cimmy,
     75: scraper_ippc_int,
     76: scraper_cahfsa,
-    77: scraper_aphis_usda_gov
+    77: scraper_aphis_usda_gov,
+    80: scraper_biblioteca_sibe
 }
