@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 from ..functions import (
     process_scraper_data_v2,
     connect_to_mongo,
@@ -41,8 +42,30 @@ def scraper_defensa_sag(url, sobrenombre):
             print("✅ Se encontró las opciones del table")
             logger.info("✅ Se encontró las opciones del table")
 
-            index = 2
+            elemento_a = driver.find_element(By.ID, "stUI16_lnk")
+            elemento_a.click()
+            #driver.execute_script("_STNS.UI.fbDmEnt(null, arguments[0])", elemento_a)
+            driver.execute_script("arguments[0].click();", elemento_a)
 
+            # Crear un evento sintético y ejecutar el método
+            # script = """
+            #     var evento = new Event('mouseover');
+            #     arguments[0].dispatchEvent(evento);
+            #     return _STNS.UI.fbDmEnt(evento, arguments[0]);
+            # """
+
+            # print("Ejecutando script by qumadev")
+            # # Ejecutar el script y obtener el resultado
+            # resultado_js = driver.execute_script(script, elemento_anchor)
+            # print("elemento entontrado by qumadev javascript",resultado_js)
+
+            # # Ejemplo: Obtener el texto de los elementos devueltos
+            # if resultado_js:
+            #     for elemento in resultado_js:
+            #         texto = driver.execute_script("return arguments[0].textContent;", elemento)
+            #         print(texto)
+
+            index = 2
             while True:
                 try:
                     rows = driver.find_elements(By.CSS_SELECTOR, f"tr.sttr:nth-child({index})")
