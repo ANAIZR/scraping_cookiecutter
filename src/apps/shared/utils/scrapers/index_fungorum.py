@@ -45,14 +45,28 @@ def extract_text(current_url):
         print(f"Procesando URL by quma: {current_url}")
 
         soup = BeautifulSoup(response.content, "html.parser")
+        """ table_element = soup.select_one("table.mainbody tbody tr:nth-child(2)[valign='top']")
+        print("tabla a pintar", table_element) """
+
+        """ table_element = soup.select_one("table.mainbody tbody tr:nth-child(2)[valign='top']")
+        print("Table:", table_element) """
+
         table_element = soup.find("table", class_="mainbody")
+        print("Table:", table_element)
+        if table_element:
+            rows = table_element.find_all("tr:nth-child(2)[valign='top']")
+            print("Fila con valign='top':", rows) #None
 
         if table_element:
+            # trs = table_element.select("tr")
             trs = table_element.select("tr")
             
-            body = trs[1]
-            body_text = body.get_text(separator=" ", strip=True)
+            tr_main = trs[2]
+            print("objetos a pintar",tr_main)
 
+            # content_main = tr_main.select_one("td>table>tbody>tr")
+            body_text = tr_main.get_text(separator=" ", strip=True)
+            print("texto by qumadev: ",body_text)
             if body_text:
                 object_id = fs.put(
                     body_text.encode("utf-8"),
@@ -64,7 +78,7 @@ def extract_text(current_url):
                 )
                 scraped_urls += 1
                 scraped_urls.append(current_url)
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                print(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                 existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
                 if len(existing_versions) > 1:
@@ -161,7 +175,7 @@ def scraper_index_fungorum(url, sobrenombre):
                         )
                         next_page_link = next_link.get_attribute("href")
 
-                        if next_page_link:
+                        if next_page_link and number_page < 1:
                             next_link.click()
                             time.sleep(random.uniform(3,6))
                             number_page += 1
