@@ -15,21 +15,17 @@ from ..functions import (
 from bson import ObjectId
 import time
 
+non_scraped_urls = []
+total_scraped_links = 0
+
 def scraper_defensa_sag(url, sobrenombre):
     logger = get_logger("DEFENSA SAG")
     logger.info(f"Iniciando scraping para URL: {url}")
 
     driver = initialize_driver()
     collection, fs = connect_to_mongo()
-    
-    total_links_found = 0
-    total_scraped_successfully = 0
-    total_failed_scrapes = 0
-    all_scraper = ""
     scraped_urls = set()
-    failed_urls = set()
     visited_urls = set()
-    object_ids = []
 
     try:
         driver.get(url)
@@ -102,6 +98,16 @@ def scraper_defensa_sag(url, sobrenombre):
         except NoSuchElementException:
             logger.error("❌ No se encontró el table especificado")
             return {"error": "No se encontró el table especificado"}
+        
+        all_scraper = (
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+
+        response = process_scraper_data(all_scraper, url, sobrenombre)
+        return response
 
     except Exception as e:
         logger.error(f"⚠️ Error general durante el scraping: {str(e)}")
@@ -165,6 +171,7 @@ def process_second_dropdown(driver, logger, visited_urls, scraped_urls, fs):
         logger.warning("❌ No se encontró el dropdown 'Nombre Científico'.")
 
 def process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs):
+    global total_scraped_links
     try:
         dropdown_pais = Select(driver.find_element(By.ID, "select4"))
         logger.info("📌 Dropdown 'País' encontrado.")
@@ -205,9 +212,19 @@ def process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs):
                                 contenido=content_text,
                                 url=result_url
                             )
+                            total_scraped_links += 1
+                            scraped_urls.append(href)
+                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                            logger.info(f"✅ Contenido guardado en MongoDB: {href}")
-
+                            existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                            if len(existing_versions) > 1:
+                                oldest_version = existing_versions[-1]
+                                file_id = oldest_version._id  # Esto obtiene el ID correcto
+                                fs.delete(file_id)  # Eliminar la versión más antigua
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        else:
+                            non_scraped_urls.append(href)
+ 
             except NoSuchElementException:
                 continue
 
