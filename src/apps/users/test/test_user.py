@@ -3,6 +3,7 @@ from unittest.mock import patch
 from rest_framework import status
 from rest_framework.test import APIClient
 from src.apps.users.models import User
+from src.apps.users.utils.tasks import update_system_role_task
 
 @pytest.fixture
 def api_client():
@@ -10,11 +11,13 @@ def api_client():
 
 @pytest.fixture
 def admin_user(db):
-    return User.objects.create_superuser(
+    user = User.objects.create_superuser(
         username="admin_user",
         email="admin@example.com",
         password="adminpass"
     )
+    update_system_role_task.apply_async(args=[user.id])
+    return user
 
 @pytest.fixture
 def regular_user(db):

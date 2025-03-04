@@ -2,6 +2,5 @@ from rest_framework import permissions
 
 class IsAdminUser(permissions.BasePermission):
 
-
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.system_role == 1
+        return bool(request.user and request.user.is_authenticated and getattr(request.user, "system_role", None) == 1)
