@@ -102,15 +102,19 @@ def test_non_admin_cannot_update_user(api_client, funcionario_user, test_user):
 
 @patch("src.apps.users.utils.tasks.soft_delete_user_task.apply_async")
 @pytest.mark.django_db
-def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_user):
+def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_user, celery_worker):
     api_client.force_authenticate(user=admin_user)
 
     response = api_client.delete(f"/api/users/{test_user.id}/")
 
     assert response.status_code == 204
     mock_soft_delete.assert_called_once_with((test_user.id,))
+
+    import time
+    time.sleep(1)  
+
     test_user.refresh_from_db()
-    assert test_user.is_active is False
+    assert test_user.is_active is False  
 
 @pytest.mark.django_db
 def test_non_admin_cannot_delete_user(api_client, funcionario_user, test_user):
