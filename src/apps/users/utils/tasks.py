@@ -64,7 +64,14 @@ def send_welcome_email_task(email, username):
 def update_system_role_task(user_id):
     try:
         user = User.objects.get(id=user_id)
+
+        if user.is_superuser and user.system_role != 1:
+            user.system_role = 1
+            user.save()
+            return
+        
         UserService.update_system_role(user)
+    
     except User.DoesNotExist:
         logger.error(f"❌ Usuario con ID {user_id} no encontrado. Cancelando tarea.")
     except Exception as e:

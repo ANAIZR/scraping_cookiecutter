@@ -16,7 +16,10 @@ def admin_user(db):
         email="admin@example.com",
         password="adminpass"
     )
-    update_system_role_task.apply_async(args=[user.id])
+    user.system_role = 1  
+    user.save()
+    
+    update_system_role_task.apply_async(args=[user.id])  # Se ejecuta, pero ya está en 1
     return user
 
 @pytest.fixture
