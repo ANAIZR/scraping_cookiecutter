@@ -39,16 +39,19 @@ def scraper_notification_cahfsa_org(url, sobrenombre):
 
         page_source = driver.page_source
         soup = BeautifulSoup(page_source, "html.parser")
-        results = soup.select("div.column_attr.mfn-inline-editor")      
+        results = soup.select("div.column_attr.mfn-inline-editor li")      
 
         for result in results:
-            href = result.select_one("a")["href"]
+            links = result.select("a")
+            
+            for link in links:
+                href = link.get("href")
 
-            if href and href not in visited_urls:
-                visited_urls.add(href)
-                scraped_urls.add(href)
-                total_links_found += 1
-                logger.info(f"✅ Enlace agregado: {href}")
+                if href and href not in visited_urls:
+                    visited_urls.add(href)
+                    scraped_urls.add(href)
+                    total_links_found += 1
+                    logger.info(f"✅ Enlace agregado: {href}")
 
         logger.info(f"🔍 Se encontraron {total_links_found} enlaces en total.")
 
