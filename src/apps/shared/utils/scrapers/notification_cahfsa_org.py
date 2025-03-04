@@ -1,0 +1,116 @@
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from ..functions import (
+    process_scraper_data_v2,
+    connect_to_mongo,
+    get_logger,
+    initialize_driver,
+    extract_text_from_pdf,
+)
+import time
+import random
+from datetime import datetime
+from bs4 import BeautifulSoup
+
+def scraper_notification_cahfsa_org(url, sobrenombre):
+    logger = get_logger("CAHFSA ORG")
+    logger.info(f"Iniciando scraping para URL: {url}")
+
+    driver = initialize_driver()
+    collection, fs = connect_to_mongo()
+    total_links_found = 0
+    total_scraped_successfully = 0
+    total_failed_scrapes = 0
+    all_scraper = ""
+    scraped_urls = set()
+    failed_urls = set()
+    visited_urls = set()
+    total_links_found = 0
+    object_ids = []
+
+    try:
+        driver.get(url)
+        driver.execute_script("document.body.style.zoom='100%'")
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+        time.sleep(5)
+
+        logger.info("✅ Página cargada correctamente.")
+
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, "html.parser")
+        results = soup.select("div.column_attr.mfn-inline-editor")      
+
+        for result in results:
+            href = result.select_one("a")["href"]
+
+            if href and href not in visited_urls:
+                visited_urls.add(href)
+                scraped_urls.add(href)
+                total_links_found += 1
+                logger.info(f"✅ Enlace agregado: {href}")
+
+        logger.info(f"🔍 Se encontraron {total_links_found} enlaces en total.")
+
+        for href in scraped_urls.copy():
+            try:
+                logger.info(f"🔍 Procesando: {href}")
+
+                if href.endswith(".pdf"):
+                    logger.info(f"📄 Extrayendo texto de PDF: {href}")
+                    content_text = extract_text_from_pdf(href)
+                else:
+                    driver.get(href)
+                    driver.execute_script("document.body.style.zoom='100%'")
+                    WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                    time.sleep(5)
+
+                    WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "li"))
+                    )
+                    time.sleep(random.randint(2, 4))
+                    content_text = driver.find_element(By.CSS_SELECTOR, "li").text.strip()
+                
+                if content_text:
+                    object_id= fs.put(
+                        content_text.encode("utf-8"),
+                        source_url=href,
+                        scraping_date=datetime.now(),
+                        Etiquetas=["planta", "plaga"],
+                        contenido=content_text,
+                        url=url
+                    )
+                    total_scraped_successfully +=1
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                    object_ids.append(object_id) 
+                    
+                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        file_id = oldest_version._id 
+                        fs.delete(file_id)
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}") 
+
+                logger.info(f"✅ Contenido extraído de {href}")
+
+            except Exception as e:
+                logger.error(f"No se pudo extraer contenido de {href}.")
+                total_failed_scrapes += 1
+                failed_urls.add(href)
+                scraped_urls.remove(href)
+        
+        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response 
+
+    except Exception as e:
+        logger.error(f"⚠️ Error general durante el scraping: {str(e)}")
+
+    finally:
+        driver.quit()
+        logger.info("Navegador cerrado.")

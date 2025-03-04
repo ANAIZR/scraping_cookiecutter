@@ -1408,5 +1408,18 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 107,
+    "fields": {
+      "url": "https://cahfsa.org/2024-3/",
+      "sobrenombre": "notification_cahfsa_org",
+      "time_choices": 1,
+      "mode_scrapeo": 81,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
   }
 ]
