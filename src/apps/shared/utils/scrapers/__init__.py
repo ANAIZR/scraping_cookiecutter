@@ -74,6 +74,7 @@ from .scienceopen import scraper_scienceopen
 from .doaj_org import scraper_doaj_org
 from .biblioteca_sibe import scraper_biblioteca_sibe
 from .acir_aphis_usda import scraper_acir_aphis_usda
+from .defensa_sag import scraper_defensa_sag
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
@@ -151,5 +152,6 @@ SCRAPER_FUNCTIONS = {
     75: scraper_ippc_int,
     76: scraper_cahfsa,
     77: scraper_aphis_usda_gov,
+    79: scraper_defensa_sag,
     80: scraper_biblioteca_sibe
 }
