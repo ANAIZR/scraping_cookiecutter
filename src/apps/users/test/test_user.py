@@ -1,9 +1,8 @@
 import pytest
+from rest_framework import status
 from rest_framework.test import APIClient
 from src.apps.users.models import User
 from unittest.mock import patch
-from django.utils import timezone
-from django.db import transaction  
 
 @pytest.fixture
 def api_client():
@@ -11,11 +10,18 @@ def api_client():
 
 @pytest.fixture
 def admin_user(db):
-    return User.objects.create_user(
+    return User.objects.create_superuser(
         username="admin_user",
         email="admin@example.com",
-        password="adminpass",
-        system_role=1
+        password="adminpass"
+    )
+
+@pytest.fixture
+def regular_user(db):
+    return User.objects.create_user(
+        username="regular_user",
+        email="user@example.com",
+        password="userpass"
     )
 
 @pytest.fixture
@@ -51,9 +57,6 @@ def test_admin_can_create_user(mock_update_role, mock_send_email, api_client, ad
     })
 
     assert response.status_code == 201
-
-    transaction.commit()
-
     mock_send_email.assert_called_once_with(args=[response.data["email"], response.data["username"]])
     mock_update_role.assert_called_once_with(args=[response.data["id"]])
 
@@ -71,7 +74,6 @@ def test_non_admin_cannot_create_user(api_client, funcionario_user):
     assert response.status_code == 403
     assert not User.objects.filter(username="newuser").exists()
 
-
 @pytest.mark.django_db
 def test_admin_can_update_user(api_client, admin_user, test_user):
     api_client.force_authenticate(user=admin_user)
@@ -82,7 +84,6 @@ def test_admin_can_update_user(api_client, admin_user, test_user):
     test_user.refresh_from_db()
     assert test_user.username == "updated_user"
 
-
 @pytest.mark.django_db
 def test_non_admin_cannot_update_user(api_client, funcionario_user, test_user):
     api_client.force_authenticate(user=funcionario_user)
@@ -91,8 +92,7 @@ def test_non_admin_cannot_update_user(api_client, funcionario_user, test_user):
 
     assert response.status_code == 403
     test_user.refresh_from_db()
-    assert test_user.username == "user_test"  
-
+    assert test_user.username == "user_test"
 
 @patch("src.apps.users.utils.tasks.soft_delete_user_task.apply_async")
 @pytest.mark.django_db
@@ -102,16 +102,10 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
     response = api_client.delete(f"/api/users/{test_user.id}/")
 
     assert response.status_code == 204
-
-    mock_soft_delete.assert_called_once_with((test_user.id,))
-
-    test_user.is_active = False
-    test_user.deleted_at = timezone.now()
-    test_user.save()
+    mock_soft_delete.assert_called_once_with(args=(test_user.id,))
 
     test_user.refresh_from_db()
     assert test_user.is_active is False
-
 
 @pytest.mark.django_db
 def test_non_admin_cannot_delete_user(api_client, funcionario_user, test_user):
@@ -121,3 +115,42 @@ def test_non_admin_cannot_delete_user(api_client, funcionario_user, test_user):
 
     assert response.status_code == 403
     assert User.objects.filter(id=test_user.id).exists()
+
+@pytest.mark.django_db
+def test_login_success(api_client, funcionario_user):
+    response = api_client.post("/api/auth/login/", {
+        "username": "funcionario_user",
+        "password": "userpass"
+    })
+    assert response.status_code == status.HTTP_200_OK
+    assert "token" in response.data
+
+@pytest.mark.django_db
+def test_login_failure(api_client):
+    response = api_client.post("/api/auth/login/", {
+        "username": "wrong_user",
+        "password": "wrongpass"
+    })
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+@pytest.mark.django_db
+def test_access_protected_route(api_client):
+    response = api_client.get("/api/protected-endpoint/")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+@pytest.mark.django_db
+def test_access_with_token(api_client, funcionario_user):
+    login_response = api_client.post("/api/auth/login/", {
+        "username": "funcionario_user",
+        "password": "userpass"
+    })
+    token = login_response.data["token"]
+    api_client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+    response = api_client.get("/api/protected-endpoint/")
+    assert response.status_code == status.HTTP_200_OK
+
+@pytest.mark.django_db
+def test_access_with_invalid_token(api_client):
+    api_client.credentials(HTTP_AUTHORIZATION="Token invalidtoken")
+    response = api_client.get("/api/protected-endpoint/")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
