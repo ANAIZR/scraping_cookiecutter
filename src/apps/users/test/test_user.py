@@ -3,6 +3,7 @@ from rest_framework.test import APIClient
 from src.apps.users.models import User
 from unittest.mock import patch
 from django.utils import timezone
+from django.db import transaction  
 
 @pytest.fixture
 def api_client():
@@ -36,8 +37,8 @@ def test_user(db):
     )
 
 @pytest.mark.django_db(transaction=True)
-@patch("src.apps.users.utils.tasks.send_welcome_email_task.delay")
-@patch("src.apps.users.utils.tasks.update_system_role_task.delay")
+@patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
+@patch("src.apps.users.utils.tasks.update_system_role_task.apply_async")
 def test_admin_can_create_user(mock_update_role, mock_send_email, api_client, admin_user):
     api_client.force_authenticate(user=admin_user)
 
@@ -51,9 +52,10 @@ def test_admin_can_create_user(mock_update_role, mock_send_email, api_client, ad
 
     assert response.status_code == 201
 
-    mock_send_email.assert_called_once()
-    mock_update_role.assert_called_once()
+    transaction.commit()
 
+    mock_send_email.assert_called_once_with(args=[response.data["email"], response.data["username"]])
+    mock_update_role.assert_called_once_with(args=[response.data["id"]])
 
 @pytest.mark.django_db
 def test_non_admin_cannot_create_user(api_client, funcionario_user):
