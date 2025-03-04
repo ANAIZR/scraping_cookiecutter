@@ -23,18 +23,26 @@ from rest_framework.exceptions import PermissionDenied
 from pymongo import MongoClient
 from django.conf import settings
 from ....users.utils.services import EmailService
+from rest_framework.pagination import PageNumberPagination
 
 logger = logging.getLogger(__name__)
 
 
+class Pagination(PageNumberPagination):
+    page_size = 10 
+    page_size_query_param = 'page_size' 
+    max_page_size = 100 
 class ScraperURLViewSet(viewsets.ModelViewSet):
     queryset = ScraperURL.objects.all()
     serializer_class = ScraperURLSerializer
+    pagination_class = Pagination
+
 
 
 class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Species.objects.select_related("scraper_source").all()
     serializer_class = SpeciesSerializer
+    pagination_class = Pagination
 
 
 
@@ -98,11 +106,10 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Permite a los administradores ver todas las suscripciones, pero los usuarios solo pueden ver las suyas."""
         user_id = self.request.query_params.get("user_id")
 
         if user_id:
-            if not self.request.user.is_staff:  # Solo administradores pueden filtrar por user_id
+            if not self.request.user.is_staff:  
                 raise PermissionDenied("No tienes permisos para ver otras suscripciones.")
             return SpeciesSubscription.objects.filter(user_id=user_id).order_by("-created_at")
         
@@ -112,9 +119,8 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            subscription = serializer.save(user=request.user)  # Guardamos la suscripción
+            subscription = serializer.save(user=request.user)  
 
-            # 🔥 Enviar correo de confirmación al usuario
             self.send_subscription_email(subscription)
 
             return Response(
@@ -128,7 +134,6 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
         )
 
     def destroy(self, request, *args, **kwargs):
-        """Permite eliminar una suscripción solo si pertenece al usuario autenticado."""
         instance = get_object_or_404(SpeciesSubscription, id=kwargs["pk"], user=request.user)
         self.perform_destroy(instance)
 
@@ -138,7 +143,6 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
         )
 
     def send_subscription_email(self, subscription):
-        """Envía un correo de confirmación al usuario cuando se suscribe a nuevas especies."""
         user = subscription.user
         filters = []
         if subscription.scientific_name:
