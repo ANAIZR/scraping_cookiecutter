@@ -50,3 +50,4 @@ pyPDF2
 chardet
 ollama
 selenium-stealth
+responses

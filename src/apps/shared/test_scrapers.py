@@ -6,6 +6,7 @@ from src.apps.users.models import User
 from src.apps.shared.models.scraperURL import ScraperURL
 from django.urls import reverse
 from django.utils import timezone
+import responses
 
 API_URL = reverse("scraper_url")
 
@@ -34,19 +35,16 @@ class TestScraperAPIView:
     def test_scraper_runs_successfully(self, mock_scraper_functions, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
 
-        mock_scraper_functions[1] = lambda **kwargs: Response(
+        mock_scraper_functions[1] = MagicMock(return_value=Response(
             {"data": "Scraper exitoso"}, status=200
-        )
+        ))
 
         response = self.client.post(API_URL, {"url": "https://example.com"})
 
-        mock_apply_async.assert_called_once_with(("https://example.com",))
+        mock_apply_async.assert_called_once_with(args=("https://example.com",))
 
         assert response.status_code == 202
         assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
-
-
-
 
     @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")  
     def test_scraper_requires_authentication(self, mock_apply_async):
@@ -75,7 +73,6 @@ class TestScraperAPIView:
         assert response.status_code == 500
         assert response.json() == {"error": "Error al encolar tarea: Error en Celery"}
 
-
     @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
     def test_scraper_fails_with_unknown_url(self, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
@@ -87,18 +84,37 @@ class TestScraperAPIView:
 
         mock_apply_async.assert_not_called()
 
-
     @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async")
     def test_scraper_updates_database(self, mock_apply_async):
         self.client.force_authenticate(user=self.admin)
+
+        assert self.scraper_url.fecha_scraper is None
 
         response = self.client.post(API_URL, {"url": "https://example.com"})
 
         assert response.status_code == 202  
         assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
+
         self.scraper_url.fecha_scraper = timezone.now()
         self.scraper_url.save()
-
         self.scraper_url.refresh_from_db()
+
         assert self.scraper_url.fecha_scraper is not None
 
+    @responses.activate
+    def test_scraper_integration_with_external_source(self):
+        self.client.force_authenticate(user=self.admin)
+
+        responses.add(
+            responses.GET,
+            "http://www.iucngisd.org/gisd/",
+            body="<html><body><h1>External Page</h1></body></html>",
+            status=200
+        )
+
+        response = self.client.post(API_URL, {"url": "http://www.iucngisd.org/gisd/"})
+
+        assert response.status_code == 202
+        assert response.json()["status"] == "Tarea de scraping encolada exitosamente"
+
+        responses.reset()
