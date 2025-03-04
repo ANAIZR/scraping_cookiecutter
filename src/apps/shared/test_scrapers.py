@@ -99,7 +99,6 @@ class TestScraperAPIView:
         assert response.status_code == 202  
         assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
 
-        # Simular la actualización de la base de datos
         self.scraper_url.fecha_scraper = timezone.now()
         self.scraper_url.save()
         self.scraper_url.refresh_from_db()
@@ -109,6 +108,15 @@ class TestScraperAPIView:
     @responses.activate
     def test_scraper_integration_with_external_source(self):
         self.client.force_authenticate(user=self.admin)
+
+        ScraperURL.objects.create(
+            url="http://www.iucngisd.org/gisd/",
+            sobrenombre="Test Scraper",
+            type_file=1,
+            time_choices=1,
+            parameters={},
+            mode_scrapeo=1,
+        )
 
         responses.add(
             responses.GET,
@@ -121,5 +129,3 @@ class TestScraperAPIView:
 
         assert response.status_code == 202
         assert response.json()["status"] == "Tarea de scraping encolada exitosamente"
-
-        responses.reset()
