@@ -15,11 +15,15 @@ class TestScraperAPIView:
 
     def setup_method(self):
         self.client = APIClient()
+        
         self.admin = User.objects.create_superuser(
             username="admin_user",
             email="admin@example.com",
             password="adminpass"
         )
+        self.admin.system_role = 1 
+        self.admin.save()  
+
         self.scraper_url = ScraperURL.objects.create(
             url="https://example.com",
             sobrenombre="Test Scraper",
@@ -28,6 +32,7 @@ class TestScraperAPIView:
             parameters={},
             mode_scrapeo=1,
         )
+
 
     @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async") 
     @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict) 
