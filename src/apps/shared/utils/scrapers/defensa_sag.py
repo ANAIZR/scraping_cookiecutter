@@ -46,47 +46,46 @@ def scraper_defensa_sag(url, sobrenombre):
 
             elemento_a = driver.find_element(By.ID, "stUI16_lnk")
             elemento_a.click()
-            #driver.execute_script("_STNS.UI.fbDmEnt(null, arguments[0])", elemento_a)
+            
             driver.execute_script("arguments[0].click();", elemento_a)
 
-            # Crear un evento sintético y ejecutar el método
-            # script = """
-            #     var evento = new Event('mouseover');
-            #     arguments[0].dispatchEvent(evento);
-            #     return _STNS.UI.fbDmEnt(evento, arguments[0]);
-            # """
 
-            # print("Ejecutando script by qumadev")
-            # # Ejecutar el script y obtener el resultado
-            # resultado_js = driver.execute_script(script, elemento_anchor)
-            # print("elemento entontrado by qumadev javascript",resultado_js)
-
-            # # Ejemplo: Obtener el texto de los elementos devueltos
-            # if resultado_js:
-            #     for elemento in resultado_js:
-            #         texto = driver.execute_script("return arguments[0].textContent;", elemento)
-            #         print(texto)
+            ##urls del primer desplegable
+            urls_desp1 = [f"https://defensa.sag.gob.cl/reqmercado/consulta.asp?tp={i}" for i in [6, 102, 7, 8, 9]]
+            urls_desp2 = [f"https://defensa.sag.gob.cl/reqmercado/consulta.asp?tp={i}" for i in [14, 19, 15, 111, 112, 113]]
 
             index = 2
             while True:
                 try:
                     rows = driver.find_elements(By.CSS_SELECTOR, f"tr.sttr:nth-child({index})")
-
                     if not rows:
                         print("✅ No hay más filas pares para procesar.")
-                        break
+                        break                    
+                    
+                    if(index == 14):
+                        print("primer desplegable")
+                        for option1 in urls_desp1:
+                            driver.get(option1)
+                            process_dropdowns(driver, logger, visited_urls, scraped_urls, fs)
 
-                    row = rows[0]
-                    span_element = row.find_element(By.CSS_SELECTOR, "span")
-                    span_text = span_element.text.strip()
+                    if(index == 20):                        
+                        print("segundo desplegable")
+                        for option2 in urls_desp2:
+                            driver.get(option2)
+                            process_dropdowns(driver, logger, visited_urls, scraped_urls, fs)                            
 
-                    row.click()
-                    time.sleep(2)
+                    else:
+                        row = rows[0]
+                        span_element = row.find_element(By.CSS_SELECTOR, "span")
+                        span_text = span_element.text.strip()
 
-                    print(f"🟢 El nombre del tr es: {span_text}")
-                    logger.info(f"🟢 El nombre del tr es: {span_text}")
+                        row.click()
+                        time.sleep(2)
 
-                    process_dropdowns(driver, logger, visited_urls, scraped_urls, fs)
+                        print(f"🟢 El nombre del tr es: {span_text}")
+                        logger.info(f"🟢 El nombre del tr es: {span_text}")
+
+                        process_dropdowns(driver, logger, visited_urls, scraped_urls, fs)
 
                     index += 2  
 

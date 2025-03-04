@@ -1387,7 +1387,7 @@
     "model": "shared.ScraperURL",
     "pk": 105,
     "fields": {
-      "url": "https://defensa.sag.gob.cl/reqmercado/consulta.asp?tp=6",
+      "url": "https://defensa.sag.gob.cl/reqmercado/consulta.asp?tp=1",
       "sobrenombre": "defensa_sag",
       "time_choices": 1,
       "mode_scrapeo": 79,
