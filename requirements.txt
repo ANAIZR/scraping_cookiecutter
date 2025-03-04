@@ -51,4 +51,3 @@ chardet
 ollama
 selenium-stealth
 responses
-pytest-celery
