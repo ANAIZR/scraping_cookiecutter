@@ -102,7 +102,7 @@ def scraper_nematode(url, sobrenombre):
                         contenido=page_text,
                         url=url
                     )
-                    scraped_urls.add(str(object_id)) 
+                    scraped_urls.add(link) 
                     total_scraped_successfully += 1
                     
                     existing_versions = list(
