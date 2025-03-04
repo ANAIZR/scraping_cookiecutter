@@ -3,7 +3,7 @@ from unittest.mock import patch
 from rest_framework import status
 from rest_framework.test import APIClient
 from src.apps.users.models import User
-from src.apps.users.utils.tasks import update_system_role_task
+from src.apps.users.utils.tasks import update_system_role_task, soft_delete_user_task
 
 @pytest.fixture
 def api_client():
@@ -113,8 +113,11 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
 
     mock_soft_delete.assert_called_once_with((test_user.id,))  # Validación
 
+    soft_delete_user_task(test_user.id)
+
     test_user.refresh_from_db()
-    assert test_user.is_active is False
+    assert test_user.is_active is False  # Ahora debería estar desactivado
+
 
 
 @pytest.mark.django_db
