@@ -15,11 +15,10 @@ class TestScraperAPIView:
 
     def setup_method(self):
         self.client = APIClient()
-        self.admin = User.objects.create_user(
+        self.admin = User.objects.create_superuser(
             username="admin_user",
             email="admin@example.com",
-            password="adminpass",
-            system_role=1,
+            password="adminpass"
         )
         self.scraper_url = ScraperURL.objects.create(
             url="https://example.com",
@@ -41,7 +40,7 @@ class TestScraperAPIView:
 
         response = self.client.post(API_URL, {"url": "https://example.com"})
 
-        mock_apply_async.assert_called_once_with(args=("https://example.com",))
+        mock_apply_async.assert_called_once_with(("https://example.com",))
 
         assert response.status_code == 202
         assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
@@ -95,6 +94,7 @@ class TestScraperAPIView:
         assert response.status_code == 202  
         assert response.json() == {"status": "Tarea de scraping encolada exitosamente"}
 
+        # Simular la actualización de la base de datos
         self.scraper_url.fecha_scraper = timezone.now()
         self.scraper_url.save()
         self.scraper_url.refresh_from_db()

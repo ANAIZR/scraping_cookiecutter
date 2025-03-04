@@ -15,7 +15,7 @@ from src.apps.users.utils.tasks import send_password_reset_email_task, reset_pas
 
 class UsuarioView(viewsets.ModelViewSet):
     queryset = User.all_objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get_serializer_class(self):
         if self.request.method in ["POST", "PUT", "PATCH"]:
