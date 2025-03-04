@@ -27,6 +27,7 @@ def reset_password_task(self, email, token, new_password):
 
 @shared_task
 def soft_delete_user_task(user_id):
+    print(f"🔹 soft_delete_user_task ejecutada con ID: {user_id}")  # Depuración
     try:
         user = User.objects.get(id=user_id)
         UserService.soft_delete_user(user) 
@@ -35,7 +36,6 @@ def soft_delete_user_task(user_id):
         logger.error(f"❌ Usuario con ID {user_id} no encontrado.")
     except Exception as e:
         logger.error(f"❌ Error en soft_delete_user_task: {str(e)}")
-
 
 @shared_task
 def restore_user_task(user_id):
