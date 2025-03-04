@@ -34,11 +34,14 @@ def test_user(db):
         system_role=2
     )
 
+from django.db import connection
+from unittest.mock import patch
+
 @patch("src.apps.users.utils.tasks.send_welcome_email_task.delay")
 @patch("src.apps.users.utils.tasks.update_system_role_task.delay")
 def test_admin_can_create_user(mock_update_role, mock_send_email, api_client, admin_user):
     api_client.force_authenticate(user=admin_user)
-    
+
     response = api_client.post("/api/users/", {
         "username": "newuser",
         "last_name": "UserLastName",
@@ -48,9 +51,11 @@ def test_admin_can_create_user(mock_update_role, mock_send_email, api_client, ad
     })
 
     assert response.status_code == 201
+
+    connection.commit()
+
     mock_send_email.assert_called_once()
     mock_update_role.assert_called_once()
-
 
 
 
