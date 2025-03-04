@@ -38,7 +38,6 @@ class ScraperURLViewSet(viewsets.ModelViewSet):
     pagination_class = Pagination
 
 
-
 class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Species.objects.select_related("scraper_source").all()
     serializer_class = SpeciesSerializer
