@@ -109,14 +109,13 @@ class TestScraperAPIView:
     def test_scraper_integration_with_external_source(self):
         self.client.force_authenticate(user=self.admin)
 
-        ScraperURL.objects.create(
-            url="http://www.iucngisd.org/gisd/",
-            sobrenombre="Test Scraper",
-            type_file=1,
-            time_choices=1,
-            parameters={},
-            mode_scrapeo=1,
-        )
+        if not ScraperURL.objects.filter(url="http://www.iucngisd.org/gisd/").exists():
+            ScraperURL.objects.create(
+                url="http://www.iucngisd.org/gisd/",
+                sobrenombre="IUCNGISD",
+                time_choices=3,
+                mode_scrapeo=1
+            )
 
         responses.add(
             responses.GET,
