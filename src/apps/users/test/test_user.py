@@ -3,9 +3,13 @@ from rest_framework.test import APIClient
 from src.apps.users.models import User
 from unittest.mock import patch
 from django.utils import timezone
+from django.test import TransactionTestCase
+
+
 @pytest.fixture
 def api_client():
     return APIClient()
+
 
 @pytest.fixture
 def admin_user(db):
@@ -16,6 +20,7 @@ def admin_user(db):
         system_role=1
     )
 
+
 @pytest.fixture
 def funcionario_user(db):
     return User.objects.create_user(
@@ -24,6 +29,7 @@ def funcionario_user(db):
         password="funcionariopass",
         system_role=2
     )
+
 
 @pytest.fixture
 def test_user(db):
@@ -34,29 +40,25 @@ def test_user(db):
         system_role=2
     )
 
-from django.db import connection
-from unittest.mock import patch
 
-@patch("src.apps.users.utils.tasks.send_welcome_email_task.delay")
-@patch("src.apps.users.utils.tasks.update_system_role_task.delay")
-def test_admin_can_create_user(mock_update_role, mock_send_email, api_client, admin_user):
-    api_client.force_authenticate(user=admin_user)
+class TestUserCreation(TransactionTestCase):  
+    @patch("src.apps.users.utils.tasks.send_welcome_email_task.delay")
+    @patch("src.apps.users.utils.tasks.update_system_role_task.delay")
+    def test_admin_can_create_user(self, mock_update_role, mock_send_email, api_client, admin_user):
+        api_client.force_authenticate(user=admin_user)
 
-    response = api_client.post("/api/users/", {
-        "username": "newuser",
-        "last_name": "UserLastName",
-        "email": "new@example.com",
-        "password": "securepassword",
-        "system_role": 2
-    })
+        response = api_client.post("/api/users/", {
+            "username": "newuser",
+            "last_name": "UserLastName",
+            "email": "new@example.com",
+            "password": "securepassword",
+            "system_role": 2
+        })
 
-    assert response.status_code == 201
+        assert response.status_code == 201
 
-    connection.commit()
-
-    mock_send_email.assert_called_once()
-    mock_update_role.assert_called_once()
-
+        mock_send_email.assert_called_once()
+        mock_update_role.assert_called_once()
 
 
 @pytest.mark.django_db
@@ -105,16 +107,13 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
 
     assert response.status_code == 204
 
-    mock_soft_delete.assert_called_once_with((test_user.id,))
-
+    mock_soft_delete.assert_called_once_with(args=(test_user.id,)) 
     test_user.is_active = False
     test_user.deleted_at = timezone.now()
     test_user.save()
 
     test_user.refresh_from_db()
     assert test_user.is_active is False
-
-
 
 
 @pytest.mark.django_db
