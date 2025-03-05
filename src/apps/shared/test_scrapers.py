@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 import responses
 from src.apps.shared.api.serializers.scraperURL_serializers import ScraperURLSerializer, SpeciesSerializer, ReportComparisonSerializer, SpeciesSubscriptionSerializer
-from src.apps.shared.models import Species, ReportComparison, SpeciesSubscription
+from src.apps.shared.models.scraperURL import Species, ReportComparison, SpeciesSubscription
 API_URL = reverse("scraper_url")
 
 @pytest.mark.django_db
