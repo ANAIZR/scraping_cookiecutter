@@ -113,7 +113,7 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
 
     print(mock_soft_delete.call_args_list)  
 
-    mock_soft_delete.assert_called_once_with(test_user.id)
+    mock_soft_delete.assert_called_once_with((test_user.id,))
 
     soft_delete_user_task(test_user.id)
 
@@ -161,6 +161,7 @@ def test_usuario_get_serializer():
 def test_usuario_post_serializer(mock_update_role, mock_send_email):
     data = {
         "username": "newuser",
+        "last_name":"UserLastName",
         "email": "newuser@example.com",
         "password": "securepassword",
         "system_role": 2
