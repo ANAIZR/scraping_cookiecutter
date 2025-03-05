@@ -9,7 +9,7 @@ from ..functions import (
     initialize_driver,
     get_logger,
     connect_to_mongo,
-    process_scraper_data_v2,
+    process_scraper_data,
     extract_text_from_pdf
 )
 from bson import ObjectId
@@ -106,7 +106,7 @@ def scraper_defensa_sag(url, sobrenombre):
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
