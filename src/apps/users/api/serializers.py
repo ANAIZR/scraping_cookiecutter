@@ -6,6 +6,7 @@ from src.apps.users.utils.services import UserService
 import logging
 from django.db import transaction
 from src.apps.users.utils.tasks import send_welcome_email_task, update_system_role_task, restore_user_task, soft_delete_user_task
+from django.contrib.auth.hashers import check_password
 
 logger = logging.getLogger(__name__)
 
@@ -145,4 +146,33 @@ class PasswordResetSerializer(serializers.Serializer):
                 {"token": "Token inválido o ha expirado."}
             )
 
+        return data
+
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        email = data.get("email")
+        password = data.get("password")
+
+        if email and password:
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                raise serializers.ValidationError("Usuario no encontrado.")
+
+            if not check_password(password, user.password):
+                raise serializers.ValidationError("Datos invalidos")
+
+            if not user.is_active:
+                raise serializers.ValidationError("El usuario no está activo.")
+
+        else:
+            raise serializers.ValidationError(
+                "Debe incluir tanto 'email' como 'password'."
+            )
+
+        data["user"] = user
         return data
