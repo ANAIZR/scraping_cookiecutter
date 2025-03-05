@@ -6,6 +6,7 @@ from src.apps.users.models import User
 from src.apps.users.utils.tasks import update_system_role_task, soft_delete_user_task
 from src.apps.users.utils.services import UserService
 from src.apps.users.api.serializers import UsuarioGETSerializer, UsuarioPOSTSerializer, PasswordResetRequestSerializer, PasswordResetSerializer
+
 @pytest.fixture
 def api_client():
     return APIClient()
@@ -17,23 +18,19 @@ def admin_user(db):
         email="admin@example.com",
         password="adminpass"
     )
-    user.system_role = 1  
+    user.system_role = 1 
     user.save()
-    
-    update_system_role_task.apply_async(args=[user.id]) 
     return user
 
-
 @pytest.fixture
-def user_factory(db):
-    def create_user(**kwargs):
-        return User.objects.create_user(
-            username=kwargs.get("username", "defaultuser"),
-            email=kwargs.get("email", "default@example.com"),
-            password=kwargs.get("password", "defaultpassword"),
-            system_role=kwargs.get("system_role", 2)
-        )
-    return create_user
+def funcionario_user(db):
+    return User.objects.create_user(
+        username="funcionario_user",
+        email="funcionario@example.com",
+        password="funcionariopass",
+        system_role=2  
+    )
+
 
 
 @pytest.mark.django_db(transaction=True)
