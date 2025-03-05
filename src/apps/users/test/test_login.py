@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.contrib.auth.hashers import make_password
 from django.urls import reverse
 from src.apps.users.models import User
-from src.apps.shared.api.serializers.login_serializers import LoginSerializer
+from src.apps.users.api.serializers import LoginSerializer
 from rest_framework import status
 from rest_framework.test import APIClient
 
