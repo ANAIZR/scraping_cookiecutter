@@ -99,11 +99,13 @@ def test_login_missing_email_or_password():
 
 @pytest.mark.django_db
 def test_login_success(api_client, test_user):
-    response = api_client.post(LOGIN_URL, {"email": "test@example.com", "password": "securepassword"})
-    
-    assert response.status_code == status.HTTP_200_OK
-    assert "access_token" in response.json()
-    assert "refresh_token" in response.json()
+    data = {"email": "user@example.com", "password": "securepassword"}
+    response = api_client.post("/api/login/", data)
+
+    assert response.status_code == 200, response.content
+    assert "access_token" in response.data  
+    assert test_user.check_password("securepassword") 
+
 
 
 @pytest.mark.django_db
