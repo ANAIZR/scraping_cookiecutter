@@ -5,14 +5,16 @@ from .serializers import (
     UsuarioPOSTSerializer,
     PasswordResetRequestSerializer,
     PasswordResetSerializer,
+    LoginSerializer,
 )
 from src.apps.users.models import User
 from src.apps.users.permissions import IsAdminUser
 from rest_framework.permissions import IsAuthenticated
-from src.apps.users.utils.services import UserService
 from src.apps.users.utils.tasks import send_password_reset_email_task, reset_password_task, soft_delete_user_task
+from src.apps.users.utils.utils_login import get_tokens_for_user
+from rest_framework.views import APIView
 
-
+from rest_framework.permissions import AllowAny
 class UsuarioView(viewsets.ModelViewSet):
     queryset = User.all_objects.all()
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -73,3 +75,26 @@ class PasswordResetView(generics.GenericAPIView):
             {"message": "La contraseña se actualizará en breve."},
             status=status.HTTP_200_OK,
         )
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data["user"]
+            user_serializer = UsuarioGETSerializer(user)
+            tokens = get_tokens_for_user(user)
+
+            user.access_token = tokens["access"]
+            user.save()
+
+            return Response(
+                {
+                    "user": user_serializer.data,
+                    "access_token": tokens["access"],
+                    "refresh_token": tokens["refresh"],
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
