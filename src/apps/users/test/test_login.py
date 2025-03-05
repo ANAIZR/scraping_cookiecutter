@@ -38,15 +38,16 @@ def test_login_success():
         email="user@example.com",
         username="testuser",
         last_name="TestLast",
-        password=make_password("securepassword"), 
         is_active=True
     )
-
+    user.set_password("securepassword") 
+    user.save() 
     data = {"email": "user@example.com", "password": "securepassword"}
     serializer = LoginSerializer(data=data)
 
-    assert serializer.is_valid(), serializer.errors
+    assert serializer.is_valid(), serializer.errors  
     assert serializer.validated_data["user"] == user
+
 
 
 @pytest.mark.django_db
