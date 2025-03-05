@@ -1,7 +1,6 @@
 from django.conf import settings
 from rest_framework.routers import DefaultRouter, SimpleRouter
 from django.urls import path
-from .viewsets.login_viewsets import LoginView
 from .viewsets.scraperFixture_viewsets import ScraperAPIView
 from .viewsets.scraperURL_viewsets import (
     SpeciesViewSet,
@@ -18,7 +17,6 @@ router.register(
 )
 
 urlpatterns = [
-    path("login/", LoginView.as_view(), name="login"),
     path("scraper-url/", ScraperAPIView.as_view(), name="scraper_url"),
     path(
         "report-comparison/<int:scraper_id>/",
