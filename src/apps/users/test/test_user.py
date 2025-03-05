@@ -4,9 +4,10 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from src.apps.users.models import User
 from src.apps.users.utils.tasks import update_system_role_task, soft_delete_user_task
+from src.apps.shared.api.serializers.login_serializers import LoginSerializer
 from src.apps.users.utils.services import UserService
 from src.apps.users.api.serializers import UsuarioGETSerializer, UsuarioPOSTSerializer, PasswordResetRequestSerializer, PasswordResetSerializer
-
+from django.contrib.auth.hashers import make_password
 @pytest.fixture
 def api_client():
     return APIClient()
@@ -50,6 +51,15 @@ def test_user(db):
         password="testpass",
         system_role=2  
     )
+
+@pytest.mark.django_db
+def test_restore_user():
+    user = User.objects.create_user(username="testuser", email="test@example.com", password="securepassword")
+    user.soft_delete()
+    user.restore()
+    assert not user.is_deleted()
+    assert user.is_active is True
+
 @pytest.mark.django_db(transaction=True)
 @patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
 @patch("src.apps.users.utils.tasks.update_system_role_task.apply_async")
@@ -228,3 +238,66 @@ def test_password_reset_serializer_short_password():
     serializer = PasswordResetSerializer(data=data)
     assert serializer.is_valid() is False
     assert "new_password" in serializer.errors
+
+
+@pytest.mark.django_db
+def test_login_success():
+    user = User.objects.create(
+        email="user@example.com",
+        password=make_password("securepassword"),
+        is_active=True
+    )
+
+    data = {"email": "user@example.com", "password": "securepassword"}
+    serializer = LoginSerializer(data=data)
+
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["user"] == user
+
+
+@pytest.mark.django_db
+def test_login_user_not_found():
+    data = {"email": "notfound@example.com", "password": "wrongpassword"}
+    serializer = LoginSerializer(data=data)
+
+    assert not serializer.is_valid()
+    assert "Usuario no encontrado." in str(serializer.errors)
+
+
+@pytest.mark.django_db
+def test_login_invalid_password():
+    User.objects.create(
+        email="user@example.com",
+        password=make_password("securepassword"),
+        is_active=True
+    )
+
+    data = {"email": "user@example.com", "password": "wrongpassword"}
+    serializer = LoginSerializer(data=data)
+
+    assert not serializer.is_valid()
+    assert "Datos invalidos" in str(serializer.errors)
+
+
+@pytest.mark.django_db
+def test_login_inactive_user():
+    User.objects.create(
+        email="user@example.com",
+        password=make_password("securepassword"),
+        is_active=False  # Usuario inactivo
+    )
+
+    data = {"email": "user@example.com", "password": "securepassword"}
+    serializer = LoginSerializer(data=data)
+
+    assert not serializer.is_valid()
+    assert "El usuario no está activo." in str(serializer.errors)
+
+
+@pytest.mark.django_db
+def test_login_missing_email_or_password():
+    data = {"email": "user@example.com"}  # Falta "password"
+    serializer = LoginSerializer(data=data)
+
+    assert not serializer.is_valid()
+    assert "Debe incluir tanto 'email' como 'password'." in str(serializer.errors)
