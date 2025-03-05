@@ -9,7 +9,7 @@ from ..functions import (
     initialize_driver,
     get_logger,
     connect_to_mongo,
-    process_scraper_data,
+    process_scraper_data_v2,
     extract_text_from_pdf
 )
 from bson import ObjectId
@@ -106,7 +106,7 @@ def scraper_defensa_sag(url, sobrenombre):
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
@@ -213,7 +213,7 @@ def process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs):
                                 url=result_url
                             )
                             total_scraped_links += 1
-                            scraped_urls.append(href)
+                            scraped_urls.add(href)
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                             existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
