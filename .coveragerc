@@ -8,3 +8,4 @@ omit =
     */settings.py
     */wsgi.py
     */asgi.py
+    */scrapers/*
