@@ -181,7 +181,15 @@ class TestScraperAPIView:
 
     @pytest.mark.django_db
     def test_species_subscription_serializer(self):
+        user = User.objects.create_user(
+            username="test_user",
+            email="test@example.com",
+            password="testpassword",
+            system_role=2  # Funcionario
+        )
+
         subscription = SpeciesSubscription.objects.create(
+            user=user,  # ✅ Agregamos un usuario válido
             name_subscription="Test Subscription",
             scientific_name="Ficus elastica",
             distribution="South America",
@@ -189,6 +197,9 @@ class TestScraperAPIView:
         )
 
         serializer = SpeciesSubscriptionSerializer(instance=subscription)
+        
         assert serializer.data["name_subscription"] == "Test Subscription"
         assert serializer.data["scientific_name"] == "Ficus elastica"
-        assert "id" in serializer.data and "user" in serializer.data and "created_at" in serializer.data
+        assert serializer.data["distribution"] == "South America"
+        assert serializer.data["hosts"] == "Insects"
+        assert serializer.data["user"] == user.id  
