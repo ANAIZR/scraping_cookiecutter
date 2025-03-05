@@ -42,7 +42,14 @@ def user_factory(db):
         )
     return create_user
 
-
+@pytest.fixture
+def test_user(db): 
+    return User.objects.create_user(
+        username="test_user",
+        email="test_user@example.com",
+        password="testpass",
+        system_role=2  
+    )
 @pytest.mark.django_db(transaction=True)
 @patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
 @patch("src.apps.users.utils.tasks.update_system_role_task.apply_async")
