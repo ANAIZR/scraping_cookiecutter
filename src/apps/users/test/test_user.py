@@ -31,6 +31,16 @@ def funcionario_user(db):
         system_role=2  
     )
 
+@pytest.fixture
+def user_factory(db):
+    def create_user(username, email, password="securepassword", system_role=2):
+        return User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            system_role=system_role
+        )
+    return create_user
 
 
 @pytest.mark.django_db(transaction=True)
@@ -94,14 +104,15 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
 
     assert response.status_code == 204
 
-    print(mock_soft_delete.call_args_list) 
+    print(mock_soft_delete.call_args_list)  
 
-    mock_soft_delete.assert_called_once_with((test_user.id,))  
+    mock_soft_delete.assert_called_once_with(args=[test_user.id])
 
     soft_delete_user_task(test_user.id)
 
     test_user.refresh_from_db()
-    assert test_user.is_active is False 
+    assert test_user.is_active is False  
+
 
 
 
@@ -159,7 +170,7 @@ def test_usuario_post_serializer(mock_update_role, mock_send_email):
 
 @pytest.mark.django_db
 def test_usuario_post_serializer_duplicate_email(user_factory):
-    user_factory(email="existing@example.com")  
+    user_factory(username="existinguser", email="existing@example.com")
 
     data = {
         "username": "newuser",
@@ -168,8 +179,10 @@ def test_usuario_post_serializer_duplicate_email(user_factory):
         "system_role": 2
     }
     serializer = UsuarioPOSTSerializer(data=data)
-    assert serializer.is_valid() is False
+    
+    assert not serializer.is_valid()
     assert "email" in serializer.errors
+
 
 def test_password_reset_request_serializer():
     data = {"email": "test@example.com"}
