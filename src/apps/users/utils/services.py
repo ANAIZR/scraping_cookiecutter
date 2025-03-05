@@ -110,6 +110,11 @@ class UserService:
             return {"message": "La contraseña ha sido restablecida exitosamente."}
         except User.DoesNotExist:
             return {"error": "Usuario no encontrado."}
+    @staticmethod
+    def is_valid_reset_token(email, token):
+
+        cached_token = cache.get(f"password_reset_{email}")
+        return cached_token == token 
 
     @staticmethod
     def soft_delete_user(user):

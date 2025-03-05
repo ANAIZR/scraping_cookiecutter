@@ -20,32 +20,21 @@ def admin_user(db):
     user.system_role = 1  
     user.save()
     
-    update_system_role_task.apply_async(args=[user.id])  # Se ejecuta, pero ya está en 1
+    update_system_role_task.apply_async(args=[user.id]) 
     return user
 
 
 @pytest.fixture
-def funcionario_user(db):
-    return User.objects.create_user(
-        username="funcionario_user",
-        email="funcionario@example.com",
-        password="funcionariopass",
-        system_role=2
-    )
-
-""" @pytest.fixture
-def test_user(db):
-    return User.objects.create_user(
-        username="user_test",
-        email="user@example.com",
-        password="userpass",
-        system_role=2
-    ) """
-@pytest.fixture
 def user_factory(db):
     def create_user(**kwargs):
-        return User.objects.create_user(**kwargs)
+        return User.objects.create_user(
+            username=kwargs.get("username", "defaultuser"),
+            email=kwargs.get("email", "default@example.com"),
+            password=kwargs.get("password", "defaultpassword"),
+            system_role=kwargs.get("system_role", 2)
+        )
     return create_user
+
 
 @pytest.mark.django_db(transaction=True)
 @patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
