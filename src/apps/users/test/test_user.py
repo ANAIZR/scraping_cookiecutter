@@ -23,13 +23,6 @@ def admin_user(db):
     update_system_role_task.apply_async(args=[user.id])  # Se ejecuta, pero ya está en 1
     return user
 
-@pytest.fixture
-def regular_user(db):
-    return User.objects.create_user(
-        username="regular_user",
-        email="user@example.com",
-        password="userpass"
-    )
 
 @pytest.fixture
 def funcionario_user(db):
@@ -40,14 +33,19 @@ def funcionario_user(db):
         system_role=2
     )
 
-@pytest.fixture
+""" @pytest.fixture
 def test_user(db):
     return User.objects.create_user(
         username="user_test",
         email="user@example.com",
         password="userpass",
         system_role=2
-    )
+    ) """
+@pytest.fixture
+def user_factory(db):
+    def create_user(**kwargs):
+        return User.objects.create_user(**kwargs)
+    return create_user
 
 @pytest.mark.django_db(transaction=True)
 @patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
@@ -110,14 +108,14 @@ def test_admin_can_delete_user(mock_soft_delete, api_client, admin_user, test_us
 
     assert response.status_code == 204
 
-    print(mock_soft_delete.call_args_list)  # Verifica si se llamó
+    print(mock_soft_delete.call_args_list) 
 
-    mock_soft_delete.assert_called_once_with((test_user.id,))  # Validación
+    mock_soft_delete.assert_called_once_with((test_user.id,))  
 
     soft_delete_user_task(test_user.id)
 
     test_user.refresh_from_db()
-    assert test_user.is_active is False  # Ahora debería estar desactivado
+    assert test_user.is_active is False 
 
 
 
