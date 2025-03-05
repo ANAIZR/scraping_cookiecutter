@@ -155,25 +155,27 @@ def test_usuario_get_serializer():
     serializer = UsuarioGETSerializer(instance=user)
     assert serializer.data["system_role_description"] == "Funcionario"
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True) 
 @patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
 @patch("src.apps.users.utils.tasks.update_system_role_task.apply_async")
 def test_usuario_post_serializer(mock_update_role, mock_send_email):
     data = {
         "username": "newuser",
-        "last_name":"UserLastName",
+        "last_name": "UserLastName",  
         "email": "newuser@example.com",
         "password": "securepassword",
         "system_role": 2
     }
     serializer = UsuarioPOSTSerializer(data=data)
-    assert serializer.is_valid(), serializer.errors  
+    assert serializer.is_valid(), serializer.errors
     user = serializer.save()
 
     assert user.username == "newuser"
-    assert user.check_password("securepassword") is True  
-    mock_send_email.assert_called_once()
-    mock_update_role.assert_called_once()
+    assert user.check_password("securepassword") is True
+
+    mock_send_email.assert_called_once_with(args=[user.email, user.username])
+    mock_update_role.assert_called_once_with(args=[user.id])
+
 
 @pytest.mark.django_db
 def test_usuario_post_serializer_duplicate_email(user_factory):
