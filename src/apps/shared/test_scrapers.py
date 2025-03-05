@@ -130,7 +130,7 @@ class TestScraperAPIView:
         assert response.status_code == 202
         assert response.json()["status"] == "Tarea de scraping encolada exitosamente"
     @pytest.mark.django_db
-    def test_scraper_url_serializer_format_fecha_scraper():
+    def test_scraper_url_serializer_format_fecha_scraper(self):
         scraper = ScraperURL.objects.create(
             url="https://example.com",
             sobrenombre="Test Scraper",
@@ -142,7 +142,7 @@ class TestScraperAPIView:
         assert serializer.data["fecha_scraper"] == "Aún no se ha realizado el proceso de scraper"
 
     @pytest.mark.django_db
-    def test_scraper_url_serializer_validation():
+    def test_scraper_url_serializer_validation(self):
         ScraperURL.objects.create(url="https://example.com", sobrenombre="Test Scraper")
         
         data = {"url": "https://example.com", "sobrenombre": "Duplicate Test"}
@@ -150,9 +150,8 @@ class TestScraperAPIView:
 
         assert not serializer.is_valid()
         assert "url" in serializer.errors  
-
     @pytest.mark.django_db
-    def test_scraper_url_serializer_estado_fallido():
+    def test_scraper_url_serializer_estado_fallido(self):
         scraper = ScraperURL.objects.create(
             url="https://example.com",
             sobrenombre="Test Scraper",
@@ -165,7 +164,7 @@ class TestScraperAPIView:
         assert serializer.data["error_scrapeo"] == "Conexión rechazada"
 
     @pytest.mark.django_db
-    def test_species_serializer():
+    def test_species_serializer(self):
         scraper_source = ScraperURL.objects.create(url="https://example.com", sobrenombre="Test Scraper")
         species = Species.objects.create(scientific_name="Ficus elastica", scraper_source=scraper_source)
 
@@ -173,7 +172,7 @@ class TestScraperAPIView:
         assert serializer.data["sobrenombre"] == "Test Scraper"
 
     @pytest.mark.django_db
-    def test_report_comparison_serializer():
+    def test_report_comparison_serializer(self):
         scraper_source = ScraperURL.objects.create(url="https://example.com", sobrenombre="Test Scraper")
         report = ReportComparison.objects.create(scraper_source=scraper_source)
 
@@ -181,7 +180,7 @@ class TestScraperAPIView:
         assert serializer.data["url"] == "https://example.com"
 
     @pytest.mark.django_db
-    def test_species_subscription_serializer():
+    def test_species_subscription_serializer(self):
         subscription = SpeciesSubscription.objects.create(
             name_subscription="Test Subscription",
             scientific_name="Ficus elastica",
