@@ -8,7 +8,7 @@ from src.apps.users.api.serializers import LoginSerializer
 from rest_framework import status
 from rest_framework.test import APIClient
 
-LOGIN_URL = reverse("login") 
+LOGIN_URL = reverse("api:login") 
 
 @pytest.fixture
 def api_client():
