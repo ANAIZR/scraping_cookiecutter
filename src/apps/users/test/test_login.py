@@ -13,7 +13,25 @@ LOGIN_URL = reverse("login")
 @pytest.fixture
 def api_client():
     return APIClient()
+@pytest.fixture
+def test_user(db):
+    return User.objects.create(
+        username="test_user",
+        email="user@example.com",
+        password=make_password("securepassword"),  
+        is_active=True,
+        system_role=2
+    )
 
+@pytest.fixture
+def inactive_user(db):
+    return User.objects.create(
+        username="inactive_user",
+        email="inactive@example.com",
+        password=make_password("securepassword"),
+        is_active=False,  # Usuario inactivo
+        system_role=2
+    )
 @pytest.mark.django_db
 def test_login_success():
     user = User.objects.create(
@@ -72,12 +90,12 @@ def test_login_inactive_user():
 
 @pytest.mark.django_db
 def test_login_missing_email_or_password():
-    data = {"email": "user@example.com"}  
+    data = {"email": "user@example.com"}
     serializer = LoginSerializer(data=data)
 
     assert not serializer.is_valid()
-    assert "Debe incluir tanto 'email' como 'password'." in str(serializer.errors)
-
+    assert "password" in serializer.errors  
+    assert serializer.errors["password"][0].code == "required"  
 
 @pytest.mark.django_db
 def test_login_success(api_client, test_user):
