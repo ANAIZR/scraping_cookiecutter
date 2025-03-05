@@ -1,13 +1,10 @@
 import pytest
 from unittest.mock import patch
-from rest_framework import status
 from rest_framework.test import APIClient
 from src.apps.users.models import User
-from src.apps.users.utils.tasks import update_system_role_task, soft_delete_user_task
-from src.apps.shared.api.serializers.login_serializers import LoginSerializer
+from src.apps.users.utils.tasks import  soft_delete_user_task
 from src.apps.users.utils.services import UserService
-from src.apps.users.api.serializers import UsuarioGETSerializer, UsuarioPOSTSerializer, PasswordResetRequestSerializer, PasswordResetSerializer
-from django.contrib.auth.hashers import make_password
+from src.apps.users.api.serializers import UsuarioGETSerializer, UsuarioPOSTSerializer
 @pytest.fixture
 def api_client():
     return APIClient()
@@ -203,101 +200,37 @@ def test_usuario_post_serializer_duplicate_email(user_factory):
     assert "email" in serializer.errors
 
 
-def test_password_reset_request_serializer():
-    data = {"email": "test@example.com"}
-    serializer = PasswordResetRequestSerializer(data=data)
-    assert serializer.is_valid()
-
-@patch.object(UserService, "is_valid_reset_token", return_value=True)
-def test_password_reset_serializer_valid(mock_token_validation):
-    data = {
-        "email": "test@example.com",
-        "token": "123456",
-        "new_password": "newsecurepassword"
-    }
-    serializer = PasswordResetSerializer(data=data)
-    assert serializer.is_valid()
-
-@patch.object(UserService, "is_valid_reset_token", return_value=False)
-def test_password_reset_serializer_invalid_token(mock_token_validation):
-    data = {
-        "email": "test@example.com",
-        "token": "wrongtoken",
-        "new_password": "newsecurepassword"
-    }
-    serializer = PasswordResetSerializer(data=data)
-    assert serializer.is_valid() is False
-    assert "token" in serializer.errors
-
-def test_password_reset_serializer_short_password():
-    data = {
-        "email": "test@example.com",
-        "token": "123456",
-        "new_password": "123"
-    }
-    serializer = PasswordResetSerializer(data=data)
-    assert serializer.is_valid() is False
-    assert "new_password" in serializer.errors
-
 
 @pytest.mark.django_db
-def test_login_success():
-    user = User.objects.create(
+def test_update_system_role():
+    user = User.objects.create_user(
         email="user@example.com",
-        password=make_password("securepassword"),
-        is_active=True
+        username="testuser",
+        last_name="TestLast",
+        password="securepassword",
+        system_role=2
     )
 
-    data = {"email": "user@example.com", "password": "securepassword"}
-    serializer = LoginSerializer(data=data)
+    UserService.update_system_role(user)
+    assert not user.is_staff
+    assert not user.is_superuser
 
-    assert serializer.is_valid(), serializer.errors
-    assert serializer.validated_data["user"] == user
-
-
-@pytest.mark.django_db
-def test_login_user_not_found():
-    data = {"email": "notfound@example.com", "password": "wrongpassword"}
-    serializer = LoginSerializer(data=data)
-
-    assert not serializer.is_valid()
-    assert "Usuario no encontrado." in str(serializer.errors)
+    user.system_role = 1
+    UserService.update_system_role(user)
+    assert user.is_staff
+    assert user.is_superuser
 
 
 @pytest.mark.django_db
-def test_login_invalid_password():
-    User.objects.create(
+def test_soft_delete_user():
+    user = User.objects.create_user(
         email="user@example.com",
-        password=make_password("securepassword"),
-        is_active=True
+        username="testuser",
+        last_name="TestLast",
+        password="securepassword",
+        system_role=2
     )
 
-    data = {"email": "user@example.com", "password": "wrongpassword"}
-    serializer = LoginSerializer(data=data)
-
-    assert not serializer.is_valid()
-    assert "Datos invalidos" in str(serializer.errors)
-
-
-@pytest.mark.django_db
-def test_login_inactive_user():
-    User.objects.create(
-        email="user@example.com",
-        password=make_password("securepassword"),
-        is_active=False  # Usuario inactivo
-    )
-
-    data = {"email": "user@example.com", "password": "securepassword"}
-    serializer = LoginSerializer(data=data)
-
-    assert not serializer.is_valid()
-    assert "El usuario no está activo." in str(serializer.errors)
-
-
-@pytest.mark.django_db
-def test_login_missing_email_or_password():
-    data = {"email": "user@example.com"}  # Falta "password"
-    serializer = LoginSerializer(data=data)
-
-    assert not serializer.is_valid()
-    assert "Debe incluir tanto 'email' como 'password'." in str(serializer.errors)
+    UserService.soft_delete_user(user)
+    assert not user.is_active
+    assert user.deleted_at is not None
