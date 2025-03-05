@@ -213,7 +213,7 @@ def process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs):
                                 url=result_url
                             )
                             total_scraped_links += 1
-                            scraped_urls.append(href)
+                            scraped_urls.add(href)
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                             existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
