@@ -6,8 +6,14 @@ from django.urls import reverse
 from src.apps.users.models import User
 from src.apps.shared.api.serializers.login_serializers import LoginSerializer
 from rest_framework import status
+from rest_framework.test import APIClient
 
 LOGIN_URL = reverse("login") 
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
 @pytest.mark.django_db
 def test_login_success():
     user = User.objects.create(

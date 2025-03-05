@@ -17,15 +17,11 @@ def test_generate_directory_creates_folder():
     folder_path = generate_directory(url)
     assert os.path.exists(folder_path)
 
-
-
-
 @patch("src.apps.shared.utils.functions.uc.Chrome")
 def test_initialize_driver(mock_chrome):
     driver = initialize_driver()
     assert driver is not None
     mock_chrome.assert_called_once()
-
 
 @patch("src.apps.shared.utils.functions.MongoClient")
 def test_connect_to_mongo(mock_mongo_client):
@@ -37,7 +33,6 @@ def test_connect_to_mongo(mock_mongo_client):
     collection, fs = connect_to_mongo("test_db", "test_collection")
     assert collection is not None
     assert fs is not None
-
 
 
 @patch("src.apps.shared.utils.functions.requests.get")
