@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 from celery import chain
 
-
 @shared_task(bind=True)
 def scraper_url_task(self, url):
     scraper_service = WebScraperService()
@@ -32,17 +31,13 @@ def scraper_url_task(self, url):
         return {"status": "failed", "url": url, "error": "ScraperURL no encontrado"}
 
     except Exception as e:
-        logger.error(
-            f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}"
-        )
+        logger.error(f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}")
         return {"status": "failed", "url": url, "error": str(e)}
 
     result = scraper_service.scraper_one_url(url, sobrenombre)
 
     if "error" in result:
-        logger.error(
-            f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}"
-        )
+        logger.error(f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}")
         scraper_url.estado_scrapeo = "fallido"
         scraper_url.error_scrapeo = result["error"]
         scraper_url.save()
