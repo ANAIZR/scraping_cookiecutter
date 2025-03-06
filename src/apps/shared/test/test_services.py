@@ -2,26 +2,29 @@ import pytest
 from unittest.mock import patch, MagicMock
 from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.services import WebScraperService, ScraperService, ScraperComparisonService
+
+
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
-    # Simular el queryset inicial
+    # Simulación de los querysets en cadena
     mock_initial_queryset = MagicMock()
     mock_filtered_queryset = MagicMock()
+    mock_final_filtered_queryset = MagicMock()
     mock_excluded_queryset = MagicMock()
 
-    # Configurar la primera llamada a filter()
+    # 🔹 Primera llamada a filter()
     mock_initial_queryset.filter.return_value = mock_filtered_queryset
 
-    # Configurar la segunda llamada a filter()
-    mock_filtered_queryset.filter.return_value = mock_excluded_queryset
+    # 🔹 Segunda llamada a filter()
+    mock_filtered_queryset.filter.return_value = mock_final_filtered_queryset
 
-    # Configurar exclude() en el queryset filtrado
-    mock_excluded_queryset.exclude.return_value = mock_excluded_queryset
+    # 🔹 Llamada a exclude()
+    mock_final_filtered_queryset.exclude.return_value = mock_excluded_queryset
 
-    # Configurar values_list() para devolver el resultado esperado
+    # 🔹 Simular values_list() con el resultado esperado
     mock_excluded_queryset.values_list.return_value = ["https://example.com"]
 
-    # Mockear ScraperURL.objects.filter() para devolver el queryset inicial
+    # Mock de ScraperURL.objects.filter()
     mock_filter = mocker.patch(
         "src.apps.shared.models.scraperURL.ScraperURL.objects.filter",
         return_value=mock_initial_queryset
@@ -33,14 +36,15 @@ def test_get_expired_urls(mocker):
 
     print(f"🔍 Resultado obtenido de get_expired_urls(): {result}")
 
-    # Verificar que filter() se llamó dos veces
+    # ✅ Verificar que filter() se llamó dos veces
     assert mock_filter.call_count == 2, f"filter() fue llamado {mock_filter.call_count} veces, pero se esperaban 2"
+    
+    # ✅ Verificar que exclude() se llamó al menos una vez
+    assert mock_final_filtered_queryset.exclude.call_count >= 1, "exclude() no fue llamado en get_expired_urls()"
 
-    # Verificar que exclude() se llamó al menos una vez
-    assert mock_excluded_queryset.exclude.call_count >= 1, "exclude() no fue llamado en get_expired_urls()"
-
-    # Verificar que el resultado es el esperado
+    # ✅ Verificar que el resultado es el esperado
     assert result == ["https://example.com"]
+
 
 
 @pytest.mark.django_db
