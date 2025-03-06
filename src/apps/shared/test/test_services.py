@@ -66,12 +66,22 @@ def test_extract_and_save_species(mocker):
 @pytest.mark.django_db
 def test_generate_comparison_report(mocker):
     url = "https://example.com"
-    with patch("src.apps.shared.utils.services.ScraperComparisonService.generate_comparison") as mock_comparison_result:
-        mock_comparison_result.return_value = {"has_changes": True, "info_agregada": ["url1"], "info_eliminada": []}
-        
-        with patch("src.apps.shared.utils.services.ScraperComparisonService.save_or_update_comparison_to_postgres") as mock_save_comparison:
-            service = ScraperComparisonService()
-            result = service.get_comparison_for_url(url)
-            
-            assert result["status"] == "changed"
-            mock_save_comparison.assert_called()
+
+    mock_collection = MagicMock()
+    mock_collection.find.return_value.sort.return_value = [
+        {"_id": "1", "contenido": "old content"},
+        {"_id": "2", "contenido": "new content"},
+    ]
+
+    with patch.object(ScraperComparisonService, "collection", new_callable=MagicMock, return_value=mock_collection):
+        with patch("src.apps.shared.utils.services.ScraperComparisonService.generate_comparison") as mock_comparison_result:
+            mock_comparison_result.return_value = {"has_changes": True, "info_agregada": ["url1"], "info_eliminada": []}
+
+            with patch("src.apps.shared.utils.services.ScraperComparisonService.save_or_update_comparison_to_postgres") as mock_save_comparison:
+                service = ScraperComparisonService()
+                result = service.get_comparison_for_url(url)
+
+                print(f"🔍 Resultado obtenido: {result}")  
+
+                assert result["status"] == "changed"
+                mock_save_comparison.assert_called()
