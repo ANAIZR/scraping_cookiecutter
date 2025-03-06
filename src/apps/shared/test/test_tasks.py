@@ -35,25 +35,30 @@ def test_scraper_url_task_failure(mocker):
     # 🔹 Mock de WebScraperService
     mock_scraper_service = mocker.patch("src.apps.shared.utils.services.WebScraperService", autospec=True)
     mock_instance = mock_scraper_service.return_value
-    mock_instance.scraper_one_url.return_value = {"error": "Scraping failed"}  # 🔹 Simular fallo
 
-    # 🔹 Crear instancia en BD
+    # 🔹 Simular fallo en `scraper_one_url`
+    mock_instance.scraper_one_url.return_value = {"error": "Scraping failed"}
+
+    # 🔹 Crear instancia en BD con estado "pendiente"
     scraper_url = ScraperURL.objects.create(url=url, sobrenombre="test", estado_scrapeo="pendiente")
 
     # 🔹 Ejecutar la tarea
     result = scraper_url_task(url)
 
-    # 🔹 Refrescar objeto desde BD
+    # 🔹 Refrescar el objeto desde BD
     scraper_url.refresh_from_db()
 
     # 🔍 Depuración: Imprimir resultados
     print(f"🔍 Resultado de `scraper_url_task`: {result}")
     print(f"📌 Estado en BD: {scraper_url.estado_scrapeo}, Error: {scraper_url.error_scrapeo}")
 
-    # ✅ Verificar que el estado cambió a "fallido"
+    # ✅ Verificar que el `scraper_url_task` falló correctamente
     assert result["status"] == "failed", f"Estado esperado: 'failed', obtenido: {result['status']}"
     assert scraper_url.estado_scrapeo == "fallido", f"Estado esperado: 'fallido', obtenido: {scraper_url.estado_scrapeo}"
     assert scraper_url.error_scrapeo == "Scraping failed", f"Error esperado: 'Scraping failed', obtenido: {scraper_url.error_scrapeo}"
+
+    # ✅ Asegurar que `scraper_one_url` fue llamado correctamente
+    mock_instance.scraper_one_url.assert_called_once_with(url, "test")
 
 @pytest.mark.django_db
 def test_check_new_species_task(mocker):
@@ -69,22 +74,21 @@ def test_check_new_species_task(mocker):
 def test_process_scraped_data_task(mocker):
     url = "https://example.com"
 
-    # 🔹 Ajuste en el patch de `ScraperService`
+    # 🔹 Mock de `ScraperService`
     mock_scraper_service = mocker.patch("src.apps.shared.utils.tasks.ScraperService", autospec=True)
     mock_scraper_service_instance = mock_scraper_service.return_value
 
-    # Mock para `check_new_species_and_notify`
-    mock_check_notify = mocker.patch("src.apps.shared.utils.notify_change.check_new_species_and_notify")
+    # 🔹 Mock de `check_new_species_and_notify`
+    mock_check_notify = mocker.patch("src.apps.shared.utils.tasks.check_new_species_and_notify")
 
-    # Ejecutar la tarea
+    # 🔹 Ejecutar la tarea
     process_scraped_data_task(url)
 
-    # 📌 Verificar llamadas esperadas
+    # ✅ Verificar que `extract_and_save_species` fue llamado correctamente
     mock_scraper_service_instance.extract_and_save_species.assert_called_once_with(url)
+
+    # ✅ Verificar que `check_new_species_and_notify` fue llamado con la lista de URLs
     mock_check_notify.assert_called_once_with([url])
-
-    print(f"🔍 `extract_and_save_species()` fue llamado: {mock_scraper_service_instance.extract_and_save_species.call_count} veces")
-
 
 @pytest.mark.django_db
 def test_generate_comparison_report_task(mocker):
