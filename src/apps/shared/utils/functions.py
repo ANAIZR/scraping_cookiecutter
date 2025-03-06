@@ -10,8 +10,6 @@ from pymongo import MongoClient
 import gridfs
 import requests
 from io import BytesIO
-from rest_framework.response import Response
-from rest_framework import status
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
@@ -19,7 +17,6 @@ from selenium_stealth import stealth
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
-from config.settings.base import PROXIES
 
 
 USER_AGENTS = [
@@ -32,14 +29,11 @@ USER_AGENTS = [
 ]
 
 
-OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR", "~/scraping_cookiecutter/files/scrapers"))
-LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR", "~/scraping_cookiecutter/files/logs"))
-LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS", "~/scraping_cookiecutter/src/apps/shared/utils/txt"))
+OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR"))
+LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR"))
+LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS"))
 load_dotenv()
-#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
-#LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
-#LOAD_KEYWORDS = os.path.join(BASE_DIR, "../utils/txt")
+
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -177,14 +171,14 @@ def connect_to_mongo(db_name=None, collection_name=None):
     logger = get_logger("MONGO_CONNECTION")
     
     try:
-        MONGO_USER = os.getenv("MONGO_USER","admin")
-        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD","SuperPassword123!")
-        MONGO_HOST = os.getenv("MONGO_HOST", "localhost") 
-        MONGO_PORT = os.getenv("MONGO_PORT", "27017")  
-        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE", "admin")  
+        MONGO_USER = os.getenv("MONGO_USER")
+        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+        MONGO_HOST = os.getenv("MONGO_HOST") 
+        MONGO_PORT = os.getenv("MONGO_PORT")  
+        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE")  
 
-        db_name = db_name or os.getenv("MONGO_DB_NAME", "scrapping-can")
-        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME", "collection")
+        db_name = db_name or os.getenv("MONGO_DB_NAME")
+        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME")
 
         MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{db_name}?authSource={MONGO_AUTH_SOURCE}"
 
@@ -204,7 +198,6 @@ def connect_to_mongo(db_name=None, collection_name=None):
 def generate_directory(url, output_dir=OUTPUT_DIR):
     logger = get_logger("GENERANDO DIRECTORIO")
     try:
-        url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
             url.split("//")[-1].replace("/", "_").replace("?", "_").replace("=", "_")
         )
@@ -354,8 +347,8 @@ def process_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
         collection,fs = connect_to_mongo()
-        db_name = collection.database.name  # Nombre de la base de datos
-        collection_name = collection.name  # Nombre de la colección
+        db_name = collection.database.name  
+        collection_name = collection.name 
         logger.info(f"✅ Conectado a MongoDB en la base de datos: '{db_name}', colección: '{collection_name}'")
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
