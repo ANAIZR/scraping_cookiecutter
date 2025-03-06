@@ -4,7 +4,7 @@ from django.utils import timezone
 from src.apps.shared.utils.notify_change import check_new_species_and_notify, notify_user_of_new_species
 from src.apps.shared.models.scraperURL import Species, SpeciesSubscription
 from src.apps.users.models import User
-
+from src.apps.shared.models.scraperURL import ScraperURL
 @pytest.mark.django_db
 @patch("src.apps.shared.utils.notify_change.notify_user_of_new_species")
 def test_check_new_species_and_notify(mock_notify_user):
@@ -18,9 +18,13 @@ def test_check_new_species_and_notify(mock_notify_user):
 
 
     species = Species.objects.create(
-        scientific_name="Ficus elastica",
-        created_at=timezone.now(),
-        scraper_source=None  
+    scientific_name="Ficus elastica",
+    created_at=timezone.now(),
+    scraper_source=ScraperURL.objects.create(  # Asegura que tenga un ScraperURL válido
+        url="https://example.com",
+        sobrenombre="Test Scraper",
+        time_choices=1
+    )
     )
 
     subscription = SpeciesSubscription.objects.create(
