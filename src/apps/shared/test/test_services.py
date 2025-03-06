@@ -5,17 +5,19 @@ from src.apps.shared.utils.services import WebScraperService, ScraperService, Sc
 
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
-    mock_query = mocker.patch("src.apps.shared.models.scraperURL.ScraperURL.objects.filter")
+    mock_queryset = MagicMock()
+    mock_queryset.exclude.return_value = mock_queryset 
+    mock_queryset.values_list.return_value = ["https://example.com"]  
 
-    mock_exclude = MagicMock()
-    mock_query.return_value.exclude.return_value = mock_exclude
-
-    mock_exclude.values_list.return_value = ["https://example.com"]
+    mock_filter = mocker.patch("src.apps.shared.models.scraperURL.ScraperURL.objects.filter", return_value=mock_queryset)
 
     service = WebScraperService()
     result = list(service.get_expired_urls())
 
-    print(f"Resultado obtenido: {result}")  
+    print(f"🔍 Resultado obtenido de get_expired_urls(): {result}")
+
+    mock_filter.assert_called_once()
+    mock_queryset.exclude.assert_called_once()
 
     assert result == ["https://example.com"]
 
