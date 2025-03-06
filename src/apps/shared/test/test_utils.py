@@ -57,7 +57,8 @@ def test_notify_user_of_new_species(mock_send_email):
         MagicMock(scientific_name="Ficus elastica", source_url="https://example.com/species2"),
     ]
 
-    notify_user_of_new_species(user, subscription, species)
+    notify_user_of_new_species(user, subscription, species) 
 
     mock_send_email.assert_called_once()
+
 
