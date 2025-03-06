@@ -32,26 +32,20 @@ def test_scraper_one_url_success(mocker):
 @pytest.mark.django_db
 def test_extract_and_save_species(mocker):
     url = "https://example.com"
-    with patch("src.apps.shared.services.MongoClient") as mock_mongo_client:
-        mock_mongo_client.return_value.__getitem__.return_value["fs.files"].find.return_value = [{"_id": "123", "contenido": "test content", "source_url": url}]
-        
-        with patch.object(ScraperService, "process_document") as mock_process_document:
-            service = ScraperService()
-            service.extract_and_save_species(url)
-            mock_process_document.assert_called()
+    with patch.object(ScraperService, "process_document") as mock_process_document:
+        service = ScraperService()
+        service.extract_and_save_species(url)
+        mock_process_document.assert_called()
 
 @pytest.mark.django_db
 def test_generate_comparison_report(mocker):
     url = "https://example.com"
-    with patch("src.apps.shared.services.MongoClient") as mock_mongo_client:
-        mock_mongo_client.return_value.__getitem__.return_value["collection"].find.return_value.sort.return_value = [{"_id": "1", "contenido": "old content"}, {"_id": "2", "contenido": "new content"}]
+    with patch("src.apps.shared.utils.services.ScraperComparisonService.generate_comparison") as mock_comparison_result:
+        mock_comparison_result.return_value = {"has_changes": True, "info_agregada": ["url1"], "info_eliminada": []}
         
-        with patch("src.apps.shared.services.ScraperComparisonService.generate_comparison") as mock_comparison_result:
-            mock_comparison_result.return_value = {"has_changes": True, "info_agregada": ["url1"], "info_eliminada": []}
+        with patch("src.apps.shared.services.ScraperComparisonService.save_or_update_comparison_to_postgres") as mock_save_comparison:
+            service = ScraperComparisonService()
+            result = service.get_comparison_for_url(url)
             
-            with patch("src.apps.shared.services.ScraperComparisonService.save_or_update_comparison_to_postgres") as mock_save_comparison:
-                service = ScraperComparisonService()
-                result = service.get_comparison_for_url(url)
-                
-                assert result["status"] == "changed"
-                mock_save_comparison.assert_called()
+            assert result["status"] == "changed"
+            mock_save_comparison.assert_called()
