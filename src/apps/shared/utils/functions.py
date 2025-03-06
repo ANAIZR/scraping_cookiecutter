@@ -106,7 +106,7 @@ def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
 
 def driver_init():
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")  # Usa la nueva implementación de headless
+    options.add_argument("--headless=new")  
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
@@ -114,13 +114,11 @@ def driver_init():
     options.add_argument("--disable-popup-blocking")
     #options.add_argument("--window-size=1920,1080")
     options.add_argument("--start-maximized")
-    # Configura el User-Agent para evitar detección
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"
     options.add_argument(f"user-agent={user_agent}")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-    # Aplicamos selenium-stealth para evitar detección
     stealth(driver,
         languages=["en-US", "en"],
         vendor="Google Inc.",
@@ -155,7 +153,6 @@ def initialize_driver(retries=3):
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--disable-infobars")        
-                      
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
@@ -180,19 +177,17 @@ def connect_to_mongo(db_name=None, collection_name=None):
     logger = get_logger("MONGO_CONNECTION")
     
     try:
-        # Cargar variables desde el .env
         MONGO_USER = os.getenv("MONGO_USER","admin")
         MONGO_PASSWORD = os.getenv("MONGO_PASSWORD","SuperPassword123!")
-        MONGO_HOST = os.getenv("MONGO_HOST", "localhost")  # Default: localhost
-        MONGO_PORT = os.getenv("MONGO_PORT", "27017")  # Default: 27017
-        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE", "admin")  # Default: admin
+        MONGO_HOST = os.getenv("MONGO_HOST", "localhost") 
+        MONGO_PORT = os.getenv("MONGO_PORT", "27017")  
+        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE", "admin")  
 
         db_name = db_name or os.getenv("MONGO_DB_NAME", "scrapping-can")
         collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME", "collection")
 
         MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{db_name}?authSource={MONGO_AUTH_SOURCE}"
 
-        logger.info(f"🔗 Conectando a MongoDB en: {MONGO_HOST}:{MONGO_PORT} - DB: {db_name}")
 
         client = MongoClient(MONGO_URI)
         db = client[db_name]

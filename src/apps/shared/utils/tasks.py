@@ -5,7 +5,7 @@ from src.apps.shared.utils.services import (
     ScraperComparisonService,
 )
 from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.shared.utils.notify_change import check_new_species_and_notify
+from apps.shared.utils.notifications import check_new_species_and_notify
 import logging
 from django.utils import timezone
 

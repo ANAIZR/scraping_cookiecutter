@@ -268,9 +268,7 @@ class ScraperService:
     
     def save_species_to_postgres(self, structured_data, source_url, url, mongo_id, batch_size=250):
         try:
-            # Convertir strings en listas JSON válidas
             def ensure_list(value):
-                """Convierte strings JSON en listas reales y asegura que el valor sea una lista."""
                 if isinstance(value, str):
                     try:
                         parsed_value = json.loads(value)
@@ -278,18 +276,17 @@ class ScraperService:
                             return [parsed_value]
                         return parsed_value
                     except json.JSONDecodeError:
-                        return [value]  # Si falla la conversión, guarda como lista con un solo valor
+                        return [value]  
                 return value if isinstance(value, list) else []
 
             def ensure_dict(value):
-                """Convierte strings JSON en diccionarios reales y asegura que el valor sea un diccionario."""
                 if isinstance(value, str):
                     try:
                         parsed_value = json.loads(value)
                         if isinstance(parsed_value, dict):
                             return parsed_value
                     except json.JSONDecodeError:
-                        return {}  # Si falla la conversión, devuelve un diccionario vacío
+                        return {}  
                 return value if isinstance(value, dict) else {}
 
             with transaction.atomic():
