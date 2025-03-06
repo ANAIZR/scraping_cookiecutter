@@ -114,7 +114,7 @@ class TestScraperAPIView(APITestCase):
     def test_scraper_url_list(self):
         ScraperURL.objects.create(url="https://example.com", sobrenombre="Test Scraper")
 
-        response = self.client.get(reverse("urls"))
+        response = self.client.get(reverse("urls-list"))
         assert response.status_code == 200
         assert len(response.data["results"]) > 0
 
@@ -123,7 +123,7 @@ class TestScraperAPIView(APITestCase):
         assert response.status_code == 200
 
     def test_report_comparison_not_found(self):
-        response = self.client.get(reverse("report-comparison-detail", kwargs={"pk": 9999}))
+        response = self.client.get(reverse("report-comparison-detail", kwargs={"scraper_id": 9999}))
         assert response.status_code == 404
 
     def test_species_subscription_create(self):
