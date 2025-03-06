@@ -1,6 +1,6 @@
 import pytest
 import os
-from src.apps.shared.utils.functions import load_keywords, generate_directory
+from src.apps.shared.utils.functions import  generate_directory
 from unittest.mock import patch, MagicMock
 import pytest
 from src.apps.shared.utils.functions import connect_to_mongo
@@ -10,7 +10,8 @@ from src.apps.shared.utils.functions import initialize_driver
 import pytest
 from unittest.mock import patch, MagicMock
 from src.apps.shared.utils.functions import extract_text_from_pdf
-
+from pymongo import MongoClient
+from pymongo.database import Database
 @pytest.mark.django_db
 def test_generate_directory_creates_folder():
     url = "https://example.com"
@@ -25,12 +26,16 @@ def test_initialize_driver(mock_chrome):
 
 @patch("src.apps.shared.utils.functions.MongoClient")
 def test_connect_to_mongo(mock_mongo_client):
-    db_mock = MagicMock()
+    client_mock = MagicMock(spec=MongoClient)
+    db_mock = MagicMock(spec=Database)  
     collection_mock = MagicMock()
-    mock_mongo_client.return_value.__getitem__.return_value = db_mock
-    db_mock.__getitem__.return_value = collection_mock
+
+    mock_mongo_client.return_value = client_mock
+    client_mock.__getitem__.return_value = db_mock 
+    db_mock.__getitem__.return_value = collection_mock  
 
     collection, fs = connect_to_mongo("test_db", "test_collection")
+
     assert collection is not None
     assert fs is not None
 
