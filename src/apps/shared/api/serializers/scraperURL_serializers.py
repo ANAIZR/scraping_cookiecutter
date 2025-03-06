@@ -50,8 +50,8 @@ class SpeciesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Species
-        fields = '__all__' + ('sobrenombre',)  
-
+        fields = '__all__' 
+        extra_fields = ['sobrenombre']
 
 class ReportComparisonSerializer(serializers.ModelSerializer):
     url = serializers.CharField(source='scraper_source.url', read_only=True)
