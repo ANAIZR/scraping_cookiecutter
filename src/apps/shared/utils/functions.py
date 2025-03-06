@@ -167,28 +167,23 @@ def initialize_driver(retries=3):
                 raise
 
 
-def connect_to_mongo(db_name=None, collection_name=None):
+def connect_to_mongo():
     logger = get_logger("MONGO_CONNECTION")
     
     try:
-        MONGO_USER = os.getenv("MONGO_USER")
-        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
-        MONGO_HOST = os.getenv("MONGO_HOST") 
-        MONGO_PORT = os.getenv("MONGO_PORT")  
-        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE")  
+        MONGO_URI = os.getenv("MONGO_URI")
+        MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
+        MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME")
 
-        db_name = db_name or os.getenv("MONGO_DB_NAME")
-        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME")
-
-        MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{db_name}?authSource={MONGO_AUTH_SOURCE}"
-
+        if not all([MONGO_URI, MONGO_DB_NAME, MONGO_COLLECTION_NAME]):
+            raise ValueError("⚠️ Faltan variables de entorno en el archivo .env")
 
         client = MongoClient(MONGO_URI)
-        db = client[db_name]
+        db = client[MONGO_DB_NAME]
         fs = gridfs.GridFS(db)
 
-        logger.info(f"✅ Conexión a MongoDB establecida correctamente: {db_name}")
-        return db[collection_name], fs
+        logger.info(f"✅ Conexión a MongoDB establecida correctamente: {MONGO_DB_NAME}")
+        return db[MONGO_COLLECTION_NAME], fs
 
     except Exception as e:
         logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
