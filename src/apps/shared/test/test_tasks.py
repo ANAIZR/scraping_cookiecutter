@@ -32,19 +32,26 @@ def test_scraper_url_task_success(mocker):
 def test_scraper_url_task_failure(mocker):
     url = "https://example.com"
 
+    # 🔹 Mock de WebScraperService
     mock_scraper_service = mocker.patch("src.apps.shared.utils.services.WebScraperService", autospec=True)
     mock_instance = mock_scraper_service.return_value
-    mock_instance.scraper_one_url.return_value = {"error": "Scraping failed"}
+    mock_instance.scraper_one_url.return_value = {"error": "Scraping failed"}  # 🔹 Simular fallo
 
+    # 🔹 Crear instancia en BD
     scraper_url = ScraperURL.objects.create(url=url, sobrenombre="test", estado_scrapeo="pendiente")
 
+    # 🔹 Ejecutar la tarea
     result = scraper_url_task(url)
-    scraper_url.refresh_from_db()  
 
+    # 🔹 Refrescar objeto desde BD
+    scraper_url.refresh_from_db()
+
+    # 🔍 Depuración: Imprimir resultados
     print(f"🔍 Resultado de `scraper_url_task`: {result}")
     print(f"📌 Estado en BD: {scraper_url.estado_scrapeo}, Error: {scraper_url.error_scrapeo}")
 
-    assert result["status"] == "failed"
+    # ✅ Verificar que el estado cambió a "fallido"
+    assert result["status"] == "failed", f"Estado esperado: 'failed', obtenido: {result['status']}"
     assert scraper_url.estado_scrapeo == "fallido", f"Estado esperado: 'fallido', obtenido: {scraper_url.estado_scrapeo}"
     assert scraper_url.error_scrapeo == "Scraping failed", f"Error esperado: 'Scraping failed', obtenido: {scraper_url.error_scrapeo}"
 
