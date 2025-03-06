@@ -39,14 +39,14 @@ def test_scraper_url_task_failure(mocker):
     scraper_url = ScraperURL.objects.create(url=url, sobrenombre="test", estado_scrapeo="pendiente")
 
     result = scraper_url_task(url)
-    scraper_url.refresh_from_db()
+    scraper_url.refresh_from_db()  
 
     print(f"🔍 Resultado de `scraper_url_task`: {result}")
     print(f"📌 Estado en BD: {scraper_url.estado_scrapeo}, Error: {scraper_url.error_scrapeo}")
 
     assert result["status"] == "failed"
-    assert scraper_url.estado_scrapeo == "fallido"
-    assert scraper_url.error_scrapeo == "Scraping failed"
+    assert scraper_url.estado_scrapeo == "fallido", f"Estado esperado: 'fallido', obtenido: {scraper_url.estado_scrapeo}"
+    assert scraper_url.error_scrapeo == "Scraping failed", f"Error esperado: 'Scraping failed', obtenido: {scraper_url.error_scrapeo}"
 
 @pytest.mark.django_db
 def test_check_new_species_task(mocker):
