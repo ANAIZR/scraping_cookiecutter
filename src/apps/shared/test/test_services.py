@@ -23,8 +23,11 @@ def test_get_expired_urls(mocker):
     # 🔹 Simular values_list() con el resultado esperado
     mock_excluded_queryset.values_list.return_value = ["https://example.com"]
 
-    # 🔹 Mock de `ScraperURL.objects.filter()`
-    mock_filter = mocker.patch("src.apps.shared.models.scraperURL.ScraperURL.objects.filter", return_value=mock_initial_queryset)
+    # 🔹 Mock de `ScraperURL.objects.filter()` para manejar ambas llamadas
+    mock_filter = mocker.patch(
+        "src.apps.shared.models.scraperURL.ScraperURL.objects.filter",
+        side_effect=[mock_initial_queryset, mock_filtered_queryset]  # 🔥 Se usa `side_effect` para manejar ambas llamadas
+    )
 
     # 🔹 Ejecutar la función real
     service = WebScraperService()
@@ -35,11 +38,11 @@ def test_get_expired_urls(mocker):
     # ✅ Verificar que `filter()` se llamó dos veces
     assert mock_filter.call_count == 2, f"filter() fue llamado {mock_filter.call_count} veces, pero se esperaban 2"
 
-    # ✅ Verificar que `exclude()` fue llamado
+    # ✅ Verificar que `exclude()` se llamó
     assert mock_final_queryset.exclude.call_count >= 1, "exclude() no fue llamado en get_expired_urls()"
 
-    # ✅ Verificar que el resultado es correcto
-    assert result == ["https://example.com"]
+    # ✅ Asegurar que el resultado es el esperado
+    assert result == ["https://example.com"], f"Se esperaba ['https://example.com'], pero se obtuvo {result}"
 
 
 
