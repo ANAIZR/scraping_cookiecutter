@@ -55,7 +55,7 @@ def test_extract_and_save_species(mocker):
     mock_collection.find.return_value = [{"_id": "123", "contenido": "test content", "source_url": url}]
 
     with patch.object(ScraperService, "process_document") as mock_process_document, \
-         patch("src.apps.shared.services.ThreadPoolExecutor") as mock_executor:
+         patch("src.apps.shared.api.services.ThreadPoolExecutor") as mock_executor:
 
         service = ScraperService()
         service.collection = mock_collection 
@@ -74,21 +74,28 @@ def test_extract_and_save_species(mocker):
 def test_generate_comparison_report(mocker):
     url = "https://example.com"
 
-    mock_collection = MagicMock()
-    mock_collection.find.return_value.sort.return_value = [
+    mock_comparison_service = mocker.patch("src.apps.shared.utils.services.ScraperComparisonService", autospec=True)
+
+    mock_instance = mock_comparison_service.return_value
+    mock_instance.collection = MagicMock()
+    mock_instance.collection.find.return_value.sort.return_value = [
         {"_id": "1", "contenido": "old content"},
-        {"_id": "2", "contenido": "new content"},
+        {"_id": "2", "contenido": "new content"}
     ]
 
-    with patch.object(ScraperComparisonService, "collection", new_callable=MagicMock, return_value=mock_collection):
-        with patch("src.apps.shared.utils.services.ScraperComparisonService.generate_comparison") as mock_comparison_result:
-            mock_comparison_result.return_value = {"has_changes": True, "info_agregada": ["url1"], "info_eliminada": []}
+    mock_instance.generate_comparison.return_value = {
+        "has_changes": True,
+        "info_agregada": ["url1"],
+        "info_eliminada": []
+    }
 
-            with patch("src.apps.shared.utils.services.ScraperComparisonService.save_or_update_comparison_to_postgres") as mock_save_comparison:
-                service = ScraperComparisonService()
-                result = service.get_comparison_for_url(url)
+    mock_instance.save_or_update_comparison_to_postgres = MagicMock()
 
-                print(f"🔍 Resultado obtenido: {result}")  
+    service = ScraperComparisonService()
+    result = service.get_comparison_for_url(url)
 
-                assert result["status"] == "changed"
-                mock_save_comparison.assert_called()
+    print(f"🔍 Resultado obtenido: {result}")
+
+    assert result["status"] == "changed"
+
+    mock_instance.save_or_update_comparison_to_postgres.assert_called()
