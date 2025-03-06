@@ -30,7 +30,11 @@ def test_check_new_species_and_notify(mock_notify_user):
 
     check_new_species_and_notify(["https://example.com"])
 
-    mock_notify_user.assert_called_once_with(user, subscription, [species])
+    mock_notify_user.assert_called_once()
+    args, _ = mock_notify_user.call_args
+    assert args[0] == user
+    assert args[1] == subscription
+    assert list(args[2]) == [species]  
 @pytest.mark.django_db
 @patch("src.apps.shared.utils.notify_change.notify_user_of_new_species")
 def test_check_new_species_and_notify_no_new_species(mock_notify_user):

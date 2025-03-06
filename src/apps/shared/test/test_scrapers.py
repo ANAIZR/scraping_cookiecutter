@@ -119,7 +119,7 @@ class TestScraperAPIView(APITestCase):
         assert len(response.data["results"]) > 0
 
     def test_species_list(self):
-        response = self.client.get(reverse("species"))
+        response = self.client.get(reverse("species-list"))
         assert response.status_code == 200
 
     def test_report_comparison_not_found(self):
@@ -132,5 +132,5 @@ class TestScraperAPIView(APITestCase):
             "scientific_name": "Test Plant"
         }
 
-        response = self.client.post(reverse("subscription"), data)
+        response = self.client.post(reverse("subscription-list"), data)
         assert response.status_code == 201
