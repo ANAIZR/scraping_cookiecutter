@@ -20,13 +20,20 @@ logger = logging.getLogger(__name__)
 
 class WebScraperService:
     def get_expired_urls(self):
-        return ScraperURL.objects.filter(
-            is_active=True
-        ).filter(
+        print("🔍 Primera llamada a filter()")
+        queryset = ScraperURL.objects.filter(is_active=True)
+
+        print("🔍 Segunda llamada a filter()")
+        queryset = queryset.filter(
             Q(fecha_scraper__lt=datetime.now()) | 
             Q(fecha_scraper__isnull=True) | 
             Q(estado_scrapeo="fallido")
-        ).exclude(estado_scrapeo="en_progreso").values_list("url", flat=True)
+        )
+
+        print("🔍 Llamada a exclude()")
+        queryset = queryset.exclude(estado_scrapeo="en_progreso")
+
+        return queryset.values_list("url", flat=True)
 
 
     def scraper_one_url(self, url, sobrenombre):
