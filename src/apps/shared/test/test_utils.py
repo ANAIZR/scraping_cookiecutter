@@ -20,7 +20,7 @@ def test_check_new_species_and_notify(mock_notify_user):
     species = Species.objects.create(
     scientific_name="Ficus elastica",
     created_at=timezone.now(),
-    scraper_source=ScraperURL.objects.create(  # Asegura que tenga un ScraperURL válido
+    scraper_source=ScraperURL.objects.create(  
         url="https://example.com",
         sobrenombre="Test Scraper",
         time_choices=1

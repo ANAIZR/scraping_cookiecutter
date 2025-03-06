@@ -68,43 +68,34 @@ def test_extract_and_save_species(mocker):
 def test_generate_comparison_report(mocker):
     url = "https://example.com"
 
-    # 🔹 Mock de ScraperComparisonService
     mock_comparison_service = mocker.patch(
         "src.apps.shared.utils.services.ScraperComparisonService",
         autospec=True
     )
     mock_instance = mock_comparison_service.return_value
 
-    # 🔹 Mock de la colección MongoDB
     mock_collection = MagicMock()
 
-    # 🔹 Simular la respuesta esperada de find().sort()
     mock_documents = [
         {"_id": "1", "contenido": "old content"},
         {"_id": "2", "contenido": "new content"}
     ]
     
-    # Hacer que `find().sort()` devuelva una lista en lugar de un iterador
     mock_collection.find.return_value.sort.return_value = mock_documents
 
-    # Asignar la colección mock al servicio
     mock_instance.collection = mock_collection
 
-    # 🔹 Simulación de la función `generate_comparison`
     mock_instance.generate_comparison.return_value = {
         "has_changes": True,
         "info_agregada": ["url1"],
         "info_eliminada": []
     }
 
-    # 🔹 Simulación de `save_or_update_comparison_to_postgres`
     mock_instance.save_or_update_comparison_to_postgres = MagicMock()
 
-    # Ejecutar la función real
     service = ScraperComparisonService()
     result = service.get_comparison_for_url(url)
 
     print(f"🔍 Resultado obtenido: {result}")
 
-    # ✅ Verificar que la comparación detectó cambios
     assert result["status"] == "changed", f"Resultado inesperado: {result}"
