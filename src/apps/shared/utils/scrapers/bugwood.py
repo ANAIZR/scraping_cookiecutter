@@ -12,7 +12,8 @@ from ..functions import (
 from bson import ObjectId
 from datetime import datetime
 
-def scraper_bugwood(url, sobrenombre, max_depth=3):
+def scraper_bugwood(url, sobrenombre):
+    max_depth=3
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
     collection, fs = connect_to_mongo()
