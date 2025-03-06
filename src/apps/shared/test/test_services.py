@@ -76,7 +76,7 @@ def test_generate_comparison_report(mocker):
     url = "https://example.com"
 
     # Mock para `ScraperComparisonService`
-    mock_comparison_service = mocker.patch("src.apps.shared.api.services.ScraperComparisonService", autospec=True)
+    mock_comparison_service = mocker.patch("src.apps.shared.utils.services.ScraperComparisonService", autospec=True)
     mock_instance = mock_comparison_service.return_value
 
     # Simulación de documentos en la colección
