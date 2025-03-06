@@ -76,6 +76,7 @@ from .biblioteca_sibe import scraper_biblioteca_sibe
 from .acir_aphis_usda import scraper_acir_aphis_usda
 from .defensa_sag import scraper_defensa_sag
 from .gbif import scraper_gbif
+from .pest_report import scraper_pest_report
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
@@ -153,6 +154,7 @@ SCRAPER_FUNCTIONS = {
     75: scraper_ippc_int,
     76: scraper_cahfsa,
     77: scraper_aphis_usda_gov,
+    78: scraper_pest_report,
     79: scraper_defensa_sag,
     80: scraper_biblioteca_sibe,
     82: scraper_gbif
