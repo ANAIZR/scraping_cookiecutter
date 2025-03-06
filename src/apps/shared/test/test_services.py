@@ -19,17 +19,22 @@ def test_get_expired_urls(mocker):
 @pytest.mark.django_db
 def test_scraper_one_url_success(mocker):
     url = "https://example.com"
-    
-    with patch.dict("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", {1: MagicMock(return_value={"data": "Success"})}):
+
+    mock_scraper_function = MagicMock(return_value={"data": "Success"})
+
+    with patch.dict("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", {1: mock_scraper_function}):
         scraper_url = ScraperURL.objects.create(url=url, sobrenombre="test", estado_scrapeo="pendiente", mode_scrapeo=1)
-        
+
         service = WebScraperService()
         result = service.scraper_one_url(url, "test")
+
         scraper_url.refresh_from_db()
-        
+
         assert result == {"data": "Success"}
         assert scraper_url.estado_scrapeo == "exitoso"
         assert scraper_url.error_scrapeo == ""
+
+        mock_scraper_function.assert_called_once_with(url, "test")
 
 @pytest.mark.django_db
 def test_extract_and_save_species(mocker):
