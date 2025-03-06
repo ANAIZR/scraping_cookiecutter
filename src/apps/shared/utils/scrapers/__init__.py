@@ -77,6 +77,7 @@ from .acir_aphis_usda import scraper_acir_aphis_usda
 from .defensa_sag import scraper_defensa_sag
 from .gbif import scraper_gbif
 from .pest_report import scraper_pest_report
+from .cabi_library import scraper_cabi_library
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
@@ -134,6 +135,7 @@ SCRAPER_FUNCTIONS = {
     54: scraper_ippc_int,
     55: scraper_agriculture_gov,
     56: scraper_sciencedirect,
+    57: scraper_cabi_library,
     58: scraper_ecoport,
     59: scraper_pestnet,
     60: scraper_fao_org_home,
