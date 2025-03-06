@@ -64,9 +64,8 @@ def scraper_url_task(self, url):
     ]
 
     if url in urls_permitidas:
-        tareas.append(check_new_species_and_notify.s().set(ignore_result=True))
+        tareas.append(check_new_species_task.si(url).set(ignore_result=True))
 
-    # Solo ejecutar la cadena si el scraping fue exitoso
     if scraper_url.estado_scrapeo == "exitoso":
         chain(*tareas).apply_async()
     else:
@@ -78,6 +77,9 @@ def scraper_url_task(self, url):
         "data": result if result else "No data scraped"
     }
 
+@shared_task(bind=True)
+def check_new_species_task(self, urls):
+    check_new_species_and_notify(urls)
 
 
 @shared_task(bind=True)
