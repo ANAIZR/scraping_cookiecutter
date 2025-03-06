@@ -15,9 +15,16 @@ from src.apps.users.utils.utils_login import get_tokens_for_user
 from rest_framework.views import APIView
 
 from rest_framework.permissions import AllowAny
+from rest_framework.pagination import PageNumberPagination
+
+class Pagination(PageNumberPagination):
+    page_size = 10 
+    page_size_query_param = 'page_size' 
+    max_page_size = 100 
 class UsuarioView(viewsets.ModelViewSet):
     queryset = User.all_objects.all()
     permission_classes = [IsAuthenticated, IsAdminUser]
+    pagination_class = Pagination
 
     def get_serializer_class(self):
         if self.request.method in ["POST", "PUT", "PATCH"]:

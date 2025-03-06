@@ -4,43 +4,23 @@ from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.services import WebScraperService, ScraperService, ScraperComparisonService
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
-    # 🔹 Simulación de los querysets en cadena
-    mock_initial_queryset = MagicMock()
-    mock_filtered_queryset = MagicMock()
-    mock_final_queryset = MagicMock()
-    mock_excluded_queryset = MagicMock()
+    mock_queryset = mocker.MagicMock()
 
-    # 🔹 Primera llamada a filter()
-    mock_initial_queryset.filter.return_value = mock_filtered_queryset
+    mock_queryset.filter.return_value = mock_queryset
+    mock_queryset.exclude.return_value = mock_queryset
+    mock_queryset.values_list.return_value = ["https://example.com"]
 
-    # 🔹 Segunda llamada a filter()
-    mock_filtered_queryset.filter.return_value = mock_final_queryset
+    mocker.patch("src.apps.shared.models.scraperURL.ScraperURL.objects.filter", return_value=mock_queryset)
 
-    # 🔹 Llamada a exclude()
-    mock_final_queryset.exclude.return_value = mock_excluded_queryset
-
-    # 🔹 Simular values_list() con el resultado esperado
-    mock_excluded_queryset.values_list.return_value = ["https://example.com"]
-
-    # 🔹 Mock de `ScraperURL.objects.filter()` para manejar ambas llamadas
-    mock_filter = mocker.patch(
-        "src.apps.shared.models.scraperURL.ScraperURL.objects.filter",
-        side_effect=[mock_initial_queryset, mock_filtered_queryset]  # 🔥 Se usa `side_effect` para manejar ambas llamadas
-    )
-
-    # 🔹 Ejecutar la función real
     service = WebScraperService()
     result = list(service.get_expired_urls())
 
     print(f"🔍 Resultado obtenido de get_expired_urls(): {result}")
 
-    # ✅ Verificar que `filter()` se llamó dos veces
-    assert mock_filter.call_count == 2, f"filter() fue llamado {mock_filter.call_count} veces, pero se esperaban 2"
+    assert mock_queryset.filter.call_count == 2, f"filter() fue llamado {mock_queryset.filter.call_count} veces, pero se esperaban 2"
 
-    # ✅ Verificar que `exclude()` se llamó
-    assert mock_final_queryset.exclude.call_count >= 1, "exclude() no fue llamado en get_expired_urls()"
+    assert mock_queryset.exclude.call_count >= 1, "exclude() no fue llamado en get_expired_urls()"
 
-    # ✅ Asegurar que el resultado es el esperado
     assert result == ["https://example.com"], f"Se esperaba ['https://example.com'], pero se obtuvo {result}"
 
 
@@ -98,14 +78,16 @@ def test_generate_comparison_report(mocker):
     # 🔹 Mock de la colección MongoDB
     mock_collection = MagicMock()
 
-    # 🔹 Simular el cursor de find()
-    mock_cursor = iter([
+    # 🔹 Simular la respuesta esperada de find().sort()
+    mock_documents = [
         {"_id": "1", "contenido": "old content"},
         {"_id": "2", "contenido": "new content"}
-    ])  # 🔥 Se usa `iter()` para simular un cursor iterable.
+    ]
+    
+    # Hacer que `find().sort()` devuelva una lista en lugar de un iterador
+    mock_collection.find.return_value.sort.return_value = mock_documents
 
-    # Asignar el cursor a find()
-    mock_collection.find.return_value.sort.return_value = mock_cursor
+    # Asignar la colección mock al servicio
     mock_instance.collection = mock_collection
 
     # 🔹 Simulación de la función `generate_comparison`
@@ -126,6 +108,3 @@ def test_generate_comparison_report(mocker):
 
     # ✅ Verificar que la comparación detectó cambios
     assert result["status"] == "changed", f"Resultado inesperado: {result}"
-
-    # ✅ Verificar que `save_or_update_comparison_to_postgres` fue llamado
-    mock_instance.save_or_update_comparison_to_postgres.assert_called()

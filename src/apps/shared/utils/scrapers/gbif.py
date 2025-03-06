@@ -8,7 +8,6 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    extract_text_from_pdf,
     load_keywords,
 )
 import time
