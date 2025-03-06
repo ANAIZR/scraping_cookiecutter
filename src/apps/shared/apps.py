@@ -5,4 +5,4 @@ class SharedConfig(AppConfig):
     name = 'src.apps.shared'
 
     def ready(self):
-        import src.apps.shared.utils.tasks  
+        import src.apps.shared.tasks
