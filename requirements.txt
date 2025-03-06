@@ -46,7 +46,6 @@ redis
 flower
 python-dotenv
 pypdf
-pyPDF2
 chardet
 ollama
 selenium-stealth

@@ -41,7 +41,7 @@ def test_connect_to_mongo(mock_mongo_client):
 
 
 @patch("src.apps.shared.utils.functions.requests.get")
-@patch("src.apps.shared.utils.functions.PyPDF2.PdfReader")
+@patch("src.apps.shared.utils.functions.pypdf.PdfReader")
 def test_extract_text_from_pdf(mock_pdf_reader, mock_requests):
     mock_response = MagicMock()
     mock_response.content = b"%PDF-1.4 Fake PDF Data"

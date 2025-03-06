@@ -33,13 +33,13 @@ class Pagination(PageNumberPagination):
     page_size_query_param = 'page_size' 
     max_page_size = 100 
 class ScraperURLViewSet(viewsets.ModelViewSet):
-    queryset = ScraperURL.objects.all()
+    queryset = ScraperURL.objects.all().order_by("-created_at")
     serializer_class = ScraperURLSerializer
     pagination_class = Pagination
 
 
 class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Species.objects.select_related("scraper_source").all()
+    queryset = Species.objects.select_related("scraper_source").all().order_by("-created_at")
     serializer_class = SpeciesSerializer
     pagination_class = Pagination
 

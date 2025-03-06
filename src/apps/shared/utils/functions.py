@@ -5,10 +5,10 @@ import logging
 import random
 import undetected_chromedriver as uc
 import time
+import pypdf
 from pymongo import MongoClient
 import gridfs
 import requests
-import PyPDF2
 from io import BytesIO
 from rest_framework.response import Response
 from rest_framework import status
@@ -421,7 +421,7 @@ def extract_text_from_pdf(pdf_url):
         response.raise_for_status() 
 
         pdf_buffer = BytesIO(response.content)
-        reader = PyPDF2.PdfReader(pdf_buffer)
+        reader = pypdf.PdfReader(pdf_buffer)
 
         pdf_text = "\n".join(
             [page.extract_text() for page in reader.pages if page.extract_text()]
