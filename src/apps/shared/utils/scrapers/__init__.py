@@ -78,6 +78,7 @@ from .defensa_sag import scraper_defensa_sag
 from .gbif import scraper_gbif
 from .pest_report import scraper_pest_report
 from .cabi_library import scraper_cabi_library
+from .euphresco import scraper_euphresco
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
@@ -159,5 +160,6 @@ SCRAPER_FUNCTIONS = {
     78: scraper_pest_report,
     79: scraper_defensa_sag,
     80: scraper_biblioteca_sibe,
-    82: scraper_gbif
+    82: scraper_gbif,
+    83: scraper_euphresco
 }
