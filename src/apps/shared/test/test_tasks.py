@@ -72,7 +72,7 @@ def test_process_scraped_data_task(mocker):
 def test_generate_comparison_report_task(mocker):
     url = "https://example.com"
 
-    with patch("src.apps.shared.services.ScraperComparisonService.get_comparison_for_url") as mock_get_comparison:
+    with patch("src.apps.shared.utils.services.ScraperComparisonService.get_comparison_for_url") as mock_get_comparison:
         mock_get_comparison.return_value = {"status": "changed"}
 
         result = generate_comparison_report_task(url)
@@ -86,7 +86,7 @@ def test_scraper_expired_urls_task(mocker):
     mock_scraper_service.return_value.get_expired_urls.return_value = ["https://example.com"]
     
     mock_scraper_task = mocker.patch("src.apps.shared.utils.tasks.scraper_url_task.si")
-    mock_chain = mocker.patch("src.apps.shared.tasks.chain")
+    mock_chain = mocker.patch("src.apps.shared.utils.tasks.chain")
     
     scraper_expired_urls_task()
     mock_scraper_service.return_value.get_expired_urls.assert_called_once()

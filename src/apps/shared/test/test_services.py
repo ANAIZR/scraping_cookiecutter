@@ -2,28 +2,30 @@ import pytest
 from unittest.mock import patch, MagicMock
 from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.services import WebScraperService, ScraperService, ScraperComparisonService
-
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
+    # Simular el queryset
     mock_queryset = MagicMock()
-    mock_queryset.filter.return_value = mock_queryset  
-    mock_queryset.exclude.return_value = mock_queryset  
-    mock_queryset.values_list.return_value = ["https://example.com"]  
+    mock_queryset.filter.return_value = mock_queryset  # La segunda llamada a filter()
+    mock_queryset.exclude.return_value = mock_queryset  # exclude() también devuelve el mismo mock
+    mock_queryset.values_list.return_value = ["https://example.com"]
 
+    # Mockear ScraperURL.objects.filter() para devolver el queryset simulado
     mock_filter = mocker.patch("src.apps.shared.models.scraperURL.ScraperURL.objects.filter", return_value=mock_queryset)
 
+    # Ejecutar la función real
     service = WebScraperService()
-    result = list(service.get_expired_urls())  
+    result = list(service.get_expired_urls())
 
-    print(f"🔍 Resultado obtenido de get_expired_urls(): {result}")  
+    print(f"🔍 Resultado obtenido de get_expired_urls(): {result}")
 
-    print(f"📌 `filter()` fue llamado {mock_filter.call_count} veces")
-    print(f"📌 `exclude()` fue llamado {mock_queryset.exclude.call_count} veces")
-
-    assert mock_filter.call_count >= 1, "filter() no fue llamado en get_expired_urls()"
-    assert mock_queryset.filter.call_count >= 2, "filter() no fue llamado dos veces en get_expired_urls()"
+    # Asegurar que filter() se llamó dos veces
+    assert mock_filter.call_count == 2, f"filter() fue llamado {mock_filter.call_count} veces, pero se esperaban 2"
+    
+    # Asegurar que exclude() se llamó
     assert mock_queryset.exclude.call_count >= 1, "exclude() no fue llamado en get_expired_urls()"
 
+    # Asegurar que el resultado es el esperado
     assert result == ["https://example.com"]
 
 
@@ -55,10 +57,10 @@ def test_extract_and_save_species(mocker):
     mock_collection.find.return_value = [{"_id": "123", "contenido": "test content", "source_url": url}]
 
     with patch.object(ScraperService, "process_document") as mock_process_document, \
-         patch("src.apps.shared.api.services.ThreadPoolExecutor") as mock_executor:
+         patch("concurrent.futures.ThreadPoolExecutor") as mock_executor:  # 🔹 Cambio aquí
 
         service = ScraperService()
-        service.collection = mock_collection 
+        service.collection = mock_collection  
         mock_executor.return_value.__enter__.return_value.submit.side_effect = lambda func, doc: func(doc)
 
         service.extract_and_save_species(url)
@@ -69,26 +71,32 @@ def test_extract_and_save_species(mocker):
 
 
 
-
 @pytest.mark.django_db
 def test_generate_comparison_report(mocker):
     url = "https://example.com"
 
-    mock_comparison_service = mocker.patch("src.apps.shared.utils.services.ScraperComparisonService", autospec=True)
-
+    # Mock para `ScraperComparisonService`
+    mock_comparison_service = mocker.patch("src.apps.shared.api.services.ScraperComparisonService", autospec=True)
     mock_instance = mock_comparison_service.return_value
-    mock_instance.collection = MagicMock()
-    mock_instance.collection.find.return_value.sort.return_value = [
+
+    # Simulación de documentos en la colección
+    mock_find = MagicMock()
+    mock_find.sort.return_value = [
         {"_id": "1", "contenido": "old content"},
         {"_id": "2", "contenido": "new content"}
     ]
 
+    mock_instance.collection = MagicMock()
+    mock_instance.collection.find.return_value = mock_find
+
+    # Simulación de la función `generate_comparison`
     mock_instance.generate_comparison.return_value = {
         "has_changes": True,
         "info_agregada": ["url1"],
         "info_eliminada": []
     }
 
+    # Simulación de `save_or_update_comparison_to_postgres`
     mock_instance.save_or_update_comparison_to_postgres = MagicMock()
 
     service = ScraperComparisonService()
@@ -96,6 +104,8 @@ def test_generate_comparison_report(mocker):
 
     print(f"🔍 Resultado obtenido: {result}")
 
+    # Verificar que la comparación detectó cambios
     assert result["status"] == "changed"
 
+    # Verificar que `save_or_update_comparison_to_postgres` fue llamado
     mock_instance.save_or_update_comparison_to_postgres.assert_called()
