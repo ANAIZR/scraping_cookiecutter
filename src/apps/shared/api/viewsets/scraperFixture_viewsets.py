@@ -87,7 +87,8 @@ from ...utils.scrapers import (
     scraper_defensa_sag,
     scraper_biblioteca_sibe,
     scraper_notification_cahfsa_org,
-    scraper_gbif
+    scraper_gbif,
+    scraper_euphresco
 )
 
 SCRAPER_FUNCTIONS = {
@@ -171,7 +172,8 @@ SCRAPER_FUNCTIONS = {
     79: scraper_defensa_sag,
     80: scraper_biblioteca_sibe,
     81: scraper_notification_cahfsa_org,
-    82: scraper_gbif    
+    82: scraper_gbif,
+    83: scraper_euphresco    
 }
 
 class ScraperAPIView(APIView):
