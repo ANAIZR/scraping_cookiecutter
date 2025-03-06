@@ -79,3 +79,4 @@ from .pest_report import scraper_pest_report
 from .biblioteca_sibe import scraper_biblioteca_sibe
 from .defensa_sag import scraper_defensa_sag
 from .notification_cahfsa_org import scraper_notification_cahfsa_org
+from .gbif import scraper_gbif
