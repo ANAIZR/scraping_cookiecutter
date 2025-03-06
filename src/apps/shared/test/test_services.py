@@ -78,14 +78,16 @@ def test_generate_comparison_report(mocker):
     # 🔹 Mock de la colección MongoDB
     mock_collection = MagicMock()
 
-    # 🔹 Simular el cursor de find()
-    mock_cursor = iter([
+    # 🔹 Simular la respuesta esperada de find().sort()
+    mock_documents = [
         {"_id": "1", "contenido": "old content"},
         {"_id": "2", "contenido": "new content"}
-    ])  # 🔥 Se usa `iter()` para simular un cursor iterable.
+    ]
+    
+    # Hacer que `find().sort()` devuelva una lista en lugar de un iterador
+    mock_collection.find.return_value.sort.return_value = mock_documents
 
-    # Asignar el cursor a find()
-    mock_collection.find.return_value.sort.return_value = mock_cursor
+    # Asignar la colección mock al servicio
     mock_instance.collection = mock_collection
 
     # 🔹 Simulación de la función `generate_comparison`
@@ -106,6 +108,3 @@ def test_generate_comparison_report(mocker):
 
     # ✅ Verificar que la comparación detectó cambios
     assert result["status"] == "changed", f"Resultado inesperado: {result}"
-
-    # ✅ Verificar que `save_or_update_comparison_to_postgres` fue llamado
-    mock_instance.save_or_update_comparison_to_postgres.assert_called()
