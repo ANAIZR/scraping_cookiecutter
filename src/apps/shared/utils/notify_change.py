@@ -54,7 +54,7 @@ def notify_user_of_new_species(user, subscription, species):
 
     filters_text = "<br>".join(filters)
 
-    subject = f"🔔 Se han añadido {species.count()} nuevos registros para tu filtro guardado"
+    subject = f"🔔 Se han añadido {len(species)} nuevos registros para tu filtro guardado"
 
     species_list = "".join(f"<li>{s.scientific_name} - {s.source_url}</li>" for s in species)
 
