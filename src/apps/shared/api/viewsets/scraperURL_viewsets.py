@@ -39,9 +39,10 @@ class ScraperURLViewSet(viewsets.ModelViewSet):
 
 
 class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Species.objects.select_related("scraper_source").all().order_by("-created_at")
+    queryset = Species.objects.select_related("scraper_source").distinct().order_by("-created_at")
     serializer_class = SpeciesSerializer
     pagination_class = Pagination
+
 
 
 
