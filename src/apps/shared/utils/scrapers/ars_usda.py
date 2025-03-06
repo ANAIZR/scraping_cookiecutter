@@ -69,8 +69,9 @@ def scraper_ars_usda(url, sobrenombre):
                     existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                     if len(existing_versions) > 1:
                         oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version._id))
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                        file_id = oldest_version._id  # Esto obtiene el ID correcto
+                        fs.delete(file_id)  # Eliminar la versión más antigua
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                 else:
                     non_scraped_urls.append(url)
                     total_non_scraped_links += 1
@@ -98,10 +99,12 @@ def scraper_ars_usda(url, sobrenombre):
                         existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
                         if len(existing_versions) > 1:
                             oldest_version = existing_versions[-1]
-                            fs.delete(ObjectId(oldest_version._id))
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                            file_id = oldest_version._id  # Esto obtiene el ID correcto
+                            fs.delete(file_id)  # Eliminar la versión más antigua
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                     else:
                         non_scraped_urls.append(url)
+                        total_non_scraped_links += 1
 
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
