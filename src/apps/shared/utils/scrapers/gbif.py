@@ -4,10 +4,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from rest_framework import status
 from rest_framework.response import Response
 from ..functions import (
-    process_scraper_data,
+    process_scraper_data_v2,
     connect_to_mongo,
     get_logger,
-    driver_init,
+    initialize_driver,
+    extract_text_from_pdf,
     load_keywords,
 )
 import time
@@ -21,9 +22,8 @@ def scraper_gbif(url, sobrenombre):
     logger = get_logger("GBIF SCRAPER")
     logger.info(f"Iniciando scraping para URL: {url}")
 
-    driver = driver_init()
+    driver = initialize_driver()
     collection, fs = connect_to_mongo()
-    total_links_found = 0
     total_scraped_successfully = 0
     total_failed_scrapes = 0
     all_scraper = ""
@@ -68,11 +68,9 @@ def scraper_gbif(url, sobrenombre):
                             href = link.get("href")
                             if href:
                                 full_href = urljoin(domain, href)
-                                if full_href not in visited_urls:
-                                    visited_urls.add(full_href)
-                                    scraped_urls.add(full_href)
-                                    total_links_found += 1 
-                                    print(f"URL almacenada: {full_href}")
+                                visited_urls.add(full_href)
+                                scraped_urls.add(full_href)
+                                print(f"✅ URL almacenada: {full_href}")
 
                     try:
                         next_page_li = driver.find_element(By.CSS_SELECTOR, "li.pagination-next")
@@ -90,7 +88,9 @@ def scraper_gbif(url, sobrenombre):
                     except (TimeoutException, NoSuchElementException):
                         print("❌ No se encontró paginación en la página principal.")
                         break
-                
+
+                scraped_urls = set(scraped_urls)  
+
                 try:
                     more_info_button = WebDriverWait(driver, 5).until(
                         EC.element_to_be_clickable((By.CSS_SELECTOR, "p.clearfix a"))
@@ -117,12 +117,9 @@ def scraper_gbif(url, sobrenombre):
                                     new_href = link.get("href")
                                     if new_href:
                                         new_full_href = urljoin(domain, new_href)
-                                        if new_full_href not in visited_urls:
-                                            visited_urls.add(new_full_href)
-                                            scraped_urls.add(new_full_href)
-                                            total_links_found += 1
-                                            print(f"{total_links_found}° URL encontrada desde página adicional: {new_full_href}")  # ✅ Imprime el número y la URL
-
+                                        visited_urls.add(new_full_href)
+                                        scraped_urls.add(new_full_href)
+                                        print(f"✅ URL encontrada desde página adicional: {new_full_href}")
 
                             try:
                                 next_page_li = driver.find_element(By.CSS_SELECTOR, "li.pagination-next")
@@ -150,7 +147,10 @@ def scraper_gbif(url, sobrenombre):
                 logger.warning(f"⚠️ Error durante la búsqueda con palabra clave '{keyword}': {e}")
                 continue
 
-        for scraped_url in scraped_urls.copy():
+        scraped_urls = set(scraped_urls)  
+        total_links_found = len(scraped_urls)
+
+        for scraped_url in scraped_urls:
             try:
                 print(f"🔍 Accediendo a: {scraped_url}")
                 driver.get(scraped_url)
@@ -176,14 +176,6 @@ def scraper_gbif(url, sobrenombre):
                     total_scraped_successfully += 1
                     logger.info(f"📄 Información almacenada en MongoDB con object_id: {object_id}")
 
-                    existing_versions = list(fs.find({"source_url": scraped_url}).sort("scraping_date", -1))
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id
-                        fs.delete(file_id)
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
                 logger.info(f"✅ Información extraída de {scraped_url}")
 
             except Exception as e:
@@ -197,8 +189,7 @@ def scraper_gbif(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
-        return response
+        return process_scraper_data_v2(all_scraper, url, sobrenombre)
 
     except Exception as e:
         logger.error(f"⚠️ Error en el scraper: {str(e)}")
