@@ -4,11 +4,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from rest_framework import status
 from rest_framework.response import Response
 from ..functions import (
-    process_scraper_data_v2,
+    process_scraper_data,
     connect_to_mongo,
     get_logger,
-    initialize_driver,
-    extract_text_from_pdf,
+    driver_init,
     load_keywords,
 )
 import time
@@ -22,7 +21,7 @@ def scraper_gbif(url, sobrenombre):
     logger = get_logger("GBIF SCRAPER")
     logger.info(f"Iniciando scraping para URL: {url}")
 
-    driver = initialize_driver()
+    driver = driver_init()
     collection, fs = connect_to_mongo()
     total_scraped_successfully = 0
     total_failed_scrapes = 0
@@ -189,7 +188,7 @@ def scraper_gbif(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        return process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return process_scraper_data(all_scraper, url, sobrenombre)
 
     except Exception as e:
         logger.error(f"⚠️ Error en el scraper: {str(e)}")
