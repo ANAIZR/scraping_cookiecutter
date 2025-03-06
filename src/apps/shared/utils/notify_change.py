@@ -59,12 +59,13 @@ def notify_user_of_new_species(user, subscription, species):
     species_list = "".join(f"<li>{s.scientific_name} - {s.source_url}</li>" for s in species)
 
     html_content = f"""
-        <p>Se han detectado <b>{species.count()} nuevos registros</b> que coinciden con tu filtro guardado.</p>
+        <p>Se han detectado <b>{len(species)} nuevos registros</b> que coinciden con tu filtro guardado.</p>
         <p><b>Filtros:</b></p>
         <p>{filters_text}</p>
         <p><b>Detalles:</b></p>
         <ul>{species_list}</ul>
         <p>Revisa las nuevas actualizaciones en la plataforma.</p>
     """
+
 
     EmailService.send_email(subject, [user.email], html_content)
