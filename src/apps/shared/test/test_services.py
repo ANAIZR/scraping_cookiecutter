@@ -50,7 +50,7 @@ def test_extract_and_save_species(mocker):
     mock_collection.find.return_value = [{"_id": "123", "contenido": "test content", "source_url": url}]
 
     with patch.object(ScraperService, "process_document") as mock_process_document, \
-         patch("src.apps.shared.services.ThreadPoolExecutor") as mock_executor:
+         patch("src.apps.shared.utils.services.ThreadPoolExecutor") as mock_executor:
 
         service = ScraperService()
         service.collection = mock_collection  
