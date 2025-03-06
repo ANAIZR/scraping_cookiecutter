@@ -9,10 +9,10 @@ def test_get_expired_urls(mocker):
     
     mock_exclude = mock_query.return_value.exclude
     mock_values_list = mock_exclude.return_value.values_list
-    mock_values_list.return_value = ["https://example.com"]
+    mock_values_list.return_value = ["https://example.com"]  
     
     service = WebScraperService()
-    result = list(service.get_expired_urls())  
+    result = list(service.get_expired_urls()) 
     
     assert result == ["https://example.com"]
 
