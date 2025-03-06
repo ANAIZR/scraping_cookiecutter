@@ -8,13 +8,18 @@ from src.apps.shared.utils.services import (
 )
 from src.apps.shared.models.scraperURL import ScraperURL, Species, ReportComparison
 
+
+
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
     mock_query = mocker.patch("src.apps.shared.models.scraperURL.ScraperURL.objects.filter")
     mock_query.return_value.exclude.return_value.values_list.return_value = ["https://example.com"]
+    
     service = WebScraperService()
     result = service.get_expired_urls()
+    
     assert result == ["https://example.com"]
+
 
 @pytest.mark.django_db
 def test_scraper_one_url_success(mocker):

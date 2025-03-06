@@ -51,3 +51,4 @@ ollama
 selenium-stealth
 responses
 pytest-cov
+pytest-mock
