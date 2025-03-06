@@ -10,7 +10,6 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
     generate_directory,
-    get_next_versioned_filename,
     initialize_driver,
     get_logger,
     connect_to_mongo,
