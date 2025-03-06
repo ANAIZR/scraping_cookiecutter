@@ -987,6 +987,7 @@
       }
     }
   },
+
   {
     "model": "shared.ScraperURL",
     "pk": 73,
@@ -1112,6 +1113,19 @@
       "sobrenombre": "sciencedirect",
       "time_choices": 1,
       "mode_scrapeo": 56,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 83,
+    "fields": {
+      "url": "https://www.cabidigitallibrary.org/",
+      "mode_scrapeo": 57,
+      "sobrenombre": "CABI_LIBRARY",
+      "time_choices": 1,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
@@ -1418,12 +1432,38 @@
   },
   {
     "model": "shared.ScraperURL",
+    "pk": 107,
+    "fields": {
+      "url": "https://cahfsa.org/2024-3/",
+      "sobrenombre": "notification_cahfsa_org",
+      "time_choices": 1,
+      "mode_scrapeo": 81,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
     "pk": 108,
     "fields": {
       "url": "https://www.gbif.org/",
       "sobrenombre": "gbif",
       "time_choices": 1,
       "mode_scrapeo": 82,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 109,
+    "fields": {
+      "url": "https://drop.euphresco.net/search?title%5B%5D=publication+by+euphresco",
+      "sobrenombre": "euphresco",
+      "time_choices": 1,
+      "mode_scrapeo": 83,
       "created_at": "2024-09-16T12:00:00Z",
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
