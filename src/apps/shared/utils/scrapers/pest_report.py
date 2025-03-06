@@ -11,7 +11,7 @@ from ..functions import (
     initialize_driver,
     get_random_user_agent,
 )
-
+from datetime import datetime
 
 def scraper_pest_report(url, sobrenombre):
     logger = get_logger("scraper")
@@ -20,6 +20,8 @@ def scraper_pest_report(url, sobrenombre):
     collection, fs = connect_to_mongo()
     all_scraper = ""
     headers = {"User-Agent": get_random_user_agent()}
+    non_scraped_urls = []
+    scraped_urls = []
 
     try:
         driver.get(url)
@@ -70,11 +72,39 @@ def scraper_pest_report(url, sobrenombre):
                         + "\n"
                         + content_elements[1].get_text(separator="\n", strip=True)
                     )
-                    all_scraper += f"URL: {link}\n{content}\n{'-'*80}\n\n"
+                    # all_scraper += f"URL: {link}\n{content}\n{'-'*80}\n\n"
+                    if content:
+                        object_id = fs.put(
+                            content.encode("utf-8"),
+                            source_url=link,
+                            scraping_date=datetime.now(),
+                            Etiquetas=["planta", "plaga"],
+                            contenido=content,
+                            url=url
+                        )
+                        scraped_urls.append(link)
+                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                        existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
+                        if len(existing_versions) > 1:
+                            oldest_version = existing_versions[-1]
+                            file_id = oldest_version._id  # Esto obtiene el ID correcto
+                            fs.delete(file_id)  # Eliminar la versión más antigua
+                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                    else:
+                        non_scraped_urls.append(link)
+
             except requests.RequestException as e:
                 logger.warning(f"Error al acceder a {link}: {e}")
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        all_scraper = (
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+        )
+
+        response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
