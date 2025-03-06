@@ -15,7 +15,7 @@ def test_scraper_url_task_success(mock_generate_report, mock_process_data, mock_
     mock_scraper_get.return_value = mock_scraper_url
     mock_scraper_one_url.return_value = {"data": "Scraping successful"}
 
-    result = scraper_url_task("self", "https://example.com")
+    result = scraper_url_task.apply(args=("https://example.com",)).get()
 
     assert result["status"] == "exitoso"
     mock_process_data.assert_called_once()
