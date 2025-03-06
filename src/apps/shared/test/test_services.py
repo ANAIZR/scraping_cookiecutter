@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import patch, MagicMock
 from src.apps.shared.models.scraperURL import ScraperURL
 from src.apps.shared.utils.services import WebScraperService, ScraperService, ScraperComparisonService
-
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
     # 🔹 Simulación de los querysets en cadena
@@ -43,8 +42,6 @@ def test_get_expired_urls(mocker):
 
     # ✅ Asegurar que el resultado es el esperado
     assert result == ["https://example.com"], f"Se esperaba ['https://example.com'], pero se obtuvo {result}"
-
-
 
 
 @pytest.mark.django_db
@@ -92,21 +89,23 @@ def test_generate_comparison_report(mocker):
     url = "https://example.com"
 
     # 🔹 Mock de ScraperComparisonService
-    mock_comparison_service = mocker.patch("src.apps.shared.utils.services.ScraperComparisonService", autospec=True)
+    mock_comparison_service = mocker.patch(
+        "src.apps.shared.utils.services.ScraperComparisonService",
+        autospec=True
+    )
     mock_instance = mock_comparison_service.return_value
 
     # 🔹 Mock de la colección MongoDB
     mock_collection = MagicMock()
-    
+
     # 🔹 Simular el cursor de find()
-    mock_cursor = MagicMock()
-    mock_cursor.sort.return_value = [
+    mock_cursor = iter([
         {"_id": "1", "contenido": "old content"},
         {"_id": "2", "contenido": "new content"}
-    ]
+    ])  # 🔥 Se usa `iter()` para simular un cursor iterable.
 
     # Asignar el cursor a find()
-    mock_collection.find.return_value = mock_cursor
+    mock_collection.find.return_value.sort.return_value = mock_cursor
     mock_instance.collection = mock_collection
 
     # 🔹 Simulación de la función `generate_comparison`
