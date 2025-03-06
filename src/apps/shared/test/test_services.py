@@ -6,6 +6,7 @@ from src.apps.shared.utils.services import WebScraperService, ScraperService, Sc
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
     mock_queryset = MagicMock()
+    mock_queryset.filter.return_value = mock_queryset  
     mock_queryset.exclude.return_value = mock_queryset  
     mock_queryset.values_list.return_value = ["https://example.com"]  
 
@@ -16,8 +17,11 @@ def test_get_expired_urls(mocker):
 
     print(f"🔍 Resultado obtenido de get_expired_urls(): {result}")  
 
-    assert mock_filter.call_count >= 1, "filter() no fue llamado en get_expired_urls()"
+    print(f"📌 `filter()` fue llamado {mock_filter.call_count} veces")
+    print(f"📌 `exclude()` fue llamado {mock_queryset.exclude.call_count} veces")
 
+    assert mock_filter.call_count >= 1, "filter() no fue llamado en get_expired_urls()"
+    assert mock_queryset.filter.call_count >= 2, "filter() no fue llamado dos veces en get_expired_urls()"
     assert mock_queryset.exclude.call_count >= 1, "exclude() no fue llamado en get_expired_urls()"
 
     assert result == ["https://example.com"]
