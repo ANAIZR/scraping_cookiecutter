@@ -29,7 +29,7 @@ def scraper_aphis_usda_gov(url, sobrenombre):
     all_scraper = ""
     scraped_urls = set()
     failed_urls = set()
-    visited_urls = set()  # ⚡ Nuevo: Para evitar repetir URLs
+    visited_urls = set() 
     object_ids = []
 
     try:
@@ -41,41 +41,35 @@ def scraper_aphis_usda_gov(url, sobrenombre):
         logger.info("✅ Página cargada correctamente.")
 
         while True:
-            # Obtener el número de página actual desde la URL
             current_url = driver.current_url
             parsed_url = urlparse(current_url)
             query_params = parse_qs(parsed_url.query)
-            current_page = int(query_params.get("page", [1])[0])  # Si no tiene 'page', es la primera
+            current_page = int(query_params.get("page", [1])[0]) 
 
-            # Extraer los enlaces ANTES de salir si estamos en la última página permitida
             page_source = driver.page_source
             soup = BeautifulSoup(page_source, "html.parser")
 
-            # Buscar los artículos en div.article.c-view__row
             article_divs = soup.select("div.article.c-view__row")
 
             if not article_divs:
                 logger.warning("⚠️ No se encontraron artículos en la página.")
 
             for article in article_divs:
-                # Extraer el primer <a> dentro de cada artículo
                 link = article.select_one("a[href]")
                 if link and link["href"]:
-                    href = urljoin(url, link["href"])  # Convertir a URL absoluta
+                    href = urljoin(url, link["href"])
                     
-                    if href not in visited_urls:  # ⚡ Evitar repetir URLs
+                    if href not in visited_urls: 
                         visited_urls.add(href)
                         scraped_urls.add(href)
                         total_links_found += 1
-                        print(f"✅ Enlace agregado: {href}")  # 👈 Aquí imprimimos la URL en la consola
+                        print(f"✅ Enlace agregado: {href}") 
                         logger.info(f"✅ Enlace agregado: {href}")
 
-            # ⚡ Si estamos en page=2, detener la paginación DESPUÉS de obtener los enlaces
             if current_page >= 2:
                 logger.info("🚀 Se alcanzó page=2. Deteniendo la paginación.")
                 break
 
-            # Intentar hacer clic en el botón "Next"
             try:
                 next_button = driver.find_element(By.CSS_SELECTOR, "li.c-pager__item--next a.c-pager__link--next")
                 logger.info(f"✅ Se encontró el botón 'Next'. Pasando a la siguiente página...")
@@ -85,7 +79,6 @@ def scraper_aphis_usda_gov(url, sobrenombre):
                 logger.info("No se encontró el botón 'Next' o no hay más páginas disponibles.")
                 break
 
-        # Extraer contenido de las URLs obtenidas
         for href in scraped_urls.copy():
             try:
                 driver.get(href)
@@ -93,7 +86,6 @@ def scraper_aphis_usda_gov(url, sobrenombre):
                 WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                 time.sleep(5)
 
-                # ⚡ Extraer el contenido principal del artículo
                 WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div.c-field--name-body"))
                 )
@@ -114,6 +106,14 @@ def scraper_aphis_usda_gov(url, sobrenombre):
                     total_scraped_successfully += 1
                     logger.info(f"📂 Archivo almacenado en MongoDB con object_id: {object_id}")
 
+                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+
+                    if len(existing_versions) > 1:
+                        oldest_version = existing_versions[-1]
+                        file_id = oldest_version._id
+                        fs.delete(file_id)
+                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+
             except Exception as e:
                 logger.error(f"❌ No se pudo extraer contenido de {href}: {e}")
                 total_failed_scrapes += 1
@@ -121,7 +121,6 @@ def scraper_aphis_usda_gov(url, sobrenombre):
             finally:
                 driver.get(url)
 
-        # Guardar en el resumen final
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
         all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
