@@ -6,15 +6,19 @@ from src.apps.shared.utils.services import WebScraperService, ScraperService, Sc
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
     mock_query = mocker.patch("src.apps.shared.models.scraperURL.ScraperURL.objects.filter")
-    
-    mock_exclude = mock_query.return_value.exclude
-    mock_values_list = mock_exclude.return_value.values_list
-    mock_values_list.return_value = ["https://example.com"]  
-    
+
+    mock_exclude = MagicMock()
+    mock_query.return_value.exclude.return_value = mock_exclude
+
+    mock_exclude.values_list.return_value = ["https://example.com"]
+
     service = WebScraperService()
-    result = list(service.get_expired_urls()) 
-    
+    result = list(service.get_expired_urls())
+
+    print(f"Resultado obtenido: {result}")  
+
     assert result == ["https://example.com"]
+
 
 @pytest.mark.django_db
 def test_scraper_one_url_success(mocker):
@@ -39,13 +43,13 @@ def test_scraper_one_url_success(mocker):
 @pytest.mark.django_db
 def test_extract_and_save_species(mocker):
     url = "https://example.com"
-    
+
     mock_collection = MagicMock()
     mock_collection.find.return_value = [{"_id": "123", "contenido": "test content", "source_url": url}]
-    
+
     with patch.object(ScraperService, "process_document") as mock_process_document, \
-         patch("src.apps.shared.utils.services.ThreadPoolExecutor") as mock_executor:
-        
+         patch("src.apps.shared.services.ThreadPoolExecutor") as mock_executor:
+
         service = ScraperService()
         service.collection = mock_collection  
         mock_executor.return_value.__enter__.return_value.submit.side_effect = lambda func, doc: func(doc)
@@ -53,6 +57,7 @@ def test_extract_and_save_species(mocker):
         service.extract_and_save_species(url)
 
         mock_process_document.assert_called()
+
 
 
 
