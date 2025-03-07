@@ -88,7 +88,11 @@ from ...utils.scrapers import (
     scraper_biblioteca_sibe,
     scraper_notification_cahfsa_org,
     scraper_gbif,
+<<<<<<< HEAD
     scraper_researchgate
+=======
+    scraper_euphresco
+>>>>>>> 5e048505a092a32a0d40c3bdc8a5ace09d63949d
 )
 
 SCRAPER_FUNCTIONS = {
@@ -173,7 +177,11 @@ SCRAPER_FUNCTIONS = {
     80: scraper_biblioteca_sibe,
     81: scraper_notification_cahfsa_org,
     82: scraper_gbif,
+<<<<<<< HEAD
     84: scraper_researchgate  
+=======
+    83: scraper_euphresco    
+>>>>>>> 5e048505a092a32a0d40c3bdc8a5ace09d63949d
 }
 
 class ScraperAPIView(APIView):
