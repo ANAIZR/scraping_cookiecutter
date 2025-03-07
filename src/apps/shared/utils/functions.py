@@ -172,14 +172,16 @@ import requests
 from selenium import webdriver
 
 def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
-    response = requests.post(f"{remote_server}/wd/hub/session", json={
+    headers = {"Content-Type": "application/json; charset=utf-8"}
+    payload = {
         "capabilities": {
             "alwaysMatch": {
                 "browserName": "chrome"
             }
         }
-    })
+    }
 
+    response = requests.post(f"{remote_server}/wd/hub/session", json=headers, headers=headers)
     response.raise_for_status()
     session_data = response.json()
 
@@ -190,6 +192,7 @@ def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
     driver.session_id = session_id
 
     return driver
+
 
 
 
