@@ -80,8 +80,5 @@ from .biblioteca_sibe import scraper_biblioteca_sibe
 from .defensa_sag import scraper_defensa_sag
 from .notification_cahfsa_org import scraper_notification_cahfsa_org
 from .gbif import scraper_gbif
-<<<<<<< HEAD
 from .researchgate import scraper_researchgate
-=======
 from .euphresco import scraper_euphresco
->>>>>>> 5e048505a092a32a0d40c3bdc8a5ace09d63949d
