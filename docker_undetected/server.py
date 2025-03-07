@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import undetected_chromedriver as uc
 
 app = Flask(__name__)
@@ -17,15 +17,20 @@ def create_session():
     executor_url = driver.command_executor._url
     session_id = driver.session_id
 
-    capabilities = driver.capabilities
-
-    return jsonify({
+    response = {
         "value": {
             "sessionId": session_id,
-            "capabilities": capabilities,
-            "executor_url": executor_url
+            "executor_url": executor_url,
+            "capabilities": {
+                "browserName": "chrome",
+                "browserVersion": driver.capabilities.get('browserVersion', ''),
+                "platformName": driver.capabilities.get('platformName', ''),
+                "goog:chromeOptions": {}
+            }
         }
-    })
+    }
+
+    return jsonify(response)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=4444)
