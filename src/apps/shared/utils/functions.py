@@ -17,6 +17,7 @@ from selenium_stealth import stealth
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
+from selenium.webdriver.chrome.options import Options
 
 
 USER_AGENTS = [
