@@ -168,7 +168,10 @@ def initialize_driver(retries=3):
             else:
                 raise
 
-def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
+import requests
+from selenium import webdriver
+
+def initialize_driver_cabi(remote_server="http://200.37.23.222:4444"):
     response = requests.post(f"{remote_server}/wd/hub/session")
     session_data = response.json()
 
@@ -179,6 +182,7 @@ def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
     driver.session_id = session_id
 
     return driver
+
 
 def connect_to_mongo():
     logger = get_logger("MONGO_CONNECTION")
