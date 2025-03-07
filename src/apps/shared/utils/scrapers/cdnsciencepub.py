@@ -137,8 +137,8 @@ def scraper_cdnsciencepub(url, sobrenombre):
                                     existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
                                     if len(existing_versions) > 1:
                                         oldest_version = existing_versions[-1]
-                                        file_id = oldest_version._id  
-                                        fs.delete(file_id)  
+                                        file_id = oldest_version._id  # Esto obtiene el ID correcto
+                                        fs.delete(file_id)  # Eliminar la versión más antigua
                                         logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                                 else:
                                     non_scraped_urls.append(href)
