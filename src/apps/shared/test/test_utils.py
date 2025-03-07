@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from django.utils import timezone
-from apps.shared.utils.notifications import check_new_species_and_notify, notify_user_of_new_species
+from apps.shared.services.notifications import check_new_species_and_notify, notify_user_of_new_species
 from src.apps.shared.models.scraperURL import Species, SpeciesSubscription
 from src.apps.users.models import User
 from src.apps.shared.models.scraperURL import ScraperURL
 @pytest.mark.django_db
-@patch("src.apps.shared.utils.notifications.notify_user_of_new_species")
+@patch("src.apps.shared.services.notifications.notify_user_of_new_species")
 def test_check_new_species_and_notify(mock_notify_user):
     user = User.objects.create_user(
         username="newuser",
@@ -40,14 +40,14 @@ def test_check_new_species_and_notify(mock_notify_user):
     assert args[1] == subscription
     assert list(args[2]) == [species]  
 @pytest.mark.django_db
-@patch("src.apps.shared.utils.notifications.notify_user_of_new_species")
+@patch("src.apps.shared.services.notifications.notify_user_of_new_species")
 def test_check_new_species_and_notify_no_new_species(mock_notify_user):
 
     check_new_species_and_notify(["https://example.com"])
 
     mock_notify_user.assert_not_called()
 
-@patch("src.apps.shared.utils.notifications.EmailService.send_email")
+@patch("src.apps.shared.services.notifications.EmailService.send_email")
 def test_notify_user_of_new_species(mock_send_email):
     user = MagicMock(email="user@example.com")
     subscription = MagicMock(scientific_name="Ficus elastica", distribution="South America", hosts="Insects")
