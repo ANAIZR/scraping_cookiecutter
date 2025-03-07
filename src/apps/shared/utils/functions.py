@@ -170,12 +170,9 @@ def initialize_driver_cabi(retries=3):
 
     for attempt in range(retries):
         try:
-            logger.info(
-                f"Intento {attempt + 1} de inicializar el navegador con Selenium."
-            )
-            options = uc.ChromeOptions()
-            options.binary_location = "/usr/bin/google-chrome"
-            #options.add_argument("--headless")
+            logger.info(f"Intento {attempt + 1} de inicializar el navegador en Selenium Server Remoto.")
+
+            options = Options()
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
@@ -186,20 +183,22 @@ def initialize_driver_cabi(retries=3):
             options.add_argument("--start-maximized")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument("--disable-infobars")        
+            options.add_argument("--disable-infobars")
+
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
 
-            driver = uc.Chrome(
-                service=Service(ChromeDriverManager().install()), options=options
+            driver = webdriver.Remote(
+                command_executor="http://100.122.137.82:4444/wd/hub",  # IP de Windows y puerto de Selenium Server
+                options=options
             )
 
             driver.set_page_load_timeout(600)
-            logger.info("Navegador iniciado correctamente con Selenium.")
+            logger.info("✅ Conexión exitosa con Selenium Server en Windows.")
             return driver
         except Exception as e:
-            logger.error(f"Error al iniciar el navegador: {e}")
+            logger.error(f"❌ Error al conectar con Selenium Server en Windows: {e}")
 
             if attempt < retries - 1:
                 time.sleep(5)
