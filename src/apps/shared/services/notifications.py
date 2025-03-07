@@ -2,7 +2,7 @@ from src.apps.shared.models.scraperURL import SpeciesSubscription, Species
 import logging
 from django.utils import timezone
 from datetime import timedelta
-from src.apps.users.utils.services import EmailService
+from src.apps.users.services.email import EmailService
 
 logger = logging.getLogger(__name__)
 
