@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from django.utils import timezone
-from apps.shared.services.notifications import SpeciesNotificationService
+from src.apps.shared.services.notifications import SpeciesNotificationService
 from src.apps.shared.models.scraperURL import Species, SpeciesSubscription
 from src.apps.users.models import User
 from src.apps.shared.models.scraperURL import ScraperURL
