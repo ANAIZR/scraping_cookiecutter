@@ -171,7 +171,7 @@ def initialize_driver(retries=3):
 import requests
 from selenium import webdriver
 
-def initialize_driver_cabi(remote_server="http://100.122.137.82:4444", url="https://www.cabidigitallibrary.org/product/qc"):
+def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
     headers = {
         "Content-Type": "application/json; charset=utf-8"
     }
@@ -182,18 +182,16 @@ def initialize_driver_cabi(remote_server="http://100.122.137.82:4444", url="http
             }
         }
     }
-
-    response = requests.post(f"{remote_server}/wd/hub/session", headers=headers, json=json_body)
+    response = requests.post(f"{remote_server}/wd/hub/session", json=json_body, headers=headers)
     response.raise_for_status()
     session_data = response.json()
-
-    executor_url = f"{remote_server}/wd/hub"
+    
     session_id = session_data['value']['sessionId']
+    # Usamos la URL fija del executor:
+    executor_url = f"{remote_server}/wd/hub"
 
     driver = webdriver.Remote(command_executor=executor_url, desired_capabilities={})
     driver.session_id = session_id
-
-    driver.get("https://www.cabidigitallibrary.org/product/qc")
 
     return driver
 
