@@ -22,7 +22,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from pymongo import MongoClient
 from django.conf import settings
-from ....users.utils.services import EmailService
+from src.apps.users.services.email import EmailService
 from rest_framework.pagination import PageNumberPagination
 
 logger = logging.getLogger(__name__)
