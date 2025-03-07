@@ -16,6 +16,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium_stealth import stealth
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium import webdriver
 from dotenv import load_dotenv
 from selenium.webdriver.chrome.options import Options
 
@@ -168,10 +169,6 @@ def initialize_driver(retries=3):
                 raise
 
 def initialize_driver_cabi(retries=3):
-    """
-    Inicializa el driver apuntando a un Selenium Server Remoto
-    y aplica configuraciones para evitar ser detectado (selenium-stealth).
-    """
     logger = get_logger("INICIALIZANDO EL DRIVER")
 
     for attempt in range(retries):
@@ -199,15 +196,12 @@ def initialize_driver_cabi(retries=3):
 
             driver.set_page_load_timeout(600)
 
-            stealth(
-                driver,
-                languages=["en-US", "en"],
-                vendor="Google Inc.",
-                platform="Win32",
-                webgl_vendor="Intel Inc.",
-                renderer="Intel Iris OpenGL Engine",
-                fix_hairline=True,
-            )
+            driver.execute_script("""
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                window.navigator.chrome = { runtime: {} };
+                Object.defineProperty(navigator, 'languages', {get: () => ['es-ES', 'es']});
+                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            """)
 
             logger.info("✅ Conexión exitosa con Selenium Server en Windows.")
             return driver
@@ -219,7 +213,6 @@ def initialize_driver_cabi(retries=3):
                 time.sleep(5)
             else:
                 raise
-
 def connect_to_mongo():
     logger = get_logger("MONGO_CONNECTION")
     
