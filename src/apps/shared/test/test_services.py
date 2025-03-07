@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.shared.utils.services import WebScraperService, ScraperService, ScraperComparisonService
+from src.apps.shared.services import WebScraperService,OllamaService,   ScraperComparisonService
 @pytest.mark.django_db
 def test_get_expired_urls(mocker):
     mock_queryset = mocker.MagicMock()
@@ -51,10 +51,10 @@ def test_extract_and_save_species(mocker):
     mock_collection = MagicMock()
     mock_collection.find.return_value = [{"_id": "123", "contenido": "test content", "source_url": url}]
 
-    with patch.object(ScraperService, "process_document") as mock_process_document, \
+    with patch.object(OllamaService, "process_document") as mock_process_document, \
          patch("concurrent.futures.ThreadPoolExecutor") as mock_executor:  # 🔹 Cambio aquí
 
-        service = ScraperService()
+        service = OllamaService()
         service.collection = mock_collection  
         mock_executor.return_value.__enter__.return_value.submit.side_effect = lambda func, doc: func(doc)
 
