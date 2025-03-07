@@ -167,13 +167,14 @@ def initialize_driver(retries=3):
             else:
                 raise
 def initialize_driver_cabi(retries=3):
-    logger = get_logger("INICIALIZANDO EL DRIVER")
+    logger = logging.getLogger("INICIALIZANDO EL DRIVER")
 
     for attempt in range(retries):
         try:
-            logger.info(f"Intento {attempt + 1} de inicializar el navegador en Selenium Server Remoto.")
+            logger.info(f"Intento {attempt + 1} de inicializar el navegador en Selenium Server Remoto con undetected_chromedriver.")
 
-            options = Options()
+            # Opciones del driver
+            options = uc.ChromeOptions()
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
@@ -186,17 +187,21 @@ def initialize_driver_cabi(retries=3):
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--disable-infobars")
 
+            # Configurar el user-agent aleatorio
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
 
-            driver = webdriver.Remote(
-                command_executor="http://100.122.137.82:4444/wd/hub",  # IP de Windows y puerto de Selenium Server
-                options=options
+            # Conectar con Selenium Server en Windows
+            driver = uc.Chrome(
+                options=options,
+                use_subprocess=True,
+                browser_executable_path="C:/Program Files/Google/Chrome/Application/chrome.exe"
             )
 
-            driver.set_page_load_timeout(600)
+            driver.get("http://100.122.137.82:4444/wd/hub")  
             logger.info("✅ Conexión exitosa con Selenium Server en Windows.")
+
             return driver
         except Exception as e:
             logger.error(f"❌ Error al conectar con Selenium Server en Windows: {e}")
@@ -205,7 +210,6 @@ def initialize_driver_cabi(retries=3):
                 time.sleep(5)
             else:
                 raise
-
 
 def connect_to_mongo():
     logger = get_logger("MONGO_CONNECTION")
