@@ -16,7 +16,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium_stealth import stealth
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium import webdriver
 from dotenv import load_dotenv
 from selenium.webdriver.chrome.options import Options
 
@@ -167,35 +166,45 @@ def initialize_driver(retries=3):
                 time.sleep(5)
             else:
                 raise
+def initialize_driver_cabi(retries=3):
+    logger = get_logger("INICIALIZANDO EL DRIVER")
 
-import requests
-from selenium import webdriver
-def initialize_driver_cabi(url, remote_server="http://100.122.137.82:4444"):
-    headers = {"Content-Type": "application/json; charset=utf-8"}
-    json_body = {
-        "capabilities": {
-            "alwaysMatch": {"browserName": "chrome"}
-        }
-    }
+    for attempt in range(retries):
+        try:
+            logger.info(f"Intento {attempt + 1} de inicializar el navegador en Selenium Server Remoto.")
 
-    response = requests.post(f"{remote_server}/wd/hub/session", headers=headers, json=json_body)
-    response.raise_for_status()
-    session_data = response.json()
+            options = uc.ChromeOptions()
+            options.add_argument("--disable-gpu")
+            options.add_argument("--allow-insecure-localhost")
+            options.add_argument("--disable-web-security")
+            options.add_argument("--disable-site-isolation-trials")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--start-maximized")
+            options.add_argument("--window-size=1920,1080")
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--disable-infobars")
 
-    executor_url = f"{remote_server}/wd/hub"
-    session_id = session_data['value']['sessionId']
+            random_user_agent = get_random_user_agent()
+            options.add_argument(f"user-agent={random_user_agent}")
+            logger.info(f"Usando User-Agent: {random_user_agent}")
 
-    driver = webdriver.Remote(command_executor=executor_url, desired_capabilities={})
-    driver.session_id = session_id
+            driver = webdriver.Remote(
+                command_executor="http://100.122.137.82:4444/wd/hub", 
+                options=options
+            )
 
-    driver.get(url)  # <-- Añade esto explícitamente
+            driver.set_page_load_timeout(600)
+            logger.info("✅ Conexión exitosa con Selenium Server en Windows.")
+            return driver
+        except Exception as e:
+            logger.error(f"❌ Error al conectar con Selenium Server en Windows: {e}")
 
-    return driver
-
-
-
-
-
+            if attempt < retries - 1:
+                time.sleep(5)
+            else:
+                raise
 
 
 def connect_to_mongo():

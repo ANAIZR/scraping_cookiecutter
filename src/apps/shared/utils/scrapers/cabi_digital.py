@@ -36,13 +36,14 @@ def detect_captcha(driver):
         return False
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = initialize_driver_cabi(url)
+    driver = initialize_driver_cabi()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
     all_scraper=""
 
     try:
+        driver.get(url)
         if login_cabi_scienceconnect(driver):
             print("Login completado, continuando con el scraping...")
     except:
