@@ -173,7 +173,7 @@ def initialize_driver_cabi(retries=3):
         try:
             logger.info(f"Intento {attempt + 1} de inicializar el navegador en Selenium Server Remoto.")
 
-            options = Options()
+            options = uc.ChromeOptions()
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
