@@ -54,7 +54,7 @@ def test_scraper_url_task_failure(mocker):
 
 @pytest.mark.django_db
 def test_check_new_species_task(mocker):
-    mock_check_new_species = mocker.patch("src.apps.shared.utils.tasks.check_new_species_and_notify")
+    mock_check_new_species = mocker.patch("src.apps.shared.tasks.notifications_tasks.check_new_species_and_notify")
 
     urls = ["https://example.com"]
     check_new_species_task(urls)
@@ -95,8 +95,8 @@ def test_scraper_expired_urls_task(mocker):
     mock_scraper_service_instance = mock_scraper_service.return_value
     mock_scraper_service_instance.get_expired_urls.return_value = ["https://example.com"]
 
-    mock_scraper_task = mocker.patch("src.apps.shared.utils.tasks.scraper_url_task.si")
-    mock_chain = mocker.patch("src.apps.shared.utils.tasks.chain")
+    mock_scraper_task = mocker.patch("src.apps.shared.tasks.scraper_tasks.scraper_url_task.si")
+    mock_chain = mocker.patch("src.apps.shared.tasks.chain")
 
     scraper_expired_urls_task()
 

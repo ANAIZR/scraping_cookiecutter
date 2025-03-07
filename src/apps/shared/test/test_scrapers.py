@@ -33,7 +33,7 @@ class TestScraperAPIView(APITestCase):
             mode_scrapeo=1,
         )
 
-    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async") 
+    @patch("src.apps.shared.tasks.scraper_tasks.scraper_url_task.apply_async") 
     @patch("src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS", new_callable=dict) 
     def test_scraper_runs_successfully(self, mock_scraper_functions, mock_apply_async):
         mock_scraper_functions[1] = MagicMock(return_value=Response(
@@ -64,7 +64,7 @@ class TestScraperAPIView(APITestCase):
         response = self.client.post(reverse("scraper_url"), {"url": "https://example.com"})
         assert response.status_code == 403
 
-    @patch("src.apps.shared.utils.tasks.scraper_url_task.apply_async", side_effect=Exception("Error en Celery"))
+    @patch("src.apps.shared.tasks.scraper_tasks.scraper_url_task.apply_async", side_effect=Exception("Error en Celery"))
     def test_scraper_function_raises_exception(self, mock_apply_async):
         response = self.client.post(reverse("scraper_url"), {"url": "https://example.com"})
 
