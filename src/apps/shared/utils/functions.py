@@ -176,13 +176,17 @@ def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
     session_data = response.json()
     print(f"///{session_data}")
 
-    executor_url = session_data['executor_url']
-    session_id = session_data['sessionId']
+    executor_url = session_data["executor_url"]
+    session_id = session_data["sessionId"]
 
-    driver = webdriver.Remote(command_executor=executor_url)
+    print(f"///{executor_url}")
+    print(f"///{session_id}")
+
+    driver = webdriver.Remote(command_executor=executor_url, desired_capabilities={})
     driver.session_id = session_id
 
     return driver
+
 
 
 def connect_to_mongo():
