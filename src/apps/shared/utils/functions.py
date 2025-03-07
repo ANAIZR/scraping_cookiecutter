@@ -172,21 +172,25 @@ import requests
 from selenium import webdriver
 
 def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
-    response = requests.post(f"{remote_server}/wd/hub/session")
+    response = requests.post(f"{remote_server}/wd/hub/session", json={
+        "capabilities": {
+            "alwaysMatch": {
+                "browserName": "chrome"
+            }
+        }
+    })
+
     response.raise_for_status()
     session_data = response.json()
-    print(f"///{session_data}")
 
     executor_url = session_data['value']['executor_url']
     session_id = session_data['value']['sessionId']
-
-    print(f"executor_url: {executor_url}")
-    print(f"session_id: {session_id}")
 
     driver = webdriver.Remote(command_executor=executor_url, desired_capabilities={})
     driver.session_id = session_id
 
     return driver
+
 
 
 
