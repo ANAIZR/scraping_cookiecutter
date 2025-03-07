@@ -15,8 +15,8 @@ def new_session():
     driver = uc.Chrome(options=options)
     driver.set_page_load_timeout(300)
 
+    executor_url = "http://100.122.137.82:4444"
     session_id = driver.session_id
-    executor_url = driver.command_executor._url
 
     return jsonify({"sessionId": session_id, "executor_url": executor_url})
 

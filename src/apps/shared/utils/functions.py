@@ -171,9 +171,10 @@ def initialize_driver(retries=3):
 import requests
 from selenium import webdriver
 
-def initialize_driver_cabi(remote_server="http://200.37.23.222:4444"):
+def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
     response = requests.post(f"{remote_server}/wd/hub/session")
     session_data = response.json()
+    print(f"///{session_data}")
 
     executor_url = session_data['executor_url']
     session_id = session_data['sessionId']
