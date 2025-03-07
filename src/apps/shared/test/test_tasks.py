@@ -14,7 +14,7 @@ from django.utils import timezone
 @pytest.mark.django_db
 def test_scraper_url_task_success(mocker):
     url = "https://example.com"
-    mock_scraper_service = mocker.patch("src.apps.shared.utils.services.WebScraperService")
+    mock_scraper_service = mocker.patch("src.apps.shared.services.WebScraperService")
     mock_scraper_service.return_value.scraper_one_url.return_value = {"data": "Scraped Data"}
     
     scraper_url = ScraperURL.objects.create(
@@ -66,10 +66,10 @@ def test_check_new_species_task(mocker):
 def test_process_scraped_data_task(mocker):
     url = "https://example.com"
 
-    mock_scraper_service = mocker.patch("src.apps.shared.utils.tasks.ScraperService", autospec=True)
+    mock_scraper_service = mocker.patch("src.apps.shared.tasks.ScraperService", autospec=True)
     mock_scraper_service_instance = mock_scraper_service.return_value
 
-    mock_check_notify = mocker.patch("src.apps.shared.utils.tasks.check_new_species_and_notify")
+    mock_check_notify = mocker.patch("src.apps.shared.tasks.check_new_species_and_notify")
 
     process_scraped_data_task(url)
 
@@ -91,7 +91,7 @@ def test_generate_comparison_report_task(mocker):
         assert result["status"] == "changed"
 @pytest.mark.django_db
 def test_scraper_expired_urls_task(mocker):
-    mock_scraper_service = mocker.patch("src.apps.shared.utils.tasks.WebScraperService", autospec=True)
+    mock_scraper_service = mocker.patch("src.apps.shared.utils.services.WebScraperService", autospec=True)
     mock_scraper_service_instance = mock_scraper_service.return_value
     mock_scraper_service_instance.get_expired_urls.return_value = ["https://example.com"]
 
