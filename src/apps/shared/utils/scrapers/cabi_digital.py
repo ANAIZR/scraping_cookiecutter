@@ -8,7 +8,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    initialize_driver,
+    initialize_driver_cabi,
     get_logger,
     connect_to_mongo,
     load_keywords,
@@ -20,23 +20,43 @@ from ..credentials import login_cabi_scienceconnect
 
 logger = get_logger("scraper")
 
+def detect_captcha(driver):
+    try:
+        captcha_checkbox = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='checkbox']"))
+        )
+        print("⚠ CAPTCHA detectado. Intentando resolverlo...")
+
+        driver.execute_script("arguments[0].click();", captcha_checkbox)
+        time.sleep(10)  
+
+        return True
+    except:
+        print("✅ No se detectó CAPTCHA. Continuando con el inicio de sesión.")
+        return False
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = initialize_driver()
+    driver = initialize_driver_cabi()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
     all_scraper=""
 
     try:
+        driver.get(url)
         if login_cabi_scienceconnect(driver):
             print("Login completado, continuando con el scraping...")
     except:
         logger.error("No se encontro el login")
     try:
         driver.get(url)
-        time.sleep(random.uniform(6, 10))
+        time.sleep(random.uniform(100, 120))
+
+        detect_captcha(driver)
+        time.sleep(random.uniform(3, 6))
+        
         logger.info(f"Iniciando scraping para URL: {url}")
+
         collection, fs = connect_to_mongo()
         keywords = load_keywords("plants.txt")
         if not keywords:
@@ -106,7 +126,8 @@ def scraper_cabi_digital(url, sobrenombre):
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
                 continue
-            
+            visited_counts =0
+            max_visits = 5
             while True:
                 try:
                     WebDriverWait(driver, 60).until(
@@ -122,8 +143,7 @@ def scraper_cabi_digital(url, sobrenombre):
                             f"No se encontraron resultados para la palabra clave: {keyword}"
                         )
                         break
-                    visited_counts =0
-                    max_visits = 5
+                    
                     for item in items:
                         if visited_counts>=max_visits:
                             break

@@ -9,8 +9,6 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException,
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
     initialize_driver,
     get_logger,
     connect_to_mongo,
@@ -48,7 +46,6 @@ def scraper_scienceopen(url, sobrenombre):
         
         try:
             collection, fs = connect_to_mongo()
-            main_folder = generate_directory(sobrenombre)
             keywords = load_keywords("plants.txt")
             if not keywords:
                 return Response({"status": "error", "message": "El archivo de palabras clave está vacío o no se pudo cargar."}, status=status.HTTP_400_BAD_REQUEST)

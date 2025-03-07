@@ -10,16 +10,15 @@ from pymongo import MongoClient
 import gridfs
 import requests
 from io import BytesIO
-from rest_framework.response import Response
-from rest_framework import status
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium_stealth import stealth
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium import webdriver
 from dotenv import load_dotenv
-from config.settings.base import PROXIES
+from selenium.webdriver.chrome.options import Options
 
 
 USER_AGENTS = [
@@ -32,14 +31,11 @@ USER_AGENTS = [
 ]
 
 
-OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR", "~/scraping_cookiecutter/files/scrapers"))
-LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR", "~/scraping_cookiecutter/files/logs"))
-LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS", "~/scraping_cookiecutter/src/apps/shared/utils/txt"))
+OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR"))
+LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR"))
+LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS"))
 load_dotenv()
-#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#OUTPUT_DIR = os.path.join(BASE_DIR, "../../../../files/scrapers")
-#LOG_DIR = os.path.join(BASE_DIR, "../../../../files/logs")
-#LOAD_KEYWORDS = os.path.join(BASE_DIR, "../utils/txt")
+
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -106,7 +102,7 @@ def get_logger(name, level=logging.DEBUG, output_dir=LOG_DIR):
 
 def driver_init():
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")  # Usa la nueva implementación de headless
+    options.add_argument("--headless=new")  
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
@@ -114,13 +110,11 @@ def driver_init():
     options.add_argument("--disable-popup-blocking")
     #options.add_argument("--window-size=1920,1080")
     options.add_argument("--start-maximized")
-    # Configura el User-Agent para evitar detección
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"
     options.add_argument(f"user-agent={user_agent}")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-    # Aplicamos selenium-stealth para evitar detección
     stealth(driver,
         languages=["en-US", "en"],
         vendor="Google Inc.",
@@ -155,7 +149,6 @@ def initialize_driver(retries=3):
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--disable-infobars")        
-                      
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
@@ -175,31 +168,55 @@ def initialize_driver(retries=3):
             else:
                 raise
 
+import requests
+from selenium import webdriver
 
-def connect_to_mongo(db_name=None, collection_name=None):
+def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
+    headers = {
+        "Content-Type": "application/json; charset=utf-8"
+    }
+    json_body = {
+        "capabilities": {
+            "alwaysMatch": {
+                "browserName": "chrome"
+            }
+        }
+    }
+    response = requests.post(f"{remote_server}/wd/hub/session", json=json_body, headers=headers)
+    response.raise_for_status()
+    session_data = response.json()
+    
+    session_id = session_data['value']['sessionId']
+    # Usamos la URL fija del executor:
+    executor_url = f"{remote_server}/wd/hub"
+
+    driver = webdriver.Remote(command_executor=executor_url, desired_capabilities={})
+    driver.session_id = session_id
+
+    return driver
+
+
+
+
+
+
+def connect_to_mongo():
     logger = get_logger("MONGO_CONNECTION")
     
     try:
-        # Cargar variables desde el .env
-        MONGO_USER = os.getenv("MONGO_USER","admin")
-        MONGO_PASSWORD = os.getenv("MONGO_PASSWORD","SuperPassword123!")
-        MONGO_HOST = os.getenv("MONGO_HOST", "localhost")  # Default: localhost
-        MONGO_PORT = os.getenv("MONGO_PORT", "27017")  # Default: 27017
-        MONGO_AUTH_SOURCE = os.getenv("MONGO_AUTH_SOURCE", "admin")  # Default: admin
+        MONGO_URI = os.getenv("MONGO_URI")
+        MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
+        MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME")
 
-        db_name = db_name or os.getenv("MONGO_DB_NAME", "scrapping-can")
-        collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME", "collection")
-
-        MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{db_name}?authSource={MONGO_AUTH_SOURCE}"
-
-        logger.info(f"🔗 Conectando a MongoDB en: {MONGO_HOST}:{MONGO_PORT} - DB: {db_name}")
+        if not all([MONGO_URI, MONGO_DB_NAME, MONGO_COLLECTION_NAME]):
+            raise ValueError("⚠️ Faltan variables de entorno en el archivo .env")
 
         client = MongoClient(MONGO_URI)
-        db = client[db_name]
+        db = client[MONGO_DB_NAME]
         fs = gridfs.GridFS(db)
 
-        logger.info(f"✅ Conexión a MongoDB establecida correctamente: {db_name}")
-        return db[collection_name], fs
+        logger.info(f"✅ Conexión a MongoDB establecida correctamente: {MONGO_DB_NAME}")
+        return db[MONGO_COLLECTION_NAME], fs
 
     except Exception as e:
         logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
@@ -209,7 +226,6 @@ def connect_to_mongo(db_name=None, collection_name=None):
 def generate_directory(url, output_dir=OUTPUT_DIR):
     logger = get_logger("GENERANDO DIRECTORIO")
     try:
-        url_hash = hashlib.md5(url.encode()).hexdigest()
         folder_name = (
             url.split("//")[-1].replace("/", "_").replace("?", "_").replace("=", "_")
         )
@@ -359,8 +375,8 @@ def process_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
     try:
         collection,fs = connect_to_mongo()
-        db_name = collection.database.name  # Nombre de la base de datos
-        collection_name = collection.name  # Nombre de la colección
+        db_name = collection.database.name  
+        collection_name = collection.name 
         logger.info(f"✅ Conectado a MongoDB en la base de datos: '{db_name}', colección: '{collection_name}'")
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre)

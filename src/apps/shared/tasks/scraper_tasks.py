@@ -1,17 +1,27 @@
 from celery import shared_task, chain
-from src.apps.shared.utils.services import (
-    WebScraperService,
-    ScraperService,
-    ScraperComparisonService,
-)
+from src.apps.shared.services.scraper import WebScraperService
+from src.apps.shared.services.ollama import OllamaService
+
 from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.shared.utils.notify_change import check_new_species_and_notify
 import logging
 from django.utils import timezone
+from src.apps.shared.tasks.comparison_tasks import generate_comparison_report_task
+from src.apps.shared.tasks.notifications_tasks import check_new_species_task
 
 logger = logging.getLogger(__name__)
 
 from celery import chain
+
+
+@shared_task(bind=True)
+def process_scraped_data_task(self, url):
+    if not url:
+        logger.error("No se recibió una URL válida en process_scraped_data_task")
+        return None
+
+    scraper = OllamaService()
+    scraper.extract_and_save_species(url)
+    return url
 
 @shared_task(bind=True)
 def scraper_url_task(self, url):
@@ -71,72 +81,6 @@ def scraper_url_task(self, url):
         "url": url,
         "data": result if result else "No data scraped"
     }
-
-@shared_task(bind=True)
-def check_new_species_task(self, urls):
-    check_new_species_and_notify(urls)
-
-
-@shared_task(bind=True)
-def process_scraped_data_task(self, url):
-    if not url:
-        logger.error("No se recibió una URL válida en process_scraped_data_task")
-        return None
-
-    scraper = ScraperService()
-    scraper.extract_and_save_species(url)
-    check_new_species_and_notify([url])
-
-    return url
-
-
-@shared_task(bind=True)
-def generate_comparison_report_task(self, url):
-
-    if not url:
-        logger.error(
-            "❌ No se recibió una URL válida en generate_comparison_report_task"
-        )
-        return {"status": "error", "message": "URL inválida"}
-
-    try:
-        comparison_service = ScraperComparisonService()
-        result = comparison_service.get_comparison_for_url(url)
-
-        if result.get("status") == "no_comparison":
-            logger.info(
-                f"🔍 No hay suficientes registros para comparar en la URL: {url}"
-            )
-            return result
-
-        elif result.get("status") == "missing_content":
-            logger.warning(
-                f"⚠️ Uno de los registros de {url} no tiene contenido para comparar."
-            )
-            return result
-
-        elif result.get("status") == "duplicate":
-            logger.info(
-                f"✅ La comparación entre versiones ya existe y no ha cambiado para la URL {url}"
-            )
-            return result
-
-        if result.get("status") == "changed":
-            logger.info(f"📊 Se generó un nuevo reporte de comparación para {url}:")
-            logger.info(f"🔹 Nuevas URLs: {result.get('info_agregada', [])}")
-            logger.info(f"🔸 URLs Eliminadas: {result.get('info_eliminada', [])}")
-            logger.info(
-                f"📌 Estructura cambiada: {result.get('estructura_cambio', False)}"
-            )
-
-        return result
-
-    except Exception as e:
-        logger.error(
-            f"❌ Error en generate_comparison_report_task para {url}: {str(e)}",
-            exc_info=True,
-        )
-        return {"status": "error", "message": f"Error interno: {str(e)}"}
 
 
 @shared_task(bind=True)

@@ -92,7 +92,7 @@ class ScraperURL(CoreModel):
         super().save(*args, **kwargs)
 
         if is_new or self.is_time_expired():
-            from src.apps.shared.utils.tasks import scraper_url_task
+            from src.apps.shared.tasks.scraper_tasks import scraper_url_task
 
             scraper_url_task.apply_async((self.url,), eta=self.get_time_limit())
 
@@ -154,7 +154,7 @@ class SpeciesSubscription(models.Model):
     scientific_name = models.CharField(max_length=255, blank=True, null=True)
     distribution = models.JSONField(
         blank=True, null=True
-    )  # JSON para manejar múltiples valores
+    ) 
     hosts = models.JSONField(blank=True, null=True)  # JSON para múltiples hosts
     name_subscription = models.CharField(max_length=255, blank=False, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -170,7 +170,7 @@ class SpeciesSubscription(models.Model):
         if self.distribution:
             filters.append(
                 f"Distribution: {', '.join(self.distribution)}"
-            )  # Convierte JSON a texto
+            )  
         if self.hosts:
             filters.append(f"Hosts: {', '.join(self.hosts)}")
 

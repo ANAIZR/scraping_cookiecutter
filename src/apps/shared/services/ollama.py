@@ -1,7 +1,5 @@
 from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS, scraper_pdf
-from src.apps.shared.models.scraperURL import Species, ReportComparison
-import logging
+from src.apps.shared.models.scraperURL import Species
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
@@ -10,107 +8,13 @@ from datetime import datetime
 import requests
 import json
 import re
-import inspect
+import logging
 from django.db import transaction
-from django.utils import timezone
-from django.db.models import Q
+
 
 logger = logging.getLogger(__name__)
 
-
-class WebScraperService:
-    def get_expired_urls(self):
-        print("🔍 Primera llamada a filter()")
-        queryset = ScraperURL.objects.filter(is_active=True)
-
-        print("🔍 Segunda llamada a filter()")
-        queryset = queryset.filter(
-            Q(fecha_scraper__lt=datetime.now()) | 
-            Q(fecha_scraper__isnull=True) | 
-            Q(estado_scrapeo="fallido")
-        )
-
-        print("🔍 Llamada a exclude()")
-        queryset = queryset.exclude(estado_scrapeo="en_progreso")
-
-        return queryset.values_list("url", flat=True)
-
-
-    def scraper_one_url(self, url, sobrenombre):
-        try:
-            logger.info(f"Intentando obtener URL {url} desde la base de datos")
-            scraper_url = ScraperURL.objects.get(url=url)
-            mode_scrapeo = scraper_url.mode_scrapeo
-
-            scraper_function = SCRAPER_FUNCTIONS.get(mode_scrapeo)
-            if not scraper_function:
-                error_msg = f"Modo de scrapeo {mode_scrapeo} no registrado en SCRAPER_FUNCTIONS"
-                scraper_url.estado_scrapeo = "fallido"
-                scraper_url.error_scrapeo = error_msg
-                scraper_url.fecha_scraper = timezone.now()
-                scraper_url.save()
-                logger.error(error_msg)
-                return {"error": error_msg}
-
-            if mode_scrapeo == 7:
-                parameters = scraper_url.parameters or {}
-                start_page = parameters.get("start_page", 1)
-                end_page = parameters.get("end_page", None)
-                logger.info(f"Procesando PDF: {url}, páginas {start_page} - {end_page}")
-
-                response = scraper_pdf(url, scraper_url.sobrenombre, start_page, end_page)
-
-                if not isinstance(response, dict):
-                    error_msg = f"Respuesta no serializable en scraper_pdf. Tipo recibido: {type(response)}"
-                    scraper_url.estado_scrapeo = "fallido"
-                    scraper_url.error_scrapeo = error_msg
-                    scraper_url.fecha_scraper = timezone.now()
-                    scraper_url.save()
-                    return {"error": error_msg}
-
-                scraper_url.estado_scrapeo = "exitoso"
-                scraper_url.error_scrapeo = ""
-                scraper_url.fecha_scraper = timezone.now()
-                scraper_url.save()
-                return response
-
-            logger.info(f"Ejecutando scraper para {url} con método {mode_scrapeo}")
-
-            params = inspect.signature(scraper_function).parameters
-            response = scraper_function(url, sobrenombre) if len(params) == 2 else scraper_function(url)
-
-            if not response or "error" in response:
-                scraper_url.estado_scrapeo = "fallido"
-                scraper_url.error_scrapeo = response.get("error", "Scraping no devolvió datos válidos.")
-            else:
-                scraper_url.estado_scrapeo = "exitoso"
-                scraper_url.error_scrapeo = ""
-
-            scraper_url.fecha_scraper = timezone.now()
-            scraper_url.save()
-            return response
-
-        except ScraperURL.DoesNotExist:
-            error_msg = f"La URL {url} no se encuentra en la base de datos."
-            logger.error(error_msg)
-            return {"error": error_msg}
-
-        except Exception as e:
-            error_msg = f"Error al ejecutar scraper para {url}: {str(e)}"
-
-            # ✅ Asegurar que `scraper_url` existe antes de modificarlo
-            if 'scraper_url' in locals():
-                scraper_url.estado_scrapeo = "fallido"
-                scraper_url.error_scrapeo = error_msg
-                scraper_url.fecha_scraper = timezone.now()
-                scraper_url.save()
-
-            logger.error(error_msg)
-            return {"error": error_msg}
-
-
-
-class ScraperService:
+class OllamaService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
@@ -120,7 +24,6 @@ class ScraperService:
         documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))
 
         if not documents:
-            logger.info("No hay documentos pendientes de procesar.")
             return
 
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -169,7 +72,11 @@ class ScraperService:
 
     def text_to_json(self, content, source_url, url):
         prompt = f"""
-        Organiza el siguiente contenido en formato JSON con la siguiente estructura:
+        Organiza el siguiente contenido en **formato JSON**, pero 
+        **cada campo que contenga múltiples valores debe estar separado por comas dentro de un string, en lugar de usar un array JSON**.
+        **Cada campo con múltiples valores debe ser un string separado por comas**, en lugar de un array JSON.
+        **Las secciones `prevencion_control` e `impacto` deben mantenerse como objetos anidados con sus claves correspondientes.**
+        **Si un campo no tiene información, usa `""`.**
         **Contenido:**
         {content}
         **Estructura esperada en JSON:**
@@ -249,8 +156,6 @@ class ScraperService:
             try:
                 parsed_json = json.loads(json_text)
                 print("✅ JSON correctamente extraído:", parsed_json)
-
-                # Asegurar que devuelve un diccionario y no una cadena de texto
                 if isinstance(parsed_json, dict):
                     return parsed_json
                 else:
@@ -268,9 +173,7 @@ class ScraperService:
     
     def save_species_to_postgres(self, structured_data, source_url, url, mongo_id, batch_size=250):
         try:
-            # Convertir strings en listas JSON válidas
             def ensure_list(value):
-                """Convierte strings JSON en listas reales y asegura que el valor sea una lista."""
                 if isinstance(value, str):
                     try:
                         parsed_value = json.loads(value)
@@ -278,18 +181,17 @@ class ScraperService:
                             return [parsed_value]
                         return parsed_value
                     except json.JSONDecodeError:
-                        return [value]  # Si falla la conversión, guarda como lista con un solo valor
+                        return [value]  
                 return value if isinstance(value, list) else []
 
             def ensure_dict(value):
-                """Convierte strings JSON en diccionarios reales y asegura que el valor sea un diccionario."""
                 if isinstance(value, str):
                     try:
                         parsed_value = json.loads(value)
                         if isinstance(parsed_value, dict):
                             return parsed_value
                     except json.JSONDecodeError:
-                        return {}  # Si falla la conversión, devuelve un diccionario vacío
+                        return {}  
                 return value if isinstance(value, dict) else {}
 
             with transaction.atomic():
@@ -321,106 +223,6 @@ class ScraperService:
 
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
-
-
-class ScraperComparisonService:
-    def __init__(self):
-        self.client = MongoClient(settings.MONGO_URI)
-        self.db = self.client[settings.MONGO_DB_NAME]
-        self.collection = self.db["collection"]
-
-    def get_comparison_for_url(self, url):
-
-        documents = list(self.collection.find({"url": url}).sort("scraping_date", -1))
-
-        if len(documents) < 2:
-            logger.info(f"No hay suficientes versiones de la URL {url} para comparar.")
-            return {
-                "status": "no_comparison",
-                "message": "Menos de dos registros encontrados.",
-            }
-
-        doc1, doc2 = documents[:2]
-        object_id1, object_id2 = str(doc1["_id"]), str(doc2["_id"])
-
-        existing_report = ReportComparison.objects.filter(scraper_source__url=url).first()
-
-        if existing_report and existing_report.object_id1 == object_id1 and existing_report.object_id2 == object_id2:
-            logger.info(f"La comparación entre {object_id1} y {object_id2} ya existe.")
-            return {"status": "duplicate", "message": "La comparación ya fue realizada anteriormente."}
-
-        return self.compare_and_save(url, doc1, doc2)
-
-    def compare_and_save(self, url, doc1, doc2):
-
-        object_id1, object_id2 = str(doc1["_id"]), str(doc2["_id"])
-        content1, content2 = doc1.get("contenido", ""), doc2.get("contenido", "")
-
-        if not content1 or not content2:
-            logger.warning(f"Uno de los documentos ({object_id1}, {object_id2}) no tiene contenido.")
-            return {"status": "missing_content", "message": "Uno de los registros no tiene contenido."}
-
-        comparison_result = self.generate_comparison(content1, content2)
-
-        if comparison_result and comparison_result.get("has_changes", False):
-            self.save_or_update_comparison_to_postgres(url, object_id1, object_id2, comparison_result)
-            return {"status": "changed", "message": "Se detectaron cambios en la comparación."}
-
-        return {"status": "no_changes", "message": "No se detectaron cambios en la comparación."}
-
-    def generate_comparison(self, content1, content2):
-
-        urls1 = self.extract_urls(content1)
-        urls2 = self.extract_urls(content2)
-
-        new_urls = list(set(urls2) - set(urls1))
-        removed_urls = list(set(urls1) - set(urls2))
-
-        has_changes = bool(new_urls or removed_urls)
-
-        return {
-            "info_agregada": new_urls,
-            "info_eliminada": removed_urls,
-            "estructura_cambio": has_changes
-        }
-
-    def extract_urls(self, content):
-        """
-        Extrae las URLs de un reporte de scraping.
-        """
-        scraped_urls = []
-        lines = content.split("\n")
-        scraping_section = False
-
-        for line in lines:
-            line = line.strip()
-            if "Enlaces scrapeados:" in line:
-                scraping_section = True
-                continue
-            elif "Enlaces no procesados:" in line:
-                break
-
-            if scraping_section and line:
-                scraped_urls.append(line)
-
-        return scraped_urls
-
-    def save_or_update_comparison_to_postgres(self, url, object_id1, object_id2, comparison_result):
-
-        scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
-
-        ReportComparison.objects.update_or_create(
-            scraper_source=scraper_source,
-            object_id1=object_id1,
-            object_id2=object_id2,
-            defaults={
-                "info_agregada": json.dumps(comparison_result["info_agregada"]),
-                "info_eliminada": json.dumps(comparison_result["info_eliminada"]),
-                "estructura_cambio": comparison_result["estructura_cambio"]
-            }
-        )
-        logger.info(f"Comparación guardada para la URL {url}.")
-
 
 def datos_son_validos(datos, min_campos=2):
     print("🔍 Evaluando JSON:", datos)

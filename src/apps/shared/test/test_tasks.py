@@ -74,20 +74,15 @@ def test_check_new_species_task(mocker):
 def test_process_scraped_data_task(mocker):
     url = "https://example.com"
 
-    # 🔹 Mock de `ScraperService`
     mock_scraper_service = mocker.patch("src.apps.shared.utils.tasks.ScraperService", autospec=True)
     mock_scraper_service_instance = mock_scraper_service.return_value
 
-    # 🔹 Mock de `check_new_species_and_notify`
     mock_check_notify = mocker.patch("src.apps.shared.utils.tasks.check_new_species_and_notify")
 
-    # 🔹 Ejecutar la tarea
     process_scraped_data_task(url)
 
-    # ✅ Verificar que `extract_and_save_species` fue llamado correctamente
     mock_scraper_service_instance.extract_and_save_species.assert_called_once_with(url)
 
-    # ✅ Verificar que `check_new_species_and_notify` fue llamado con la lista de URLs
     mock_check_notify.assert_called_once_with([url])
 
 @pytest.mark.django_db
@@ -104,19 +99,15 @@ def test_generate_comparison_report_task(mocker):
         assert result["status"] == "changed"
 @pytest.mark.django_db
 def test_scraper_expired_urls_task(mocker):
-    # 🔹 Ajuste en el patch de `WebScraperService`
     mock_scraper_service = mocker.patch("src.apps.shared.utils.tasks.WebScraperService", autospec=True)
     mock_scraper_service_instance = mock_scraper_service.return_value
     mock_scraper_service_instance.get_expired_urls.return_value = ["https://example.com"]
 
-    # Mock de Celery tasks
     mock_scraper_task = mocker.patch("src.apps.shared.utils.tasks.scraper_url_task.si")
     mock_chain = mocker.patch("src.apps.shared.utils.tasks.chain")
 
-    # Ejecutar la tarea
     scraper_expired_urls_task()
 
-    # Verificar llamadas esperadas
     mock_scraper_service_instance.get_expired_urls.assert_called_once()
     mock_scraper_task.assert_called_once_with("https://example.com")
     mock_chain.assert_called()
