@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from src.apps.users.api.serializers import PasswordResetRequestSerializer, PasswordResetSerializer
-from src.apps.users.utils.services import UserService
+from src.apps.users.services.user import UserService
 def test_password_reset_request_serializer():
     data = {"email": "test@example.com"}
     serializer = PasswordResetRequestSerializer(data=data)
