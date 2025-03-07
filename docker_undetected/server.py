@@ -3,8 +3,10 @@ import undetected_chromedriver as uc
 
 app = Flask(__name__)
 
+REMOTE_SERVER = "http://100.122.137.82:4444"
+
 @app.route('/wd/hub/session', methods=['POST'])
-def new_session():
+def create_session():
     options = uc.ChromeOptions()
     options.headless = True
     options.add_argument('--no-sandbox')
@@ -14,12 +16,7 @@ def new_session():
     driver = uc.Chrome(options=options)
     driver.set_page_load_timeout(300)
 
-    response_data = {
-        "sessionId": driver.session_id,
-        "executor_url": driver.command_executor._url
-    }
+    executor_url = f"{REMOTE_SERVER}/wd/hub"
+    session_id = driver.session_id
 
-    return jsonify(response_data)
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=4444)
+    return jsonify({"value": {"sessionId": session_id, "executor_url": executor_url}})
