@@ -166,38 +166,52 @@ def initialize_driver(retries=3):
                 time.sleep(5)
             else:
                 raise
+
 def initialize_driver_cabi(retries=3):
+    """
+    Inicializa el driver apuntando a un Selenium Server Remoto
+    y aplica configuraciones para evitar ser detectado (selenium-stealth).
+    """
     logger = get_logger("INICIALIZANDO EL DRIVER")
 
     for attempt in range(retries):
         try:
             logger.info(f"Intento {attempt + 1} de inicializar el navegador en Selenium Server Remoto.")
 
-            options = uc.ChromeOptions()
+            options = webdriver.ChromeOptions()
+            options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--disable-gpu")
-            options.add_argument("--allow-insecure-localhost")
-            options.add_argument("--disable-web-security")
-            options.add_argument("--disable-site-isolation-trials")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-popup-blocking")
             options.add_argument("--start-maximized")
-            options.add_argument("--window-size=1920,1080")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument("--disable-infobars")
+            options.add_argument("--ignore-certificate-errors")
+            options.add_argument("--allow-running-insecure-content")
+            options.add_argument("--disable-web-security")
 
-            random_user_agent = get_random_user_agent()
-            options.add_argument(f"user-agent={random_user_agent}")
-            logger.info(f"Usando User-Agent: {random_user_agent}")
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"
+            options.add_argument(f"user-agent={user_agent}")
 
             driver = webdriver.Remote(
-                command_executor="http://100.122.137.82:4444/wd/hub",  # IP de Windows y puerto de Selenium Server
+                command_executor="http://100.122.137.82:4444/wd/hub",
                 options=options
             )
 
             driver.set_page_load_timeout(600)
+
+            stealth(
+                driver,
+                languages=["en-US", "en"],
+                vendor="Google Inc.",
+                platform="Win32",
+                webgl_vendor="Intel Inc.",
+                renderer="Intel Iris OpenGL Engine",
+                fix_hairline=True,
+            )
+
             logger.info("✅ Conexión exitosa con Selenium Server en Windows.")
             return driver
+
         except Exception as e:
             logger.error(f"❌ Error al conectar con Selenium Server en Windows: {e}")
 
@@ -205,7 +219,6 @@ def initialize_driver_cabi(retries=3):
                 time.sleep(5)
             else:
                 raise
-
 
 def connect_to_mongo():
     logger = get_logger("MONGO_CONNECTION")

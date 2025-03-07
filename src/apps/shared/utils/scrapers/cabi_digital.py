@@ -20,6 +20,20 @@ from ..credentials import login_cabi_scienceconnect
 
 logger = get_logger("scraper")
 
+def detect_captcha(driver):
+    try:
+        captcha_checkbox = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='checkbox']"))
+        )
+        print("⚠ CAPTCHA detectado. Intentando resolverlo...")
+
+        driver.execute_script("arguments[0].click();", captcha_checkbox)
+        time.sleep(10)  
+
+        return True
+    except:
+        print("✅ No se detectó CAPTCHA. Continuando con el inicio de sesión.")
+        return False
 
 def scraper_cabi_digital(url, sobrenombre):
     driver = initialize_driver_cabi()
@@ -35,8 +49,13 @@ def scraper_cabi_digital(url, sobrenombre):
         logger.error("No se encontro el login")
     try:
         driver.get(url)
-        time.sleep(random.uniform(6, 10))
+        time.sleep(random.uniform(100, 120))
+
+        detect_captcha(driver)
+        time.sleep(random.uniform(3, 6))
+        
         logger.info(f"Iniciando scraping para URL: {url}")
+        
         collection, fs = connect_to_mongo()
         keywords = load_keywords("plants.txt")
         if not keywords:
