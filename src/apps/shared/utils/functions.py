@@ -168,51 +168,18 @@ def initialize_driver(retries=3):
             else:
                 raise
 
-def initialize_driver_cabi(retries=3):
-    logger = get_logger("INICIALIZANDO EL DRIVER")
+def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
+    response = requests.post(f"{remote_server}/wd/hub/session")
+    session_data = response.json()
 
-    for attempt in range(retries):
-        try:
-            logger.info(f"Intento {attempt + 1} de inicializar el navegador en Selenium Server Remoto.")
+    executor_url = session_data['executor_url']
+    session_id = session_data['sessionId']
 
-            options = webdriver.ChromeOptions()
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-popup-blocking")
-            options.add_argument("--start-maximized")
-            options.add_argument("--ignore-certificate-errors")
-            options.add_argument("--allow-running-insecure-content")
-            options.add_argument("--disable-web-security")
+    driver = webdriver.Remote(command_executor=executor_url)
+    driver.session_id = session_id
 
-            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"
-            options.add_argument(f"user-agent={user_agent}")
+    return driver
 
-            driver = webdriver.Remote(
-                command_executor="http://100.122.137.82:4444/wd/hub",
-                options=options
-            )
-
-            driver.set_page_load_timeout(600)
-
-            driver.execute_script("""
-                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-                window.navigator.chrome = { runtime: {} };
-                Object.defineProperty(navigator, 'languages', {get: () => ['es-ES', 'es']});
-                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
-            """)
-
-            logger.info("✅ Conexión exitosa con Selenium Server en Windows.")
-            return driver
-
-        except Exception as e:
-            logger.error(f"❌ Error al conectar con Selenium Server en Windows: {e}")
-
-            if attempt < retries - 1:
-                time.sleep(5)
-            else:
-                raise
 def connect_to_mongo():
     logger = get_logger("MONGO_CONNECTION")
     
