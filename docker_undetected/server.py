@@ -14,13 +14,11 @@ def create_session():
     driver = uc.Chrome(options=options)
     driver.set_page_load_timeout(300)
 
-    executor_url = driver.command_executor._url
     session_id = driver.session_id
 
     response = {
         "value": {
             "sessionId": session_id,
-            "executor_url": executor_url,
             "capabilities": {
                 "browserName": "chrome",
                 "browserVersion": driver.capabilities.get('browserVersion', ''),

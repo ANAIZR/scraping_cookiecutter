@@ -175,7 +175,6 @@ def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
     headers = {
         "Content-Type": "application/json; charset=utf-8"
     }
-
     json_body = {
         "capabilities": {
             "alwaysMatch": {
@@ -183,24 +182,19 @@ def initialize_driver_cabi(remote_server="http://100.122.137.82:4444"):
             }
         }
     }
-
     response = requests.post(f"{remote_server}/wd/hub/session", json=json_body, headers=headers)
     response.raise_for_status()
     session_data = response.json()
-
-    executor_url = session_data['value']['executor_url']
+    
     session_id = session_data['value']['sessionId']
+    # Usamos la URL fija del executor:
+    executor_url = f"{remote_server}/wd/hub"
 
-    capabilities = {
-        "browserName": "chrome",
-        "browserVersion": session_data['value']['capabilities']['browserVersion'],
-        "platformName": session_data['value']['capabilities'].get('platformName', '')
-    }
-
-    driver = webdriver.Remote(command_executor=executor_url, desired_capabilities=capabilities)
+    driver = webdriver.Remote(command_executor=executor_url, desired_capabilities={})
     driver.session_id = session_id
 
     return driver
+
 
 
 

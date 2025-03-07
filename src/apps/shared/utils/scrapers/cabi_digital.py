@@ -43,6 +43,7 @@ def scraper_cabi_digital(url, sobrenombre):
     all_scraper=""
 
     try:
+        driver.get(url)
         if login_cabi_scienceconnect(driver):
             print("Login completado, continuando con el scraping...")
     except:
@@ -55,7 +56,7 @@ def scraper_cabi_digital(url, sobrenombre):
         time.sleep(random.uniform(3, 6))
         
         logger.info(f"Iniciando scraping para URL: {url}")
-        
+
         collection, fs = connect_to_mongo()
         keywords = load_keywords("plants.txt")
         if not keywords:
