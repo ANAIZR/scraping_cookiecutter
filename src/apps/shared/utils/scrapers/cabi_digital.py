@@ -8,7 +8,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    initialize_driver,
+    initialize_driver_cabi,
     get_logger,
     connect_to_mongo,
     load_keywords,
@@ -22,7 +22,7 @@ logger = get_logger("scraper")
 
 
 def scraper_cabi_digital(url, sobrenombre):
-    driver = initialize_driver()
+    driver = initialize_driver_cabi()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
@@ -106,7 +106,8 @@ def scraper_cabi_digital(url, sobrenombre):
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
                 continue
-            
+            visited_counts =0
+            max_visits = 5
             while True:
                 try:
                     WebDriverWait(driver, 60).until(
@@ -122,8 +123,7 @@ def scraper_cabi_digital(url, sobrenombre):
                             f"No se encontraron resultados para la palabra clave: {keyword}"
                         )
                         break
-                    visited_counts =0
-                    max_visits = 5
+                    
                     for item in items:
                         if visited_counts>=max_visits:
                             break
