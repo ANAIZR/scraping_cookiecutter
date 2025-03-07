@@ -37,6 +37,8 @@ def detect_captcha(driver):
 
 def scraper_cabi_digital(url, sobrenombre):
     driver = initialize_driver_cabi()
+
+    
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
