@@ -2,10 +2,10 @@ from rest_framework import serializers
 from src.apps.users.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from src.apps.users.utils.services import UserService
+from src.apps.users.services.user import UserService
 import logging
 from django.db import transaction
-from src.apps.users.utils.tasks import send_welcome_email_task, update_system_role_task, restore_user_task, soft_delete_user_task
+from src.apps.users.tasks import send_welcome_email_task, update_system_role_task, restore_user_task, soft_delete_user_task
 from django.contrib.auth.hashers import check_password
 
 logger = logging.getLogger(__name__)
