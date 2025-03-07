@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch
 from rest_framework.test import APIClient
 from src.apps.users.models import User
-from src.apps.users.utils.tasks import  soft_delete_user_task
-from src.apps.users.utils.services import UserService
+from src.apps.users.tasks.user_task import  soft_delete_user_task
+from src.apps.users.services.user import UserService
 from src.apps.users.api.serializers import UsuarioGETSerializer, UsuarioPOSTSerializer
 @pytest.fixture
 def api_client():
