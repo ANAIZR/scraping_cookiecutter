@@ -1,4 +1,4 @@
-from src.apps.shared.models.scraperURL import ScraperURL
+from apps.shared.models.urls import ScraperURL
 from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS, scraper_pdf
 import logging
 from datetime import datetime

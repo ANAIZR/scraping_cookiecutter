@@ -16,7 +16,7 @@ class TestScraperTasks:
 
     @pytest.fixture
     def mock_scraper_url_model(self, mocker):
-        return mocker.patch('src.apps.shared.models.scraperURL.ScraperURL.objects')
+        return mocker.patch('src.apps.shared.models.ScraperURL.objects')
 
     def test_process_scraped_data_task(self, mock_ollama_service):
         mock_instance = mock_ollama_service.return_value

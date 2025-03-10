@@ -1,5 +1,5 @@
-from src.apps.shared.models.scraperURL import ScraperURL
-from src.apps.shared.models.scraperURL import Species
+from apps.shared.models.urls import ScraperURL
+from apps.shared.models.species import Species
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings

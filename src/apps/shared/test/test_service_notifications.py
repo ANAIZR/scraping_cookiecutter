@@ -12,12 +12,12 @@ class TestSpeciesNotificationService:
 
     @pytest.fixture
     def mock_species(self):
-        with patch('src.apps.shared.models.scraperURL.Species.objects') as mock:
+        with patch('src.apps.shared.models.Species.objects') as mock:
             yield mock
 
     @pytest.fixture
     def mock_subscription(self):
-        with patch('src.apps.shared.models.scraperURL.SpeciesSubscription.objects') as mock:
+        with patch('src.apps.shared.models.SpeciesSubscription.objects') as mock:
             yield mock
 
     def test_check_new_species_and_notify_no_new_species(self, mock_species, mock_subscription, mock_email_service):

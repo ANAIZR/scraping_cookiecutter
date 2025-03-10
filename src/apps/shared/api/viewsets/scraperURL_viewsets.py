@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from ...models.scraperURL import (
+from ...models.species import (
     ScraperURL,
     Species,
     ReportComparison,
@@ -15,7 +15,8 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from src.apps.shared.models.scraperURL import ScraperURL, ReportComparison
+from apps.shared.models.species import  ReportComparison
+from apps.shared.models.urls import ScraperURL
 import logging
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated

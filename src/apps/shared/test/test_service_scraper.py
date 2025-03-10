@@ -7,7 +7,7 @@ class TestWebScraperService:
 
     @pytest.fixture
     def mock_scraper_url(self, mocker):
-        return mocker.patch('src.apps.shared.models.scraperURL.ScraperURL.objects')
+        return mocker.patch('src.apps.shared.models.ScraperURL.objects')
 
     @pytest.fixture
     def mock_scraper_functions(self, mocker):

@@ -13,11 +13,11 @@ class TestScraperComparisonService:
 
     @pytest.fixture
     def mock_report_comparison(self, mocker):
-        return mocker.patch('src.apps.shared.models.scraperURL.ReportComparison.objects')
+        return mocker.patch('src.apps.shared.models.ReportComparison.objects')
 
     @pytest.fixture
     def mock_scraper_url(self, mocker):
-        return mocker.patch('src.apps.shared.models.scraperURL.ScraperURL.objects')
+        return mocker.patch('src.apps.shared.models.ScraperURL.objects')
 
     def test_get_comparison_for_url_no_documents(self, mock_mongo_collection):
         mock_mongo_collection.find.return_value.sort.return_value = []
