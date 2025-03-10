@@ -1,7 +1,5 @@
 from src.apps.shared.models.urls import ScraperURL
 from src.apps.shared.models.species import Species
-import concurrent
-from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
@@ -9,69 +7,82 @@ import requests
 import json
 import re
 import logging
+from bson.objectid import ObjectId
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
-class OllamaService:
+class OllamaCabiService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
         self.collection = self.db["fs.files"]
+        self.cabi_url = "https://www.cabidigitallibrary.org/product/qc"  
 
-    def extract_and_save_species(self, url):
+    def extract_and_save_species(self):
         """
-        Busca y procesa documentos en MongoDB que coincidan con la URL dada.
+        Busca y procesa todos los documentos pendientes de CABI en MongoDB.
         """
-        documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))
+        documents = list(self.collection.find({"url": self.cabi_url, "processed": {"$ne": True}}))
 
         if not documents:
-            logger.info(f"🚫 No hay documentos pendientes para {url}.")
+            logger.info(f"🚫 No hay documentos pendientes de procesar para CABI ({self.cabi_url}).")
             return
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(self.process_document, doc): doc for doc in documents}
+        for document in documents:
+            try:
+                self.process_document(document["_id"])
+            except Exception as e:
+                logger.error(f"❌ Error procesando documento CABI: {e}")
 
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    future.result()
-                except Exception as e:
-                    logger.error(f"❌ Error procesando documento {futures[future]}: {e}")
-
-    def process_document(self, doc):
+    def process_document(self, mongo_id):
         """
-        Procesa un documento de MongoDB, convierte su contenido a JSON estructurado
-        y lo guarda en PostgreSQL.
+        Procesa un solo documento de CABI en MongoDB basado en `mongo_id`.
         """
-        content = doc.get("contenido", "")
-        source_url = doc.get("source_url", "")
-        mongo_id = doc["_id"]
+        try:
+            document = self.collection.find_one({"_id": ObjectId(mongo_id)})
 
-        if not content:
-            logger.warning(f"🚫 Documento {mongo_id} no tiene contenido.")
-            return
+            if not document:
+                logger.warning(f"🚫 No se encontró el documento con ID {mongo_id} en MongoDB.")
+                return
 
-        structured_data = self.text_to_json(content, source_url, doc.get("url", ""))
+            content = document.get("contenido", "")
+            source_url = document.get("source_url", "")
 
-        if not isinstance(structured_data, dict):
-            logger.warning(f"❌ JSON inválido para {mongo_id}, no es un diccionario")
-            return
+            if not content:
+                logger.warning(f"🚫 Documento {mongo_id} no tiene contenido.")
+                return
 
-        if datos_son_validos(structured_data):
-            self.save_species_to_postgres(structured_data, source_url, doc.get("url", ""), mongo_id)
+            # Verificar si el documento ya fue procesado
+            existing_doc = self.collection.find_one({"_id": ObjectId(mongo_id), "processed": True})
+            if existing_doc:
+                logger.info(f"📌 Documento {mongo_id} ya fue procesado. Se ignora.")
+                return
 
-            # ✅ Marcar documento como procesado en MongoDB
-            self.collection.update_one(
-                {"_id": mongo_id},
-                {"$set": {"processed": True, "processed_at": datetime.utcnow()}},
-            )
-            logger.info(f"✅ Procesado y guardado en PostgreSQL: {mongo_id}")
-        else:
-            logger.warning(f"⚠️ Datos vacíos para {mongo_id}, no se guardan en PostgreSQL.")
+            structured_data = self.text_to_json(content, source_url, self.cabi_url)
+
+            if not isinstance(structured_data, dict):
+                logger.warning(f"❌ JSON inválido para {mongo_id}, no es un diccionario")
+                return
+
+            if datos_son_validos(structured_data):
+                self.save_species_to_postgres(structured_data, source_url, self.cabi_url, mongo_id)
+
+                # ✅ Marcar el documento como procesado
+                self.collection.update_one(
+                    {"_id": ObjectId(mongo_id)},
+                    {"$set": {"processed": True, "processed_at": datetime.utcnow()}},
+                )
+                logger.info(f"✅ Procesado y guardado en PostgreSQL: {mongo_id}")
+            else:
+                logger.warning(f"⚠️ Datos vacíos para {mongo_id}, no se guardan en PostgreSQL.")
+
+        except Exception as e:
+            logger.error(f"🚨 Error procesando documento CABI {mongo_id}: {e}")
 
     def text_to_json(self, content, source_url, url):
         """
-        Convierte el contenido en JSON estructurado utilizando Ollama.
+        Envía el contenido a Ollama para conversión a JSON.
         """
         prompt = f"""
         Organiza el siguiente contenido en **formato JSON**, pero 
@@ -83,48 +94,28 @@ class OllamaService:
         {content}
         **Estructura esperada en JSON:** 
 
-        {{
-          "nombre_cientifico": "",
-          "nombres_comunes": "",
-          "sinonimos": "",
-          "descripcion_invasividad": "",
-          "distribucion": "",
-          "impacto": {{"Económico": "", "Ambiental": "", "Social": ""}},
-          "habitat": "",
-          "ciclo_vida": "",
-          "reproduccion": "",
-          "hospedantes": "",
-          "sintomas": "",
-          "organos_afectados": "",
-          "condiciones_ambientales": "",
-          "prevencion_control": {{"Prevención": "", "Control": ""}},
-          "usos": "",
-          "url": "{source_url}",
-          "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-          "fuente": "{url}"
-        }}
+        {json.dumps({
+            "nombre_cientifico": "",
+            "nombres_comunes": "",
+            "sinonimos": "",
+            "descripcion_invasividad": "",
+            "distribucion": "",
+            "impacto": {"Económico": "", "Ambiental": "", "Social": ""},
+            "habitat": "",
+            "ciclo_vida": "",
+            "reproduccion": "",
+            "hospedantes": "",
+            "sintomas": "",
+            "organos_afectados": "",
+            "condiciones_ambientales": "",
+            "prevencion_control": {"Prevención": "", "Control": ""},
+            "usos": "",
+            "url": source_url,
+            "hora": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "fuente": url
+        }, indent=2)}
 
-        **Instrucciones:**
-        Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
-         **No uses comillas triples , ni bloques de código (`'''`).**
-        - **Asegúrate de que el JSON devuelto tenga llaves de apertura y cierre correctamente.**
-
-        1. Extrae el nombre científico y los nombres comunes de la especie.
-        2. Lista los sinónimos científicos si están disponibles.
-        3. Proporciona una descripción de la invasividad de la especie.
-        4. Identifica los países o regiones donde está distribuida.
-        5. Extrae información sobre impacto económico, ambiental y social.
-        6. Describe el hábitat donde se encuentra.
-        7. Explica el ciclo de vida y los métodos de reproducción.
-        8. Lista los hospedantes afectados por la especie.
-        9. Describe los síntomas y los órganos afectados en los hospedantes.
-        10. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
-        11. Extrae información sobre métodos de prevención y control.
-        12. Lista los usos conocidos de la especie.
-        13. Usa la hora actual para completar el campo "hora".
-            Devuelve solo el JSON con los datos extraídos, sin texto adicional.
-        14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
-        15. En descripcion pones algo corto de 500 palabras acerca de que trataba el contentido
+        **Instrucciones:** Devuelve solo el JSON sin texto adicional.
         """
 
         response = requests.post(
@@ -140,21 +131,18 @@ class OllamaService:
                     json_line = json.loads(line.decode("utf-8"))
                     full_response += json_line.get("message", {}).get("content", "")
                 except json.JSONDecodeError:
-                    print("❌ Error al decodificar JSON:", line)
-
-        print("🔍 Respuesta completa de Ollama:", full_response)
+                    logger.error("❌ Error al decodificar JSON de Ollama")
 
         match = re.search(r"\{.*\}", full_response, re.DOTALL)
         if match:
             json_text = match.group(0)
             try:
-                parsed_json = json.loads(json_text)
-                return parsed_json if isinstance(parsed_json, dict) else None
-            except json.JSONDecodeError as e:
-                print(f"❌ Error al convertir JSON: {e}")
+                return json.loads(json_text)
+            except json.JSONDecodeError:
+                logger.error("❌ Error al convertir JSON de Ollama")
                 return None
         else:
-            print("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
+            logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
 
     def save_species_to_postgres(self, structured_data, source_url, url, mongo_id):
@@ -193,9 +181,6 @@ class OllamaService:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
 
 def datos_son_validos(datos, min_campos=2):
-    """
-    Valida si los datos extraídos tienen suficientes campos con información.
-    """
     print("🔍 Evaluando JSON:", datos)
 
     if not datos or not isinstance(datos, dict):
@@ -224,3 +209,4 @@ def datos_son_validos(datos, min_campos=2):
 
     print("⚠️ JSON descartado por falta de datos")
     return False
+

@@ -1,7 +1,7 @@
 from celery import shared_task, chain
 from src.apps.shared.services.scraper import WebScraperService
 from src.apps.shared.services.ollama import OllamaService
-
+from src.apps.shared.services.ollama_cabi import OllamaCabiService
 from src.apps.shared.models.urls import ScraperURL
 import logging
 from django.utils import timezone
@@ -11,6 +11,7 @@ from src.apps.shared.tasks.notifications_tasks import check_new_species_task
 logger = logging.getLogger(__name__)
 
 from celery import chain
+CABI_URL = "https://www.cabidigitallibrary.org/product/qc"
 
 @shared_task(bind=True)
 def process_scraped_data_task(self, url, *args, **kwargs):
@@ -18,10 +19,16 @@ def process_scraped_data_task(self, url, *args, **kwargs):
         logger.error("No se recibió una URL válida en process_scraped_data_task")
         return None
 
-    scraper = OllamaService()
-    scraper.extract_and_save_species(url)
-    return url
+    if url == CABI_URL:
+        logger.info(f"🔍 Usando OllamaCabiService para {url}")
+        scraper = OllamaCabiService()
+    else:
+        logger.info(f"🔍 Usando OllamaService para {url}")
+        scraper = OllamaService()
 
+    scraper.extract_and_save_species(url) 
+
+    return url
 @shared_task(bind=True)
 def scraper_url_task(self, url, *args, **kwargs):
     scraper_service = WebScraperService()
