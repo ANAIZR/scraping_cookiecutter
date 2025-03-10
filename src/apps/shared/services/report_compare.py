@@ -1,5 +1,5 @@
-from apps.shared.models.urls import ScraperURL
-from apps.shared.models.species import ReportComparison
+from src.apps.shared.models.species import ReportComparison
+from src.apps.shared.models.urls import ScraperURL
 import logging
 from django.conf import settings
 from pymongo import MongoClient

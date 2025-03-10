@@ -32,7 +32,7 @@ class CabiSpecies(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="species",
+        related_name="cabi_species",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

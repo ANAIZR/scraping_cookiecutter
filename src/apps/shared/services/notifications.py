@@ -1,4 +1,4 @@
-from apps.shared.models.species import SpeciesSubscription, Species
+from src.apps.shared.models.species import SpeciesSubscription, Species
 import logging
 from django.utils import timezone
 from datetime import timedelta

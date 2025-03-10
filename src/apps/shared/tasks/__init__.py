@@ -1,3 +1,3 @@
-from .comparison_tasks import *
-from .scraper_tasks import *
-from .notifications_tasks import *
+from .comparison_tasks import generate_comparison_report_task
+from .scraper_tasks import process_scraped_data_task, scraper_url_task, scraper_expired_urls_task
+from .notifications_tasks import check_new_species_task

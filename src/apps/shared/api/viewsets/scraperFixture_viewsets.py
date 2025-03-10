@@ -4,7 +4,7 @@ from rest_framework import status
 from src.apps.shared.tasks.scraper_tasks import scraper_url_task
 from src.apps.users.permissions import IsAdminUser
 from rest_framework.permissions import IsAuthenticated
-from apps.shared.models.urls import ScraperURL
+from src.apps.shared.models.urls import ScraperURL
 class ScraperAPIView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 

@@ -15,8 +15,8 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from apps.shared.models.species import  ReportComparison
-from apps.shared.models.urls import ScraperURL
+from src.apps.shared.models.species import  ReportComparison
+from src.apps.shared.models.urls import ScraperURL
 import logging
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated

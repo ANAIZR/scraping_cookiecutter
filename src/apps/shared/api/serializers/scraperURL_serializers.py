@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from apps.shared.models.species import Species, ReportComparison, SpeciesSubscription
-from apps.shared.models.urls import ScraperURL
+from src.apps.shared.models.species import Species, ReportComparison, SpeciesSubscription
+from src.apps.shared.models.urls import ScraperURL
 
 class ScraperURLSerializer(serializers.ModelSerializer):
     time_choices_display = serializers.CharField(

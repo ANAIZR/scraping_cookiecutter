@@ -2,7 +2,7 @@ from celery import shared_task, chain
 from src.apps.shared.services.scraper import WebScraperService
 from src.apps.shared.services.ollama import OllamaService
 
-from apps.shared.models.urls import ScraperURL
+from src.apps.shared.models.urls import ScraperURL
 import logging
 from django.utils import timezone
 from src.apps.shared.tasks.comparison_tasks import generate_comparison_report_task
