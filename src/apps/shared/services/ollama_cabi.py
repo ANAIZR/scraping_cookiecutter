@@ -19,14 +19,14 @@ class OllamaCabiService:
         self.collection = self.db["fs.files"]
         self.cabi_url = "https://www.cabidigitallibrary.org/product/qc"  
 
-    def extract_and_save_species(self):
+    def extract_and_save_species(self,url):
         """
         Busca y procesa todos los documentos pendientes de CABI en MongoDB.
         """
-        documents = list(self.collection.find({"url": self.cabi_url, "processed": {"$ne": True}}))
+        documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))
 
         if not documents:
-            logger.info(f"🚫 No hay documentos pendientes de procesar para CABI ({self.cabi_url}).")
+            logger.info(f"🚫 No hay documentos pendientes de procesar para CABI ({url}).")
             return
 
         for document in documents:
