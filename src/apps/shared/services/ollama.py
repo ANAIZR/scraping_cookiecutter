@@ -150,13 +150,19 @@ class OllamaService:
             json_text = match.group(0)
             try:
                 parsed_json = json.loads(json_text)
-                return parsed_json if isinstance(parsed_json, dict) else None
+                parsed_json = clean_json_data(parsed_json)  
+                if parsed_json:
+                    return parsed_json
+                else:
+                    logger.warning("⚠️ JSON limpiado es inválido")
+                    return None
             except json.JSONDecodeError as e:
-                print(f"❌ Error al convertir JSON: {e}")
+                logger.error(f"❌ Error al convertir JSON: {e}")
                 return None
         else:
-            print("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
+            logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
+
 
     def save_species_to_postgres(self, structured_data, source_url, url, mongo_id):
         """
@@ -226,3 +232,26 @@ def datos_son_validos(datos, min_campos=2):
 
     print("⚠️ JSON descartado por falta de datos")
     return False
+def clean_json_data(parsed_json):
+    """
+    Convierte listas en cadenas separadas por comas y valida que el JSON sea un diccionario.
+    """
+    if not isinstance(parsed_json, dict):
+        logger.warning("⚠️ JSON recibido no es un diccionario válido")
+        return None
+
+    def ensure_string(value):
+        if isinstance(value, list):
+            return ", ".join([" ".join(item) if isinstance(item, list) else str(item) for item in value])
+        return str(value) if value else ""
+
+    fields_to_clean = [
+        "nombre_cientifico", "nombres_comunes", "sinonimos", "distribucion",
+        "hospedantes", "sintomas", "organos_afectados", "usos"
+    ]
+
+    for field in fields_to_clean:
+        if field in parsed_json:
+            parsed_json[field] = ensure_string(parsed_json[field])
+
+    return parsed_json
