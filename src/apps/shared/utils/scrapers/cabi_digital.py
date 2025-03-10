@@ -23,7 +23,7 @@ logger = get_logger("scraper")
 def detect_captcha(driver):
     try:
         captcha_checkbox = WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='checkbox']"))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "#content input[type='checkbox']"))
         )
         print("⚠ CAPTCHA detectado. Intentando resolverlo...")
 
@@ -44,17 +44,18 @@ def scraper_cabi_digital(url, sobrenombre):
     non_scraped_urls = []
     all_scraper=""
 
-    try:
+    """try:
         driver.get(url)
         detect_captcha(driver)
         time.sleep(random.uniform(3, 6))
-        if login_cabi_scienceconnect(driver):
-            print("Login completado, continuando con el scraping...")
+        detect_captcha(driver)
+         if login_cabi_scienceconnect(driver):
+            print("Login completado, continuando con el scraping...") 
     except:
-        logger.error("No se encontro el login")
+        logger.error("No se encontro el login")"""
     try:
         driver.get(url)
-        time.sleep(random.uniform(100, 120))
+        time.sleep(random.uniform(5, 8))
 
         detect_captcha(driver)
         time.sleep(random.uniform(3, 6))
