@@ -128,6 +128,7 @@ def scraper_cabi_digital(url, sobrenombre):
         for keyword in keywords:
             detect_captcha(driver)
             logger.info(f"Buscando la palabra clave: {keyword}")
+            detect_captcha(driver)
             try:
                 driver.get(url)
                 detect_captcha(driver)
