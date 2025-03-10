@@ -126,9 +126,11 @@ def scraper_cabi_digital(url, sobrenombre):
             )
         detect_captcha(driver)
         for keyword in keywords:
+            detect_captcha(driver)
             logger.info(f"Buscando la palabra clave: {keyword}")
             try:
                 driver.get(url)
+                detect_captcha(driver)
                 time.sleep(random.uniform(6, 10))
 
                 search_input = WebDriverWait(driver, 30).until(
@@ -144,13 +146,16 @@ def scraper_cabi_digital(url, sobrenombre):
                 time.sleep(random.uniform(3, 6))
 
                 search_input.submit()
+                detect_captcha(driver)
                 logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
                 continue
             visited_counts =0
             max_visits = 5
+
             while True:
+                detect_captcha(driver)
                 try:
                     WebDriverWait(driver, 60).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "ul.rlist li"))
