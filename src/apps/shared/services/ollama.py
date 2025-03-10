@@ -86,6 +86,7 @@ class OllamaService:
         {{
           "nombre_cientifico": "",
           "nombres_comunes": "",
+          "descripcion":"",
           "sinonimos": "",
           "descripcion_invasividad": "",
           "distribucion": "",
@@ -168,6 +169,7 @@ class OllamaService:
                     defaults={
                         "scientific_name": structured_data.get("nombre_cientifico", "").strip(),
                         "common_names": structured_data.get("nombres_comunes", ""),
+                        "description": structured_data.get("descripcion", ""),
                         "synonyms": structured_data.get("sinonimos", ""),
                         "distribution": structured_data.get("distribucion", ""),
                         "impact": structured_data.get("impacto", {"Económico": "", "Ambiental": "", "Social": ""}),

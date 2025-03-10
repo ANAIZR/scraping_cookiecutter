@@ -1,5 +1,5 @@
 from src.apps.shared.models.urls import ScraperURL
-from src.apps.shared.models.species import Species
+from src.apps.shared.models.species import CabiSpecies
 from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
@@ -151,7 +151,7 @@ class OllamaCabiService:
         """
         try:
             with transaction.atomic():
-                species_obj, created = Species.objects.update_or_create(
+                species_obj, created = CabiSpecies.objects.update_or_create(
                     source_url=source_url,
                     defaults={
                         "scientific_name": structured_data.get("nombre_cientifico", "").strip(),
