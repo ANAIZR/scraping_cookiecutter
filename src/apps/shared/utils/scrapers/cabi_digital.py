@@ -1,3 +1,4 @@
+import os
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -61,9 +62,14 @@ def scraper_cabi_digital(url, sobrenombre):
         time.sleep(random.uniform(3, 6))
         
         logger.info(f"Iniciando scraping para URL: {url}")
+        detect_captcha(driver)
 
         collection, fs = connect_to_mongo()
+        detect_captcha(driver)
+
         keywords = load_keywords("plants.txt")
+        detect_captcha(driver)
+
         if not keywords:
             return Response(
                 {
@@ -72,29 +78,38 @@ def scraper_cabi_digital(url, sobrenombre):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        detect_captcha(driver)
+
         logger.info("Página de CABI cargada exitosamente.")
         scraping_exitoso = False
         base_domain = "https://www.cabidigitallibrary.org"
         visited_urls = set()
+        detect_captcha(driver)
 
         try:
-            with open("cookies.pkl", "rb") as file:
-                cookies = pickle.load(file)
-                for cookie in cookies:
-                    driver.add_cookie(cookie)
-            driver.refresh()
+            if os.path.exists("cookies.pkl"):
+                try:
+                    with open("cookies.pkl", "rb") as file:
+                        cookies = pickle.load(file)
+                        for cookie in cookies:
+                            driver.add_cookie(cookie)
+                    driver.refresh()
+                    logger.info("✅ Cookies cargadas correctamente.")
+                except Exception as e:
+                    logger.error(f"⚠ Error al cargar cookies: {e}")
+            else:
+                logger.info("⚠ No se encontraron cookies guardadas.")
         except FileNotFoundError:
             logger.info("No se encontraron cookies guardadas.")
 
         try:
             cookie_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, "#onetrust-pc-btn-handler")
-                )
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "#onetrust-pc-btn-handler"))
             )
             driver.execute_script("arguments[0].click();", cookie_button)
+            logger.info("✅ Ventana de cookies cerrada.")
         except Exception:
-            logger.info("El botón de 'Aceptar Cookies' no apareció o no fue clicable.")
+            logger.info("⚠ No se encontró la ventana de cookies, continuando...")
         try:
             preferences_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable(
