@@ -16,13 +16,14 @@ CREDENTIALS = {
 
 def detect_captcha(driver):
     try:
-        captcha_checkbox = WebDriverWait(driver, 30).until(
+        time.sleep(15)
+        captcha_checkbox = WebDriverWait(driver, 60).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='checkbox']"))
         )
         print("⚠ CAPTCHA detectado. Intentando resolverlo...")
 
         driver.execute_script("arguments[0].click();", captcha_checkbox)
-        time.sleep(10)  
+        time.sleep(30)  
 
         return True
     except:
@@ -34,7 +35,7 @@ def login_cabi_scienceconnect(driver):
 
     try:
         driver.get("https://cabi.scienceconnect.io/login")
-        time.sleep(random.uniform(3, 10))
+        time.sleep(5)
         detect_captcha(driver)
         email_input = WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "#email-input"))
@@ -42,18 +43,19 @@ def login_cabi_scienceconnect(driver):
 
         if email_input:
             email_input.send_keys(CREDENTIALS["email"])
-            time.sleep(random.uniform(1, 3))
-
+            time.sleep(random.uniform(5, 20))
+            detect_captcha(driver)
             email_input.submit()
-            time.sleep(random.uniform(1, 3))
+            time.sleep(random.uniform(5, 20))
 
-            # 🛑 Detectar CAPTCHA aquí antes de continuar con la contraseña
             detect_captcha(driver)
 
             password_input = WebDriverWait(driver, 30).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "#pass-input"))
             )
-            time.sleep(random.uniform(1, 3))
+            detect_captcha(driver)
+
+            time.sleep(random.uniform(5, 20))
 
             if password_input:
                 password_input.send_keys(CREDENTIALS["password"])

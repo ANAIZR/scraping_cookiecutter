@@ -46,6 +46,8 @@ def scraper_cabi_digital(url, sobrenombre):
 
     try:
         driver.get(url)
+        detect_captcha(driver)
+        time.sleep(random.uniform(3, 6))
         if login_cabi_scienceconnect(driver):
             print("Login completado, continuando con el scraping...")
     except:
