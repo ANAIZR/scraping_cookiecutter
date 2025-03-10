@@ -54,6 +54,9 @@ def scraper_apsnet(url, sobrenombre):
                 # Obtener el HTML con BeautifulSoup para verificar el DOM
                 page_source = driver.page_source
                 soup = BeautifulSoup(page_source, "html.parser")
+                html_pretty = soup.prettify().splitlines()[:650]
+                for line in html_pretty:
+                    print(line)
 
                 # Verificar si el input de búsqueda está en el DOM
                 search_input_soup = soup.select_one("input#text1")
@@ -134,8 +137,9 @@ def scraper_apsnet(url, sobrenombre):
                             existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
                             if len(existing_versions) > 1:
                                 oldest_version = existing_versions[-1]
-                                fs.delete(oldest_version._id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+                                file_id = oldest_version._id  
+                                fs.delete(file_id)  
+                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                         else:
                             total_failed_scrapes += 1
                             failed_urls.add(link)
