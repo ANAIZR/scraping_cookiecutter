@@ -17,14 +17,33 @@ import time
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bson import ObjectId
+import requests
 
 logger = get_logger("scraper")
+
+def check_url_status(url):
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code in [403, 429, 503]:
+            logger.warning(f"⚠️ Acceso bloqueado a {url}. Código HTTP: {response.status_code}")
+            return False
+        return True
+    except requests.RequestException as e:
+        logger.error(f"Error al verificar la URL {url}: {e}")
+        return False
 
 def scraper_apsnet(url, sobrenombre):
     driver = None
     try:
         driver = driver_init()
         object_id = None
+
+        if not check_url_status(url):
+            return Response(
+                {"error": "Acceso bloqueado o página no disponible."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         collection, fs = connect_to_mongo()
         keywords = load_keywords("family.txt")
