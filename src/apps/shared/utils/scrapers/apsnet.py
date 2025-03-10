@@ -53,8 +53,8 @@ def scraper_apsnet(url, sobrenombre):
 
                 # Verificar si el input de búsqueda está en el DOM
                 try:
-                    search_input = WebDriverWait(driver, 10).until(
-                        EC.visibility_of_element_located((By.CSS_SELECTOR, "input#text1"))
+                    search_input = WebDriverWait(driver, 20).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "input#text1"))
                     )
                     search_input.clear()
                     search_input.send_keys(keyword)
@@ -66,8 +66,7 @@ def scraper_apsnet(url, sobrenombre):
                     time.sleep(5)
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
-                    print("HTML obtenido:")
-                    print(soup.prettify())
+                    print(page_source)
                     continue
 
                 search_button = WebDriverWait(driver, 5).until(
