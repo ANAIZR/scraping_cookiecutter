@@ -169,6 +169,10 @@ def initialize_driver(retries=3):
                 time.sleep(5)
             else:
                 raise
+PROXY_USER = os.getenv("PROXY_USER")
+PROXY_PASS = os.getenv("PROXY_PASS")
+PROXY_HOST = os.getenv("PROXY_HOST")
+PROXY_PORT = os.getenv("PROXY_PORT")
 def initialize_driver_cabi(retries=3):
     logger = get_logger("INICIALIZANDO EL DRIVER")
 
@@ -191,10 +195,13 @@ def initialize_driver_cabi(retries=3):
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option("useAutomationExtension", False)
 
-
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
+
+            # Configuración del proxy con autenticación
+            proxy_address = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_HOST}:{PROXY_PORT}"
+            options.add_argument(f"--proxy-server={proxy_address}")
 
             driver = webdriver.Remote(
                 command_executor="http://100.122.137.82:4444/wd/hub", 

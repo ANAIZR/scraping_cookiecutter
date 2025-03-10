@@ -55,7 +55,7 @@ def scraper_cabi_digital(url, sobrenombre):
         logger.error("No se encontro el login")"""
     try:
         driver.get(url)
-        time.sleep(random.uniform(5, 8))
+        time.sleep(random.uniform(1, 3))
 
         detect_captcha(driver)
         time.sleep(random.uniform(3, 6))
