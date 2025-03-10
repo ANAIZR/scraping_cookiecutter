@@ -21,10 +21,22 @@ import requests
 
 logger = get_logger("scraper")
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
+}
 
 def scraper_apsnet(url, sobrenombre):
     driver = None
     try:
+        # Verificar el código de respuesta HTTP antes de proceder
+        response = requests.get(url, headers=HEADERS)
+        if response.status_code in [403, 429, 503]:
+            logger.error(f"Acceso denegado o bloqueado con código {response.status_code} en {url}")
+            return Response(
+                {"error": f"Acceso denegado o bloqueado con código {response.status_code}"},
+                status=status.HTTP_403_FORBIDDEN if response.status_code == 403 else status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         driver = driver_init()
         object_id = None
 
@@ -48,26 +60,22 @@ def scraper_apsnet(url, sobrenombre):
                 driver.get(url)
                 time.sleep(2)
 
-                # Ejecutar JavaScript antes de buscar elementos
                 driver.execute_script("document.body.style.zoom='100%'")
                 WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                 time.sleep(5)
 
-                # Obtener el HTML con BeautifulSoup para verificar el DOM
                 page_source = driver.page_source
                 soup = BeautifulSoup(page_source, "html.parser")
                 html_pretty = soup.prettify().splitlines()[:650]
                 for line in html_pretty:
                     print(line)
 
-                # Verificar si el input de búsqueda está en el DOM
                 search_input_soup = soup.select_one("input#text1")
                 if not search_input_soup:
                     logger.warning("❌ No se encontró el input de búsqueda en el DOM con BeautifulSoup.")
                 else:
                     logger.info("✅ Input de búsqueda encontrado en el DOM con BeautifulSoup.")
 
-                # Buscar el input de búsqueda con Selenium
                 search_input = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "input#text1"))
                 )
@@ -108,7 +116,6 @@ def scraper_apsnet(url, sobrenombre):
                         driver.get(link)
                         time.sleep(random.uniform(3,6))
 
-                        # Ejecutar JavaScript antes de buscar contenido
                         driver.execute_script("document.body.style.zoom='100%'")
                         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                         time.sleep(5)
@@ -150,12 +157,6 @@ def scraper_apsnet(url, sobrenombre):
                         logger.error(f"No se pudo extraer contenido de {link}: {e}")
                         total_failed_scrapes += 1
                         failed_urls.add(link)
-
-                all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
-                all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
-                all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
-                all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
-                all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
                 return process_scraper_data(all_scraper, url, sobrenombre)
 
