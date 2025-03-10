@@ -18,11 +18,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from ..credentials import login_cabi_scienceconnect
 from bson import ObjectId
-from ...models.scraperURL import Species,ScraperURL
+from ...models.scraperURL import Species,ScraperURL, NewSpecies
 import ollama
 import json
 from pymongo import MongoClient
 import gridfs  
+import re
 
 logger = get_logger("scraper")
 import requests
@@ -32,8 +33,15 @@ def text_to_json(content, source_url, url):
     print("📩 Enviando a Ollama para conversión:", len(content), "caracteres")
 
     prompt = f"""
-    Organiza el siguiente contenido en formato JSON con la estructura correcta.
+   Organiza el siguiente contenido en **formato JSON**, pero **cada campo que contenga múltiples valores debe estar separado por comas dentro de un string, en lugar de usar un array JSON**.
+    **Cada campo con múltiples valores debe ser un string separado por comas**, en lugar de un array JSON.
+    **Las secciones `prevencion_control` e `impacto` deben mantenerse como objetos anidados con sus claves correspondientes.**
+    **Si un campo no tiene información, usa `""`.**
+    ### **🔹 Reglas de extracción**
     
+     - **`impacto`**: Mantén las claves `"Económico"`, `"Ambiental"` y `"Social"`, sin cambiar la estructura.
+    - **`prevencion_control`**: Mantén las claves `"Prevención"` y `"Control"`, sin cambiar la estructura.
+    - **No omitas información, si no la encuentras, usa `""`.**  
     **Contenido:**
     {content}
 
@@ -67,24 +75,20 @@ def text_to_json(content, source_url, url):
       "frecuencia": "Mensual"
     }}
 
-     **Instrucciones:**
-    1. Extrae el nombre científico y los nombres comunes de la especie.
+     **Instrucciones: EN TODO EL CONTENT BUSCA ESTA INFORMACION**
+    1. Extrae los nombres comunes de la especie.
     2. Lista los sinónimos científicos si están disponibles.
     3. Proporciona una descripción de la invasividad de la especie.
-    4. Identifica los países o regiones donde está distribuida.
-    5. Extrae información sobre impacto económico, ambiental y social.
-    6. Describe el hábitat donde se encuentra.
-    7. Explica el ciclo de vida y los métodos de reproducción.
-    8. Lista los hospedantes afectados por la especie.
-    9. Describe los síntomas y los órganos afectados en los hospedantes.
-    10. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
-    11. Extrae información sobre métodos de prevención y control.
-    12. Lista los usos conocidos de la especie.
-    13. Usa la hora actual para completar el campo "hora".
-    14. Usa "Mensual" como frecuencia de escrapeo.
-    15. Si no encuentras información, usa `""`.
+    4. Extrae información sobre impacto económico, ambiental y social.
+    5. Describe el hábitat donde se encuentra.
+    6. Explica el ciclo de vida y los métodos de reproducción.
+    7. Describe los síntomas y los órganos afectados en los hospedantes.
+    8. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
+    9. Extrae información sobre métodos de prevención y control.
+    10. Lista los usos conocidos de la especie.
+    11. Si no encuentras información, usa `""`.
 
-    Devuelve solo el JSON con los datos extraídos, sin texto adicional.
+    Devuelve solo el JSON con los datos extraídos, sin texto adicional. NO OMITAS NINGUNA INFORMACION
     """
 
     api_url = "http://localhost:11434/api/generate"
@@ -102,27 +106,39 @@ def text_to_json(content, source_url, url):
         response.raise_for_status()  # Lanza error si la respuesta no es 200 OK
 
         json_output = response.json()
-        print("✅ Respuesta de Ollama:", json_output)
-
         if "response" in json_output:
-            return json.loads(json_output["response"])
-        else:
-            print("❌ Ollama no devolvió una respuesta válida:", json_output)
-            return None
+            raw_response = json_output["response"]
+            
+            match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+            if match:
+                try:
+                    structured_data = json.loads(match.group(0))
+                    print("✅ JSON extraído correctamente:", structured_data)
+                    return structured_data
+                except json.JSONDecodeError as e:
+                    print(f"🚨 Error al decodificar JSON: {e}\n🔍 Respuesta de Ollama: {match.group(0)}")
+                    return None
+            else:
+                print("❌ No se encontró un JSON válido en la respuesta de Ollama.")
+                return None
+
+
 
     except requests.exceptions.RequestException as e:
         print(f"🚨 Error al conectar con Ollama: {e}")
         return None
 def limpiar_datos_json(structured_data):
-    campos_lista = ["common_names", "synonyms", "hosts", "symptoms", "affected_organs", "uses"]
+    campos_lista = ["nombres_comunes", "sinonimos", "hospedantes", "sintomas", "organos_afectados", "usos"]
     for campo in campos_lista:
         if isinstance(structured_data.get(campo, ""), str):
             try:
                 structured_data[campo] = json.loads(structured_data[campo].replace("'", '"'))
+                logger.warning(f"⚠️ Error al decodificar {campo}. Se asignará una lista vacía.")
+
             except json.JSONDecodeError:
                 structured_data[campo] = []
 
-    campos_dict = ["impact", "prevention_control"]
+    campos_dict = ["impacto", "prevencion_control", "condiciones_ambientales"]
     for campo in campos_dict:
         if isinstance(structured_data.get(campo, ""), str):
             try:
@@ -158,35 +174,40 @@ def procesar_y_guardar_en_postgres(object_id):
             structured_data = limpiar_datos_json(structured_data) 
 
             scraper_source, _ = ScraperURL.objects.get_or_create(url=url)
+            nombre_cientifico = structured_data.get("nombre_cientifico", "").strip()
+            distribucion = ", ".join(structured_data.get("distribucion", [])) if isinstance(structured_data.get("distribucion"), list) else structured_data.get("distribucion", "").strip()
+            hospedantes = ", ".join(structured_data.get("hospedantes", [])) if isinstance(structured_data.get("hospedantes"), list) else structured_data.get("hospedantes", "").strip()
 
-            species_obj, created = Species.objects.update_or_create(
+           
+
+            newspecies_obj, created = NewSpecies.objects.update_or_create(
                 source_url=source_url, 
                 defaults={  
-                    "scientific_name": structured_data.get("nombre_cientifico", ""),
-                    "common_names": structured_data.get("nombres_comunes", ""),
-                    "synonyms": structured_data.get("sinonimos", ""),
-                    "invasiveness_description": structured_data.get("descripcion_invasividad", ""),
-                    "distribution": structured_data.get("distribucion", ""),
-                    "impact": json.dumps(structured_data.get("impacto", {})),  # Convertir a JSON si es un dict
+                    "scientific_name": nombre_cientifico,
+                    "common_names": ", ".join(structured_data.get("nombres_comunes", [])) if isinstance(structured_data.get("nombres_comunes"), list) else structured_data.get("nombres_comunes", ""),
+                    "synonyms": ", ".join(structured_data.get("sinonimos", [])) if isinstance(structured_data.get("sinonimos"), list) else structured_data.get("sinonimos", ""),
+                    "distribution": distribucion,
+                    "impact": structured_data.get("impacto", {"Económico": "", "Ambiental": "", "Social": ""}),
                     "habitat": structured_data.get("habitat", ""),
                     "life_cycle": structured_data.get("ciclo_vida", ""),
                     "reproduction": structured_data.get("reproduccion", ""),
-                    "hosts": structured_data.get("hospedantes", ""),
-                    "symptoms": structured_data.get("sintomas", ""),
-                    "affected_organs": structured_data.get("organos_afectados", ""),
-                    "environmental_conditions": structured_data.get("condiciones_ambientales", ""),
-                    "prevention_control": json.dumps(structured_data.get("prevencion_control", {})),  # Convertir a JSON
-                    "uses": structured_data.get("usos", ""),
+                    "hosts": hospedantes,
+                    "symptoms": ", ".join(structured_data.get("sintomas", [])) if isinstance(structured_data.get("sintomas"), list) else structured_data.get("sintomas", ""),
+                    "affected_organs": ", ".join(structured_data.get("organos_afectados", [])) if isinstance(structured_data.get("organos_afectados"), list) else structured_data.get("organos_afectados", ""),
+                    "environmental_conditions": structured_data.get("condiciones_ambientales", {}),
+                    "prevention_control": structured_data.get("prevencion_control", {"Prevención": "", "Control": ""}),
+                    "uses": ", ".join(structured_data.get("usos", [])) if isinstance(structured_data.get("usos"), list) else structured_data.get("usos", ""),
                     "scraper_source": scraper_source
                 }
             )
+
 
             if created:
                 logger.info(f"✅ Nueva especie creada en PostgreSQL con URL: {source_url}")
             else:
                 logger.info(f"🔄 Especie actualizada en PostgreSQL con URL: {source_url}")
 
-            return species_obj.id 
+            return newspecies_obj.id 
 
         else:
             logger.error("❌ Error en la conversión a JSON.")
@@ -297,6 +318,9 @@ def scraper_cabi_digital(url, sobrenombre):
             except Exception as e:
                 logger.info(f"Error al realizar la búsqueda: {e}")
                 continue
+
+            visited_counts =0
+            max_visits = 30
             
             while True:
                 try:
@@ -313,8 +337,7 @@ def scraper_cabi_digital(url, sobrenombre):
                             f"No se encontraron resultados para la palabra clave: {keyword}"
                         )
                         break
-                    visited_counts =0
-                    max_visits = 5
+                    
                     for item in items:
                         if visited_counts>=max_visits:
                             break
@@ -331,18 +354,47 @@ def scraper_cabi_digital(url, sobrenombre):
                                 )
                                 time.sleep(random.uniform(6, 10))
                                 soup = BeautifulSoup(driver.page_source, "html.parser")
+                                
 
                                 abstracts = soup.select_one("#abstracts")
                                 body = soup.select_one("#bodymatter>.core-container")
-                                abstract_text = abstracts.get_text(strip=True) if abstracts else "No abstract found"
-                                body_text = body.get_text(strip=True) if body else "No body found"
+                                abstract_html = abstracts.prettify() if abstracts else "<p>No abstract found</p>"
+                                body_html = body.prettify() if body else "<p>Body not found</p>"
+                                nombre_cientifico = "No encontrado"
+                                hospedantes = "No encontrado"
+                                distribucion = "No encontrado"
+                                if body:
+                                    species_section = soup.select_one('section[data-type="taxonomicTree"]')
+                                    if species_section:
+                                        scientific_name_element = species_section.select_one('div[role="listitem"] dt:-soup-contains("Species") + dd')
+                                        if scientific_name_element and scientific_name_element.text:
+                                            nombre_cientifico = scientific_name_element.get_text(strip=True)
 
-                                if abstract_text or body_text:
-                                    content_accumulated = f"{abstract_text}\n\n\n{body_text}"
+                                    hospedantes_section = soup.select_one('section[data-type="hostPlants"] tbody')
+                                    if hospedantes_section:
+                                        hospedantes_list = [row.select_one("td").get_text(strip=True) for row in hospedantes_section.select("tr") if row.select_one("td")]
+                                        hospedantes = ", ".join(hospedantes_list) if hospedantes_list else "No encontrado"
+
+                                    distribucion_section = soup.select_one('section[data-type="distributionDatabaseTable"] tbody')
+                                    if distribucion_section:
+                                        distribucion_list = distribucion_section.select("tr")
+                                        if distribucion_list:
+                                            distribucion = ", ".join([
+                                                row.select_one("td.country").get_text(strip=True)
+                                                for row in distribucion_list
+                                                if row.select_one("td.country") and len(row.select("td")) > 1 and row.select("td")[1] and row.select("td")[1].get_text(strip=True) == "Present"
+                                            ])
+                                    content_accumulated = f"{abstract_html}\n\n\n{body_html}"
                                     content_accumulated += "-" * 100 + "\n\n"
+                                    content_accumulated += f"\n\n🔬 Nombre científico: {nombre_cientifico}"
+                                    content_accumulated += f"\n🌍 Distribución: {distribucion}"
+                                    content_accumulated += f"\n🦠 Hospedantes: {hospedantes}"
 
-                                    print(f"Página procesada y guardada: {absolut_href}")
+                                    print(f"✅ Página procesada y guardada: {absolut_href}")
                                     if content_accumulated:
+                                        print(f"🔬 Nombre científico: {nombre_cientifico}")
+                                        print(f"🌍 Distribución: {distribucion}")
+                                        print(f"🦠 Hospedantes: {hospedantes}")
                                         object_id = fs.put(
                                             content_accumulated.encode("utf-8"),
                                             source_url=absolut_href,
@@ -357,7 +409,7 @@ def scraper_cabi_digital(url, sobrenombre):
                                         existing_versions = list(fs.find({"source_url": absolut_href}).sort("scraping_date", -1))
                                         if len(existing_versions) > 1:
                                             oldest_version = existing_versions[-1]
-                                            
+                                                
                                             # ✅ Acceder al `_id` correctamente
                                             file_id = oldest_version._id  # Esto obtiene el ID correcto
                                             fs.delete(file_id)  # Eliminar la versión más antigua

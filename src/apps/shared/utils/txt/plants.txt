@@ -1,8 +1,19 @@
-Fusarium
-Rhizobium radiobacter
-Maple mosaic agent
-Xylella fastidiosa
-Criconema bakeri
-Phytophthora acerina
-Apiognomonia errabunda
-Ambarignomonia petiolorum
+Pseudomonas
+Rhizobium
+Acanthophysellum
+Acrogenospora
+Alternaria
+Ambrosiella
+Amniculicola
+Amphinema
+Amphisphaeria
+Amylocorticium
+Apioplagiostoma
+Apiosporopsis
+Aplosporella
+Arborispora
+Arcyria
+Armillaria
+Arthrobotrys
+Artomyces
+Ascochyta

@@ -116,7 +116,70 @@ class Species(models.Model):
     def __str__(self):
         return self.scientific_name
 
+class NewSpecies(models.Model):
+    scientific_name = models.CharField(max_length=255, null=True, blank=True)
+    common_names = models.TextField(blank=True, null=True)  # Valores separados por comas
+    synonyms = models.TextField(blank=True, null=True)  # Valores separados por comas
+    distribution = models.TextField(blank=True, null=True)  # Valores separados por comas
+    hosts = models.TextField(blank=True, null=True)  # Valores separados por comas
+    symptoms = models.TextField(blank=True, null=True)  # Valores separados por comas
+    affected_organs = models.TextField(blank=True, null=True)  # Valores separados por comas
+    uses = models.TextField(blank=True, null=True)  # Valores separados por comas
+    prevention_control = models.JSONField(default=dict, blank=True, null=True)  # {"Prevención": "", "Control": ""}
+    invasiveness_description = models.TextField(blank=True, null=True)
+    impact = models.JSONField(default=dict, blank=True, null=True)  # {"Económico": "", "Ambiental": "", "Social": ""}
+    habitat = models.TextField(blank=True, null=True)
+    life_cycle = models.TextField(blank=True, null=True)
+    reproduction = models.TextField(blank=True, null=True)
+    environmental_conditions = models.TextField(blank=True, null=True)
+    source_url = models.URLField(max_length=500, unique=True)
+    scraper_source = models.ForeignKey(
+        "ScraperURL",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="new_species",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = "new_species"
+
+    def __str__(self):
+        return self.scientific_name if self.scientific_name else "Unnamed Species"
+
+    def get_list_from_comma_separated(self, field_name):
+        """Convierte un campo de texto separado por comas en una lista."""
+        value = getattr(self, field_name, "")
+        return [item.strip() for item in value.split(",") if item.strip()]
+
+    def get_common_names_list(self):
+        return self.get_list_from_comma_separated("common_names")
+
+    def get_synonyms_list(self):
+        return self.get_list_from_comma_separated("synonyms")
+
+    def get_distribution_list(self):
+        return self.get_list_from_comma_separated("distribution")
+
+    def get_hosts_list(self):
+        return self.get_list_from_comma_separated("hosts")
+
+    def get_symptoms_list(self):
+        return self.get_list_from_comma_separated("symptoms")
+
+    def get_affected_organs_list(self):
+        return self.get_list_from_comma_separated("affected_organs")
+
+    def get_uses_list(self):
+        return self.get_list_from_comma_separated("uses")
+
+    def get_prevention_control(self):
+        """Retorna el JSON de prevención y control asegurando claves fijas."""
+        return self.prevention_control or {"Prevención": "", "Control": ""}
+    def get_impact(self):
+        """Retorna el JSON de impacto asegurando claves fijas."""
+        return self.impact or {"Económico": "", "Ambiental": "", "Social": ""}
 
 
 class ReportComparison(models.Model):
