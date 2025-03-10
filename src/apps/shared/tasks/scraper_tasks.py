@@ -84,7 +84,7 @@ def scraper_url_task(self, url):
 
 
 @shared_task(bind=True)
-def scraper_expired_urls_task(self):
+def scraper_expired_urls_task(self, *args, **kwargs):
     scraper_service = WebScraperService()
     urls = scraper_service.get_expired_urls()
 
