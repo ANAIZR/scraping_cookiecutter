@@ -150,17 +150,19 @@ class OllamaService:
             json_text = match.group(0)
             try:
                 parsed_json = json.loads(json_text)
-                parsed_json = clean_json_data(parsed_json)  
-                if parsed_json:
-                    return parsed_json
-                else:
-                    logger.warning("⚠️ JSON limpiado es inválido")
-                    return None
+
+                parsed_json["nombre_cientifico"] = ", ".join(parsed_json.get("nombre_cientifico", [])) if isinstance(parsed_json.get("nombre_cientifico", ""), list) else parsed_json.get("nombre_cientifico", "")
+                parsed_json["nombres_comunes"] = ", ".join(parsed_json.get("nombres_comunes", [])) if isinstance(parsed_json.get("nombres_comunes", ""), list) else parsed_json.get("nombres_comunes", "")
+                parsed_json["hospedantes"] = ", ".join(parsed_json.get("hospedantes", [])) if isinstance(parsed_json.get("hospedantes", ""), list) else parsed_json.get("hospedantes", "")
+                parsed_json["usos"] = ", ".join(parsed_json.get("usos", [])) if isinstance(parsed_json.get("usos", ""), list) else parsed_json.get("usos", "")
+
+                print("✅ JSON correctamente extraído y corregido:", parsed_json)
+                return parsed_json if isinstance(parsed_json, dict) else None
             except json.JSONDecodeError as e:
-                logger.error(f"❌ Error al convertir JSON: {e}")
+                print(f"❌ Error al convertir JSON: {e}")
                 return None
         else:
-            logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
+            print("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
 
 
@@ -232,26 +234,3 @@ def datos_son_validos(datos, min_campos=2):
 
     print("⚠️ JSON descartado por falta de datos")
     return False
-def clean_json_data(parsed_json):
-    """
-    Convierte listas en cadenas separadas por comas y valida que el JSON sea un diccionario.
-    """
-    if not isinstance(parsed_json, dict):
-        logger.warning("⚠️ JSON recibido no es un diccionario válido")
-        return None
-
-    def ensure_string(value):
-        if isinstance(value, list):
-            return ", ".join([" ".join(item) if isinstance(item, list) else str(item) for item in value])
-        return str(value) if value else ""
-
-    fields_to_clean = [
-        "nombre_cientifico", "nombres_comunes", "sinonimos", "distribucion",
-        "hospedantes", "sintomas", "organos_afectados", "usos"
-    ]
-
-    for field in fields_to_clean:
-        if field in parsed_json:
-            parsed_json[field] = ensure_string(parsed_json[field])
-
-    return parsed_json
