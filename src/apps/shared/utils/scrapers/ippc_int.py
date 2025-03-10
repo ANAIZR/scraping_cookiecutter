@@ -1,8 +1,7 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.support.ui import Select
 import time
 import random
 from datetime import datetime
@@ -29,8 +28,7 @@ def scraper_ippc_int(url, sobrenombre):
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
-    hrefs = [] #set() 
-
+    hrefs = []  # Aquí se almacenarán todos los enlaces encontrados
 
     def scrape_page(href):
         nonlocal total_scraped_links, non_scraped_urls
@@ -62,27 +60,23 @@ def scraper_ippc_int(url, sobrenombre):
                 existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
                 if len(existing_versions) > 1:
                     oldest_version = existing_versions[-1]
-                                            
                     file_id = oldest_version._id 
-                    fs.delete(file_id) 
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}") 
+                    fs.delete(file_id)
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error al procesar el enlace {url}: {e}")
-            non_scraped_urls.append(href)  
+            logger.error(f"Error al procesar el enlace {href}: {e}")
+            non_scraped_urls.append(href)
 
         return new_links
-
 
     def extract_hrefs_from_url_main():
         driver = driver_init()
         driver.get(url)
         time.sleep(random.uniform(3, 6))
- 
 
         while True:
-
-            select_element  = WebDriverWait(driver, 60).until(
+            select_element = WebDriverWait(driver, 60).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "select.form-select.form-select-sm"))
             )
             dropdown = Select(select_element)
@@ -103,16 +97,15 @@ def scraper_ippc_int(url, sobrenombre):
                 if items:
                     for item in items:
                         try:
-                            href = item.find_element(By.CSS_SELECTOR, "td > table > tbody > tr > td a").get_attribute("href")
+                            href = item.find_element(By.CSS_SELECTOR, "tbody tr td a").get_attribute("href")
                         except NoSuchElementException:
                             href = None
                             logger.info("Elemento no encontrado, continuando...")
                         if href:
                             logger.info("URL encontrada, agregando...")
                             hrefs.append(href)
-                        
             else:
-                logger.info("No se encontró el div#contents en la página principal.")
+                logger.info("No se encontró el div#publications en la página principal.")
 
             try:
                 next_page_button = driver.find_element(
@@ -120,21 +113,15 @@ def scraper_ippc_int(url, sobrenombre):
                     "publications_next",
                 )
                 if "disabled" in next_page_button.get_attribute("class"):
-                    logger.info(
-                        "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
-                    )
+                    logger.info("No hay más páginas disponibles. Finalizando búsqueda para esta página.")
                     break
                 else:
-                    logger.info(
-                        f"Yendo a la siguiente página"
-                    )
+                    logger.info("Yendo a la siguiente página")
                     next_page_button.click()
                     time.sleep(random.uniform(1, 2))
             except Exception as e:
-                logger.info(
-                    "No se encontró el botón para la siguiente página."
-                )
-                break  
+                logger.info("No se encontró el botón para la siguiente página.")
+                break
 
         driver.quit()
 
@@ -143,7 +130,7 @@ def scraper_ippc_int(url, sobrenombre):
         new_links = []
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_url = {
-                executor.submit(scrape_page, url): (url)
+                executor.submit(scrape_page, url): url
                 for url in url_list
             }
             for future in as_completed(future_to_url):
@@ -153,7 +140,7 @@ def scraper_ippc_int(url, sobrenombre):
                 except Exception as e:
                     logger.error(f"Error en tarea de scraping: {str(e)}")
                     non_scraped_urls.append(future_to_url)
-        return new_links        
+        return new_links
 
     try:
         extract_hrefs_from_url_main()
@@ -161,12 +148,16 @@ def scraper_ippc_int(url, sobrenombre):
 
         new_links = scrape_pages_in_parallel(hrefs)
 
-        all_scraper = (
-            f"Total enlaces scrapeados: {total_scraped_links}\n"
-            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
-            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
-            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
-        )
+        total_links_found = len(hrefs)
+        total_scraped_successfully = total_scraped_links
+        total_failed_scrapes = len(non_scraped_urls)
+
+        all_scraper = ""
+        all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
+        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "URLs fallidas:\n" + "\n".join(non_scraped_urls) + "\n"
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
@@ -174,4 +165,3 @@ def scraper_ippc_int(url, sobrenombre):
     except Exception as e:
         logger.error(f"Error durante el scraping: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
