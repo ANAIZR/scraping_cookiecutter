@@ -12,9 +12,8 @@ logger = logging.getLogger(__name__)
 
 from celery import chain
 
-
 @shared_task(bind=True)
-def process_scraped_data_task(self, url):
+def process_scraped_data_task(self, url, *args, **kwargs):
     if not url:
         logger.error("No se recibió una URL válida en process_scraped_data_task")
         return None
@@ -24,7 +23,7 @@ def process_scraped_data_task(self, url):
     return url
 
 @shared_task(bind=True)
-def scraper_url_task(self, url):
+def scraper_url_task(self, url, *args, **kwargs):
     scraper_service = WebScraperService()
 
     try:
