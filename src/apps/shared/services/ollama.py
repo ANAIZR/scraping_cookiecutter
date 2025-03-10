@@ -84,6 +84,7 @@ class OllamaService:
         {{
           "nombre_cientifico": "",
           "nombres_comunes": "",
+          "descripción":"",
           "sinonimos": "",
           "descripcion_invasividad": "",
           "distribucion": "",
@@ -129,6 +130,7 @@ class OllamaService:
         13. Usa la hora actual para completar el campo "hora".
             Devuelve solo el JSON con los datos extraídos, sin texto adicional.
         14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
+        15. En descripcion pones algo corto de 500 palabras acerca de que trataba el contentido
         """
 
         response = requests.post(
@@ -199,6 +201,7 @@ class OllamaService:
                     source_url=source_url,
                     defaults={
                         "scientific_name": structured_data.get("nombre_cientifico", "").strip(),
+                        "description": structured_data.get("descripcion", "").strip(),
                         "common_names": json.dumps(ensure_list(structured_data.get("nombres_comunes", []))),
                         "synonyms": json.dumps(ensure_list(structured_data.get("sinonimos", []))),
                         "distribution": json.dumps(ensure_list(structured_data.get("distribucion", []))),

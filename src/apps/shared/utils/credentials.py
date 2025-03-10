@@ -36,7 +36,6 @@ def login_cabi_scienceconnect(driver):
     try:
         driver.get("https://cabi.scienceconnect.io/login")
         time.sleep(5)
-        #detect_captcha(driver)
         email_input = WebDriverWait(driver, 30).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "#email-input"))
         )
@@ -44,16 +43,13 @@ def login_cabi_scienceconnect(driver):
         if email_input:
             email_input.send_keys(CREDENTIALS["email"])
             time.sleep(random.uniform(5, 20))
-            #detect_captcha(driver)
             email_input.submit()
             time.sleep(random.uniform(5, 20))
 
-            #detect_captcha(driver)
 
             password_input = WebDriverWait(driver, 30).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "#pass-input"))
             )
-            #detect_captcha(driver)
 
             time.sleep(random.uniform(5, 20))
 

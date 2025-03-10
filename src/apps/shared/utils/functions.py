@@ -171,10 +171,7 @@ def initialize_driver(retries=3):
                 time.sleep(5)
             else:
                 raise
-PROXY_USER = os.getenv("PROXY_USER")
-PROXY_PASS = os.getenv("PROXY_PASS")
-PROXY_HOST = os.getenv("PROXY_HOST")
-PROXY_PORT = os.getenv("PROXY_PORT")
+
 def initialize_driver_cabi(retries=3):
     logger = get_logger("INICIALIZANDO EL DRIVER")
 

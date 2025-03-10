@@ -45,6 +45,7 @@ class CabiSpecies(models.Model):
 class Species(models.Model):
     scientific_name = models.CharField(max_length=255, null=True, blank=True)
     common_names = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
     synonyms = models.TextField(blank=True, null=True)
     invasiveness_description = models.TextField(blank=True, null=True)
     distribution = models.TextField(blank=True, null=True)
