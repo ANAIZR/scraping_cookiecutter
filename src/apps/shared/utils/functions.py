@@ -188,6 +188,9 @@ def initialize_driver_cabi(retries=3):
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--disable-infobars")
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option("useAutomationExtension", False)
+
 
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
