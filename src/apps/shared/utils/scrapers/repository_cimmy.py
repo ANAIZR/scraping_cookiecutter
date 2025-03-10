@@ -41,7 +41,7 @@ def scraper_repository_cimmy(url, sobrenombre):
         print(f"✅ Página cargada correctamente.")
 
         domain = "https://repository.cimmyt.org"
-        keywords = load_keywords("prueba.txt")
+        keywords = load_keywords("family.txt")
 
         for keyword in keywords:
             try:
