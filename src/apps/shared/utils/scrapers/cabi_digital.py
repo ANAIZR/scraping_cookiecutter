@@ -108,8 +108,10 @@ def scraper_cabi_digital(url, sobrenombre):
             )
             driver.execute_script("arguments[0].click();", cookie_button)
             logger.info("✅ Ventana de cookies cerrada.")
+            detect_captcha(driver)
         except Exception:
             logger.info("⚠ No se encontró la ventana de cookies, continuando...")
+        detect_captcha(driver)
         try:
             preferences_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable(
@@ -122,7 +124,7 @@ def scraper_cabi_digital(url, sobrenombre):
             logger.info(
                 "El botón de 'Guardar preferencias' no apareció o no fue clicable."
             )
-
+        detect_captcha(driver)
         for keyword in keywords:
             logger.info(f"Buscando la palabra clave: {keyword}")
             try:
