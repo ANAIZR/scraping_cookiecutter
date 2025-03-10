@@ -21,15 +21,11 @@ import requests
 
 logger = get_logger("scraper")
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
-}
-
 def scraper_apsnet(url, sobrenombre):
     driver = None
     try:
         # Verificar el código de respuesta HTTP antes de proceder
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url)
         if response.status_code in [403, 429, 503]:
             logger.error(f"Acceso denegado o bloqueado con código {response.status_code} en {url}")
             return Response(
