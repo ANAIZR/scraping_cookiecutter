@@ -61,6 +61,9 @@ def scraper_apsnet(url, sobrenombre):
                     logger.info("✅ Input de búsqueda encontrado y accesible.")
                 except TimeoutException:
                     logger.warning("❌ No se encontró el input de búsqueda en el DOM con Selenium.")
+                    driver.execute_script("document.body.style.zoom='100%'")
+                    WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+                    time.sleep(5)
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
                     print("HTML obtenido:")
