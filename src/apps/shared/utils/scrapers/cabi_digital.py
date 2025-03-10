@@ -29,7 +29,7 @@ def detect_captcha(driver):
         print("⚠ CAPTCHA detectado. Intentando resolverlo...")
 
         driver.execute_script("arguments[0].click();", captcha_checkbox)
-        time.sleep(10)  
+        time.sleep(5)  
 
         return True
     except:
