@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from src.apps.shared.models.scraperURL import ScraperURL, Species, ReportComparison, SpeciesSubscription
+from src.apps.shared.models.scraperURL import ScraperURL, Species, ReportComparison, SpeciesSubscription, NewSpecies
 
 
 class ScraperURLSerializer(serializers.ModelSerializer):
@@ -48,6 +48,15 @@ class SpeciesSerializer(serializers.ModelSerializer):
         model = Species
         fields = '__all__' 
         extra_fields = ['sobrenombre']
+        
+class SpeciesCABISerializer(serializers.ModelSerializer):
+    sobrenombre = serializers.CharField(source='scraper_source.sobrenombre', read_only=True)  
+
+    class Meta:
+        model = NewSpecies
+        fields = '__all__' 
+        extra_fields = ['sobrenombre']
+
 
 
 class ReportComparisonSerializer(serializers.ModelSerializer):

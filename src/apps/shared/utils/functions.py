@@ -219,6 +219,19 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
     except Exception as e:
         logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
         raise
+def connect_to_mongo_cabi(db_name=None, collection_name=None):
+    mongo_uri = os.getenv("MONGO_URI_CABI")
+    db_name = db_name or os.getenv("MONGO_DB_NAME_CABI")
+    collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME_CABI")
+
+    print(f"Conectando a MongoDB: {mongo_uri} - Base de datos: {db_name}")
+
+    client = MongoClient(mongo_uri)
+    db = client[db_name]
+    fs = gridfs.GridFS(db)
+
+    print(f"✅ Conexión a MongoDB establecida correctamente: {db_name}")
+    return db[collection_name], fs
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):

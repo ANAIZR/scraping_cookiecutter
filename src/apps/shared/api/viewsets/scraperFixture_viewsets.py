@@ -145,7 +145,6 @@ SCRAPER_FUNCTIONS = {
 }
 
 class ScraperAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
         url = request.data.get("url")
@@ -189,4 +188,66 @@ class ScraperAPIView(APIView):
             return Response(
                 {"error": f"Error durante el scrapeo: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+from celery import Celery
+
+app = Celery("tasks", broker="redis://100.77.143.102:6379/0") 
+
+def enviar_tarea_scraper_url(url, ejecutar_localmente=False):
+    """
+    Envía la tarea al servidor Celery o ejecuta el scraping en local.
+    """
+    url_cabi = "https://www.cabidigitallibrary.org/product/qc"
+
+    if url == url_cabi and ejecutar_localmente:
+        print(f"🔄 Ejecutando `scraper_cabi_digital` de manera local para {url}...")
+
+        result = scraper_cabi_digital(url, "cabi_local")
+
+        # ✅ Asegurar que `result` es un diccionario JSON
+        if isinstance(result, Response):
+            result = result.data
+
+        # ✅ Enviar solo la tarea de procesamiento de datos a Celery en Ubuntu
+        task_name = "src.apps.shared.tasks.scraper_tasks.process_scraped_data_task"
+        task_result = app.send_task(task_name, args=[url])
+        print(f"✅ Tarea de procesamiento enviada a Celery en el servidor, ID: {task_result.id}")
+
+        return {"status": "local_execution", "url": url, "data": result}
+
+    else:
+        task_name = "src.apps.shared.tasks.scraper_tasks.scraper_cabi_task"
+        task_result = app.send_task(task_name, args=[url])
+        print(f"✅ Tarea enviada a Celery en Ubuntu ({task_name}), ID: {task_result.id}")
+        return {"status": "processing", "task_id": task_result.id}
+
+class ScraperURLCABIView(APIView):
+
+    def post(self, request):
+        url = request.data.get("url")
+        ejecutar_localmente = request.data.get("local", False)  
+
+        if not url:
+            return Response(
+                {"error": "Se requiere el campo 'url'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            scraper_url = ScraperURL.objects.get(url=url)
+
+            resultado = enviar_tarea_scraper_url(url, ejecutar_localmente)
+
+            # ✅ Asegurar que `resultado` es un JSON y no un `Response`
+            if isinstance(resultado, Response):
+                resultado = resultado.data
+
+            return Response(resultado, status=status.HTTP_202_ACCEPTED if not ejecutar_localmente else status.HTTP_200_OK)
+
+        except ScraperURL.DoesNotExist:
+            return Response(
+                {"error": f"No se encontraron parámetros para la URL: {url}"},
+                status=status.HTTP_404_NOT_FOUND,
             )

@@ -4,12 +4,14 @@ from ...models.scraperURL import (
     Species,
     ReportComparison,
     SpeciesSubscription,
+    NewSpecies
 )
 from ..serializers.scraperURL_serializers import (
     ScraperURLSerializer,
     SpeciesSerializer,
     ReportComparisonSerializer,
     SpeciesSubscriptionSerializer,
+    SpeciesCABISerializer
 )
 from rest_framework import generics
 from rest_framework.response import Response
@@ -22,6 +24,50 @@ from rest_framework.exceptions import PermissionDenied
 from pymongo import MongoClient
 from django.conf import settings
 from rest_framework.pagination import PageNumberPagination
+from urllib.parse import unquote  # Importación corregida
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
+def get_related_species(request, query):
+    """
+    Obtiene las especies relacionadas en la tabla Species basado en el nombre científico o en hosts.
+    """
+    query = unquote(query).strip()  # Decodifica caracteres especiales y limpia espacios
+
+    # Filtrar especies donde el scientific_name O el hosts contengan el término de búsqueda
+    related_species = Species.objects.filter(
+        Q(scientific_name__iexact=query) | Q(hosts__icontains=query)
+    ).distinct()
+
+    # Si no encuentra coincidencias, retorna un 404
+    if not related_species.exists():
+        return JsonResponse({"error": "No se encontraron especies relacionadas"}, status=404)
+
+    # Serializar los datos
+    species_list = [
+        {
+            "id": species.id,
+            "scientific_name": species.scientific_name,
+            "common_names": species.common_names,
+            "synonyms": species.synonyms,
+            "invasiveness_description": species.invasiveness_description,
+            "distribution": species.distribution,
+            "impact": species.impact,
+            "habitat": species.habitat,
+            "life_cycle": species.life_cycle,
+            "reproduction": species.reproduction,
+            "hosts": species.hosts,
+            "symptoms": species.symptoms,
+            "affected_organs": species.affected_organs,
+            "environmental_conditions": species.environmental_conditions,
+            "prevention_control": species.prevention_control,
+            "uses": species.uses,
+            "source_url": species.source_url,
+        }
+        for species in related_species
+    ]
+
+    return JsonResponse({"related_species": species_list})
 
 class Pagination(PageNumberPagination):
     page_size = 10 
@@ -36,6 +82,11 @@ class ScraperURLViewSet(viewsets.ModelViewSet):
 class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Species.objects.select_related("scraper_source").all()
     serializer_class = SpeciesSerializer
+    pagination_class = Pagination
+
+class SpeciesCABIViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = NewSpecies.objects.select_related("scraper_source").all()
+    serializer_class = SpeciesCABISerializer
     pagination_class = Pagination
 
 class ReportComparisonDetailView(generics.RetrieveAPIView):
