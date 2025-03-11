@@ -191,19 +191,24 @@ def initialize_driver_cabi(retries=3):
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--disable-infobars")
+            options.add_argument("--headless=new")  
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option("useAutomationExtension", False)
+
+            options.add_argument("--disable-popup-blocking")
+            options.add_argument("--disable-features=IsolateOrigins,site-per-process")
+            options.add_argument("--disable-software-rasterizer")
 
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
 
-           
-
             driver = webdriver.Remote(
                 command_executor="http://100.122.137.82:4444/wd/hub", 
                 options=options
             )
+
+            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")  # 🔥 Ocultar propiedad webdriver
 
             driver.set_page_load_timeout(600)
             logger.info("✅ Conexión exitosa con Selenium Server en Windows.")
@@ -215,6 +220,7 @@ def initialize_driver_cabi(retries=3):
                 time.sleep(5)
             else:
                 raise
+
 
 
 def connect_to_mongo():
