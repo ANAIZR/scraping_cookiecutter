@@ -7,7 +7,8 @@ import logging
 from django.utils import timezone
 from src.apps.shared.tasks.comparison_tasks import generate_comparison_report_task
 from src.apps.shared.tasks.notifications_tasks import check_new_species_task
-
+from datetime import datetime
+from ..utils.scrapers.cabi_digital import scraper_cabi_digital
 logger = logging.getLogger(__name__)
 
 from celery import chain
@@ -31,7 +32,68 @@ def process_scraped_data_task(self, url, *args, **kwargs):
     return url
 
 
+@shared_task(bind=True)
+def scraper_cabi_task(self, url, *args, **kwargs):
+    """
+    Tarea Celery dedicada a la URL de CABI para ejecutarla en segundo plano.
+    """
+    logger.info(f"🔍 Iniciando `scraper_cabi_task` en Celery para la URL: {url}")
 
+    try:
+        # Obtener la URL desde la base de datos
+        scraper_url = ScraperURL.objects.get(url=url)
+        sobrenombre = scraper_url.sobrenombre
+
+        # Actualizar estado a "en progreso"
+        scraper_url.estado_scrapeo = "en_progreso"
+        scraper_url.error_scrapeo = ""
+        scraper_url.fecha_scraper = datetime.now()
+        scraper_url.save()
+
+        # ✅ Ejecutar el scraper CABI
+        result = scraper_cabi_digital(url, sobrenombre)
+
+        if "error" in result:
+            logger.error(f"❌ Scraping local fallido para {url}: {result['error']}")
+            scraper_url.estado_scrapeo = "fallido"
+            scraper_url.error_scrapeo = result["error"]
+            scraper_url.save()
+            return {"status": "failed", "url": url, "error": result["error"]}
+
+        # ✅ Si el scraping fue exitoso, actualizar estado
+        logger.info(f"✅ Scraping exitoso para {url}, resultado: {result}")
+        scraper_url.estado_scrapeo = "exitoso"
+        scraper_url.error_scrapeo = ""
+        scraper_url.save()
+
+        # 🚀 Ejecutar tareas post-scraping
+        tareas = [
+            process_scraped_data_task.si(url).set(ignore_result=True),
+            generate_comparison_report_task.s().set(ignore_result=True),
+        ]
+
+        # Si la URL está en la lista de URLs permitidas, agregar la tarea de validación
+        urls_permitidas = {
+            "https://www.ippc.int/en/countries/south-africa/pestreports/",
+            "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
+        }
+        if url in urls_permitidas:
+            tareas.append(check_new_species_task.si(url).set(ignore_result=True))
+
+        # 🔄 Ejecutar tareas en cadena solo si el scraping fue exitoso
+        if scraper_url.estado_scrapeo == "exitoso":
+            chain(*tareas).apply_async()
+            logger.info(f"✅ Flujo post-scraping ejecutado en Celery para {url}.")
+
+        return {"status": scraper_url.estado_scrapeo, "url": url, "data": result}
+
+    except ScraperURL.DoesNotExist:
+        logger.error(f"❌ No se encontró `ScraperURL` para {url}")
+        return {"status": "failed", "url": url, "error": "ScraperURL no encontrado"}
+
+    except Exception as e:
+        logger.error(f"❌ Error en `scraper_cabi_task`: {str(e)}")
+        return {"status": "failed", "url": url, "error": str(e)}
 @shared_task(bind=True)
 def scraper_url_task(self, url, *args, **kwargs):
     if ScraperURL.objects.filter(url=url, estado_scrapeo="en_progreso").exists():
