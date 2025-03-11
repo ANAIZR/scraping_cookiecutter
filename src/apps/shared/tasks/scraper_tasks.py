@@ -34,23 +34,18 @@ def process_scraped_data_task(self, url, *args, **kwargs):
 
 @shared_task(bind=True)
 def scraper_cabi_task(self, url, *args, **kwargs):
-    """
-    Tarea Celery dedicada a la URL de CABI para ejecutarla en segundo plano.
-    """
+
     logger.info(f"🔍 Iniciando `scraper_cabi_task` en Celery para la URL: {url}")
 
     try:
-        # Obtener la URL desde la base de datos
         scraper_url = ScraperURL.objects.get(url=url)
         sobrenombre = scraper_url.sobrenombre
 
-        # Actualizar estado a "en progreso"
         scraper_url.estado_scrapeo = "en_progreso"
         scraper_url.error_scrapeo = ""
         scraper_url.fecha_scraper = datetime.now()
         scraper_url.save()
 
-        # ✅ Ejecutar el scraper CABI
         result = scraper_cabi_digital(url, sobrenombre)
 
         if "error" in result:
@@ -60,19 +55,16 @@ def scraper_cabi_task(self, url, *args, **kwargs):
             scraper_url.save()
             return {"status": "failed", "url": url, "error": result["error"]}
 
-        # ✅ Si el scraping fue exitoso, actualizar estado
         logger.info(f"✅ Scraping exitoso para {url}, resultado: {result}")
         scraper_url.estado_scrapeo = "exitoso"
         scraper_url.error_scrapeo = ""
         scraper_url.save()
 
-        # 🚀 Ejecutar tareas post-scraping
         tareas = [
             process_scraped_data_task.si(url).set(ignore_result=True),
             generate_comparison_report_task.s().set(ignore_result=True),
         ]
 
-        # Si la URL está en la lista de URLs permitidas, agregar la tarea de validación
         urls_permitidas = {
             "https://www.ippc.int/en/countries/south-africa/pestreports/",
             "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
@@ -80,7 +72,6 @@ def scraper_cabi_task(self, url, *args, **kwargs):
         if url in urls_permitidas:
             tareas.append(check_new_species_task.si(url).set(ignore_result=True))
 
-        # 🔄 Ejecutar tareas en cadena solo si el scraping fue exitoso
         if scraper_url.estado_scrapeo == "exitoso":
             chain(*tareas).apply_async()
             logger.info(f"✅ Flujo post-scraping ejecutado en Celery para {url}.")
