@@ -82,7 +82,6 @@ def scraper_cabi_digital(url, sobrenombre):
         detect_captcha(driver, "Inicio del scraping")
 
         collection, fs = connect_to_mongo()
-        detect_captcha(driver)
 
         keywords = load_keywords("plants.txt")
         detect_captcha(driver, "Carga de palabras clave")
@@ -100,7 +99,6 @@ def scraper_cabi_digital(url, sobrenombre):
         scraping_exitoso = False
         base_domain = "https://www.cabidigitallibrary.org"
         visited_urls = set()
-        detect_captcha(driver, f"Búsqueda con la palabra clave: {keyword}")
 
         try:
             if os.path.exists("cookies.pkl"):
@@ -140,7 +138,6 @@ def scraper_cabi_digital(url, sobrenombre):
             logger.info(
                 "El botón de 'Guardar preferencias' no apareció o no fue clicable."
             )
-        detect_captcha(driver)
         for keyword in keywords:
             detect_captcha(driver, f"Recarga de página para {keyword}")
             logger.info(f"Buscando la palabra clave: {keyword}")
