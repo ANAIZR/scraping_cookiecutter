@@ -3,7 +3,9 @@ from unittest.mock import patch, MagicMock
 from src.apps.shared.tasks.scraper_tasks import (
     scraper_url_task, process_scraped_data_task, scraper_expired_urls_task
 )
+import logging
 
+logger = logging.getLogger(__name__)
 class TestScraperTasks:
 
     @pytest.fixture
@@ -34,17 +36,21 @@ class TestScraperTasks:
         assert "ScraperURL no encontrado" in result["error"]
 
     def test_scraper_url_task_success(self, mock_scraper_service, mock_scraper_url_model):
-        mock_scraper_url = MagicMock(sobrenombre="test", estado_scrapeo="pendiente")
+        mock_scraper_url = MagicMock(sobrenombre="test", estado_scrapeo="pendiente")  
         mock_scraper_url_model.get.return_value = mock_scraper_url
         mock_scraper_service.return_value.scraper_one_url.return_value = {"data": "scraped"}
 
         result = scraper_url_task(None, "https://validsite.com")
+
         assert result["status"] == "exitoso"
         assert "data" in result["data"]
 
-    def test_scraper_expired_urls_task_no_urls(self, mock_scraper_service):
+    @patch("src.apps.shared.tasks.scraper_tasks.WebScraperService")
+    def test_scraper_expired_urls_task_no_urls(mock_scraper_service):
         mock_scraper_service.return_value.get_expired_urls.return_value = []
-        result = scraper_expired_urls_task(None)
 
-        assert result is None
+        result = scraper_expired_urls_task.apply(args=[None])  
+
+        assert result is None or result.result is None  
         mock_scraper_service.return_value.get_expired_urls.assert_called_once()
+        logger.info("✅ Test completado correctamente sin URLs expiradas.")
