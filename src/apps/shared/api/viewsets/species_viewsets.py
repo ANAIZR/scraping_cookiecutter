@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from ...models.species import Species, ReportComparison, SpeciesSubscription
+from ...models.species import Species, ReportComparison, SpeciesSubscription,CabiSpecies
 from ...models.urls import ScraperURL
 from ..serializers.scraperURL_serializers import ScraperURLSerializer
 from ..serializers.species_serializers import SpeciesCabiSerializer,SpeciesSerializer, ReportComparisonSerializer, SpeciesSubscriptionSerializer
@@ -38,7 +38,7 @@ class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class SpeciesCABIViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Species.objects.select_related("scraper_source").distinct().order_by("-created_at")
+    queryset = CabiSpecies.objects.select_related("scraper_source").distinct().order_by("-created_at")
     serializer_class = SpeciesCabiSerializer
     pagination_class = Pagination
 
