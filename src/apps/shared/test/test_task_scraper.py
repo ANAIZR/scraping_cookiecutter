@@ -46,9 +46,10 @@ class TestScraperTasks:
 
 
 
-    @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL")
-    @patch("src.apps.shared.tasks.scraper_tasks.WebScraperService")
-    def test_scraper_url_task_success(mock_scraper_service, mock_scraper_url_model):
+
+    @patch("src.apps.shared.tasks.scraper_tasks.WebScraperService") 
+    @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL") 
+    def test_scraper_url_task_success(mock_scraper_url_model, mock_scraper_service): 
         mock_scraper_url_model.objects.filter.return_value.exists.return_value = False
 
         mock_scraper_url = MagicMock(sobrenombre="test", estado_scrapeo="pendiente")
