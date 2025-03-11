@@ -12,6 +12,8 @@ from .viewsets.species_viewsets import (
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 router.register(r"urls", ScraperURLViewSet, basename="urls")
 router.register(r"species", SpeciesViewSet, basename="species")
+router.register(r"species-cabi", SpeciesViewSet, basename="species_cabi")
+
 router.register(
     r"subscription", SpeciesSubscriptionViewSet, basename="subscription"
 )
