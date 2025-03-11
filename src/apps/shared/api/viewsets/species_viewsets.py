@@ -1,16 +1,8 @@
 from rest_framework import viewsets
-from ...models.species import (
-    ScraperURL,
-    Species,
-    ReportComparison,
-    SpeciesSubscription,
-)
-from ..serializers.scraperURL_serializers import (
-    ScraperURLSerializer,
-    SpeciesSerializer,
-    ReportComparisonSerializer,
-    SpeciesSubscriptionSerializer,
-)
+from ...models.species import Species, ReportComparison, SpeciesSubscription
+from ...models.urls import ScraperURL
+from ..serializers.scraperURL_serializers import ScraperURLSerializer
+from ..serializers.species_serializers import SpeciesCabiSerializer,SpeciesSerializer, ReportComparisonSerializer, SpeciesSubscriptionSerializer
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
@@ -45,7 +37,10 @@ class SpeciesViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = Pagination
 
 
-
+class SpeciesCABIViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Species.objects.select_related("scraper_source").distinct().order_by("-created_at")
+    serializer_class = SpeciesCabiSerializer
+    pagination_class = Pagination
 
 
 

@@ -21,20 +21,37 @@ from ..credentials import login_cabi_scienceconnect
 
 logger = get_logger("scraper")
 
-def detect_captcha(driver):
+def detect_captcha(driver, context="Desconocido"):
+    """
+    Detecta si aparece el CAPTCHA de Cloudflare y lo registra con el contexto donde se encontró.
+    """
     try:
-        captcha_checkbox = WebDriverWait(driver, 30).until(
+        captcha_checkbox = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "#content input[type='checkbox']"))
         )
-        print("⚠ CAPTCHA detectado. Intentando resolverlo...")
-
+        logger.warning(f"⚠ CAPTCHA detectado en: {context}. Intentando resolverlo...")
+        
         driver.execute_script("arguments[0].click();", captcha_checkbox)
         time.sleep(5)  
 
-        return True
-    except:
-        print("✅ No se detectó CAPTCHA. Continuando con el inicio de sesión.")
+        if is_captcha_present(driver):
+            logger.error(f"❌ CAPTCHA persistente en {context}. Posible bloqueo.")
+            return True
+        else:
+            logger.info(f"✅ CAPTCHA resuelto en {context}.")
+            return False
+
+    except TimeoutException:
+        logger.info(f"✅ No se detectó CAPTCHA en {context}.")
         return False
+
+def is_captcha_present(driver):
+    try:
+        driver.find_element(By.CSS_SELECTOR, "#content input[type='checkbox']")
+        return True
+    except NoSuchElementException:
+        return False
+
 
 def scraper_cabi_digital(url, sobrenombre):
     driver = initialize_driver_cabi()
@@ -56,19 +73,19 @@ def scraper_cabi_digital(url, sobrenombre):
         logger.error("No se encontro el login")"""
     try:
         driver.get(url)
+        detect_captcha(driver, "Carga de la página principal")
+
         time.sleep(random.uniform(1, 3))
 
-        detect_captcha(driver)
-        time.sleep(random.uniform(3, 6))
         
         logger.info(f"Iniciando scraping para URL: {url}")
-        detect_captcha(driver)
+        detect_captcha(driver, "Inicio del scraping")
 
         collection, fs = connect_to_mongo()
         detect_captcha(driver)
 
         keywords = load_keywords("plants.txt")
-        detect_captcha(driver)
+        detect_captcha(driver, "Carga de palabras clave")
 
         if not keywords:
             return Response(
@@ -78,13 +95,12 @@ def scraper_cabi_digital(url, sobrenombre):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        detect_captcha(driver)
 
         logger.info("Página de CABI cargada exitosamente.")
         scraping_exitoso = False
         base_domain = "https://www.cabidigitallibrary.org"
         visited_urls = set()
-        detect_captcha(driver)
+        detect_captcha(driver, f"Búsqueda con la palabra clave: {keyword}")
 
         try:
             if os.path.exists("cookies.pkl"):
@@ -126,9 +142,9 @@ def scraper_cabi_digital(url, sobrenombre):
             )
         detect_captcha(driver)
         for keyword in keywords:
-            detect_captcha(driver)
+            detect_captcha(driver, f"Recarga de página para {keyword}")
             logger.info(f"Buscando la palabra clave: {keyword}")
-            detect_captcha(driver)
+            detect_captcha(driver, f"Ejecución de búsqueda para {keyword}")
             try:
                 driver.get(url)
                 detect_captcha(driver)
@@ -156,7 +172,7 @@ def scraper_cabi_digital(url, sobrenombre):
             max_visits = 5
 
             while True:
-                detect_captcha(driver)
+                detect_captcha(driver, f"Resultados de búsqueda para {keyword}")
                 try:
                     WebDriverWait(driver, 60).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "ul.rlist li"))

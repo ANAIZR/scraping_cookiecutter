@@ -20,9 +20,7 @@ class OllamaCabiService:
         self.cabi_url = "https://www.cabidigitallibrary.org/product/qc"  
 
     def extract_and_save_species(self,url):
-        """
-        Busca y procesa todos los documentos pendientes de CABI en MongoDB.
-        """
+
         documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))
 
         if not documents:
@@ -36,9 +34,7 @@ class OllamaCabiService:
                 logger.error(f"❌ Error procesando documento CABI: {e}")
 
     def process_document(self, mongo_id):
-        """
-        Procesa un solo documento de CABI en MongoDB basado en `mongo_id`.
-        """
+
         try:
             document = self.collection.find_one({"_id": ObjectId(mongo_id)})
 

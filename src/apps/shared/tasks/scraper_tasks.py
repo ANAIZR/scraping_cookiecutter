@@ -29,6 +29,9 @@ def process_scraped_data_task(self, url, *args, **kwargs):
     scraper.extract_and_save_species(url) 
 
     return url
+
+
+
 @shared_task(bind=True)
 def scraper_url_task(self, url, *args, **kwargs):
     scraper_service = WebScraperService()
@@ -49,7 +52,7 @@ def scraper_url_task(self, url, *args, **kwargs):
     except Exception as e:
         logger.error(f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}")
         return {"status": "failed", "url": url, "error": str(e)}
-
+    
     result = scraper_service.scraper_one_url(url, sobrenombre)
 
     if "error" in result:
