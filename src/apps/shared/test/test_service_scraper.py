@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from apps.shared.services.scraper_service import WebScraperService
+from src.apps.shared.services.scraper_service import WebScraperService
 from django.utils import timezone
 
 class TestWebScraperService:
