@@ -34,7 +34,7 @@ def process_scraped_data_task(self, url, *args, **kwargs):
 
 @shared_task(bind=True)
 def scraper_url_task(self, url, *args, **kwargs):
-    url_local = "www.cabidigitallibrary.org/product/qc"
+    url_local = "https://www.cabidigitallibrary.org/product/qc"
 
     if url == url_local:
         logger.info(f"Task {self.request.id}: URL {url} detectada para ejecución local. Saltando scraper_one_url.")
