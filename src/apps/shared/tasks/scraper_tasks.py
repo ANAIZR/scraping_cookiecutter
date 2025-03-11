@@ -34,16 +34,9 @@ def process_scraped_data_task(self, url, *args, **kwargs):
 
 @shared_task(bind=True)
 def scraper_url_task(self, url, *args, **kwargs):
-    url_local = "https://www.cabidigitallibrary.org/product/qc"
-
-    if url == url_local:
-        logger.info(f"Task {self.request.id}: URL {url} detectada para ejecución local. Saltando scraper_one_url.")
-        return {"status": "skipped", "url": url, "message": "Esta URL se ejecuta de manera local, se omite el scraping."}
-
     if ScraperURL.objects.filter(url=url, estado_scrapeo="en_progreso").exists():
         logger.info(f"Task {self.request.id}: La URL {url} ya está en progreso.")
         return {"status": "skipped", "url": url, "message": "Scraping ya en progreso"}
-
     scraper_service = WebScraperService()
 
     try:
@@ -77,7 +70,6 @@ def scraper_url_task(self, url, *args, **kwargs):
     scraper_url.error_scrapeo = ""
     scraper_url.save()
 
-    # Flujo normal después del scraping
     urls_permitidas = {
         "https://www.ippc.int/en/countries/south-africa/pestreports/",
         "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
@@ -101,7 +93,6 @@ def scraper_url_task(self, url, *args, **kwargs):
         "url": url,
         "data": result if result else "No data scraped"
     }
-
 
 
 @shared_task(bind=True)
