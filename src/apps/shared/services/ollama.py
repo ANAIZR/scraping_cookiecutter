@@ -41,7 +41,10 @@ class OllamaService:
         content = doc.get("contenido", "")
         source_url = doc.get("source_url", "")
         mongo_id = doc["_id"]
-
+        existing_doc = self.collection.find_one({"_id": mongo_id})
+        if existing_doc and existing_doc.get("processed"):
+            logger.info(f"🔄 Documento {mongo_id} ya ha sido procesado. Se omite.")
+            return
         if not content:
             logger.warning(f"🚫 Documento {mongo_id} no tiene contenido.")
             return

@@ -58,8 +58,8 @@ def test_restore_user():
     assert user.is_active is True
 
 @pytest.mark.django_db(transaction=True)
-@patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
-@patch("src.apps.users.utils.tasks.update_system_role_task.apply_async")
+@patch("src.apps.users.tasks.email_task.send_welcome_email_task.apply_async")
+@patch("src.apps.users.tasks.user_task.update_system_role_task.apply_async")
 def test_admin_can_create_user(mock_update_role, mock_send_email, api_client, admin_user):
     api_client.force_authenticate(user=admin_user)
 
@@ -163,8 +163,8 @@ def test_usuario_get_serializer():
     assert serializer.data["system_role_description"] == "Funcionario"
 
 @pytest.mark.django_db(transaction=True) 
-@patch("src.apps.users.utils.tasks.send_welcome_email_task.apply_async")
-@patch("src.apps.users.utils.tasks.update_system_role_task.apply_async")
+@patch("src.apps.users.tasks.email_task.send_welcome_email_task.apply_async")
+@patch("src.apps.users.tasks.user_task.update_system_role_task.apply_async")
 def test_usuario_post_serializer(mock_update_role, mock_send_email):
     data = {
         "username": "newuser",
