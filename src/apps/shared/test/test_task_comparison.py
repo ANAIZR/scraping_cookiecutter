@@ -41,8 +41,14 @@ class TestGenerateComparisonReportTask:
         assert "old_url" in result["info_eliminada"]
         assert result["estructura_cambio"] is True
 
-    def test_generate_comparison_report_task_exception(self, mock_comparison_service):
+    from unittest.mock import patch
+
+    @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
+    def test_generate_comparison_report_task_exception(mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.side_effect = Exception("Unexpected error")
-        result = generate_comparison_report_task(None, "https://example.com")
+
+        result = generate_comparison_report_task.apply(args=["https://example.com"]).result
+
         assert result["status"] == "error"
         assert "Error interno" in result["message"]
+
