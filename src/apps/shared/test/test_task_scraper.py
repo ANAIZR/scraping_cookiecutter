@@ -28,12 +28,18 @@ class TestScraperTasks:
         assert result == "https://example.com"
         mock_instance.extract_and_save_species.assert_called_once_with("https://example.com")
 
-    def test_scraper_url_task_not_found(self, mock_scraper_url_model):
-        mock_scraper_url_model.get.side_effect = mock_scraper_url_model.model.DoesNotExist
+
+    @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL")
+    def test_scraper_url_task_not_found(mock_scraper_url_model):
+        mock_scraper_url_model.objects.filter.return_value.exists.return_value = False
+
+        mock_scraper_url_model.objects.get.side_effect = mock_scraper_url_model.model.DoesNotExist
+
         result = scraper_url_task(None, "https://notfound.com")
 
         assert result["status"] == "failed"
         assert "ScraperURL no encontrado" in result["error"]
+
 
 
     @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL")
