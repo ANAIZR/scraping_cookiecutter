@@ -203,9 +203,7 @@ class OllamaService:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
 
 def datos_son_validos(datos, min_campos=2):
-    """
-    Valida si los datos extraídos tienen suficientes campos con información.
-    """
+
     print("🔍 Evaluando JSON:", datos)
 
     if not datos or not isinstance(datos, dict):

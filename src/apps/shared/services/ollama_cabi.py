@@ -77,9 +77,7 @@ class OllamaCabiService:
             logger.error(f"🚨 Error procesando documento CABI {mongo_id}: {e}")
 
     def text_to_json(self, content, source_url, url):
-        """
-        Envía el contenido a Ollama para conversión a JSON.
-        """
+
         prompt = f"""
         Organiza el siguiente contenido en **formato JSON**, pero 
         **cada campo que contenga múltiples valores debe estar separado por comas dentro de un string, en lugar de usar un array JSON**.
@@ -90,29 +88,50 @@ class OllamaCabiService:
         {content}
         **Estructura esperada en JSON:** 
 
-        {json.dumps({
-            "nombre_cientifico": "",
-            "nombres_comunes": "",
-            "sinonimos": "",
-            "descripcion_invasividad": "",
-            "distribucion": "",
-            "impacto": {"Económico": "", "Ambiental": "", "Social": ""},
-            "habitat": "",
-            "ciclo_vida": "",
-            "reproduccion": "",
-            "hospedantes": "",
-            "sintomas": "",
-            "organos_afectados": "",
-            "condiciones_ambientales": "",
-            "prevencion_control": {"Prevención": "", "Control": ""},
-            "usos": "",
-            "url": source_url,
-            "hora": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "fuente": url
-        }, indent=2)}
+        {{
+          "nombre_cientifico": "",
+          "nombres_comunes": "",
+          "sinonimos": "",
+          "descripcion_invasividad": "",
+          "distribucion": "",
+          "impacto": {{"Económico": "", "Ambiental": "", "Social": ""}},
+          "habitat": "",
+          "ciclo_vida": "",
+          "reproduccion": "",
+          "hospedantes": "",
+          "sintomas": "",
+          "organos_afectados": "",
+          "condiciones_ambientales": "",
+          "prevencion_control": {{"Prevención": "", "Control": ""}},
+          "usos": "",
+          "url": "{source_url}",
+          "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+          "fuente": "{url}"
+        }}
 
-        **Instrucciones:** Devuelve solo el JSON sin texto adicional.
+        **Instrucciones:**
+        Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
+         **No uses comillas triples , ni bloques de código (`'''`).**
+        - **Asegúrate de que el JSON devuelto tenga llaves de apertura y cierre correctamente.**
+
+        1. Extrae el nombre científico y los nombres comunes de la especie.
+        2. Lista los sinónimos científicos si están disponibles.
+        3. Proporciona una descripción de la invasividad de la especie.
+        4. Identifica los países o regiones donde está distribuida.
+        5. Extrae información sobre impacto económico, ambiental y social.
+        6. Describe el hábitat donde se encuentra.
+        7. Explica el ciclo de vida y los métodos de reproducción.
+        8. Lista los hospedantes afectados por la especie.
+        9. Describe los síntomas y los órganos afectados en los hospedantes.
+        10. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
+        11. Extrae información sobre métodos de prevención y control.
+        12. Lista los usos conocidos de la especie.
+        13. Usa la hora actual para completar el campo "hora".
+            Devuelve solo el JSON con los datos extraídos, sin texto adicional.
+        14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
+        15. En descripcion pones algo corto de 500 palabras acerca de que trataba el contentido
         """
+
 
         response = requests.post(
             "http://127.0.0.1:11434/api/chat",
