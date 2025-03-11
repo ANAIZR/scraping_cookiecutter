@@ -23,7 +23,7 @@ class TestScraperTasks:
     from unittest.mock import patch
 
     @patch("src.apps.shared.tasks.scraper_tasks.OllamaService")
-    def test_process_scraped_data_task(mock_ollama_service):
+    def test_process_scraped_data_task(self,mock_ollama_service):
         mock_instance = mock_ollama_service.return_value
         mock_instance.extract_and_save_species.return_value = None
 
