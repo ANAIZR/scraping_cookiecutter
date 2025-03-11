@@ -1,5 +1,5 @@
 from celery import shared_task, chain
-from src.apps.shared.services.scraper import WebScraperService
+from apps.shared.services.scraper_service import WebScraperService
 from src.apps.shared.services.ollama import OllamaService
 from src.apps.shared.services.ollama_cabi import OllamaCabiService
 from src.apps.shared.models.urls import ScraperURL
@@ -34,6 +34,9 @@ def process_scraped_data_task(self, url, *args, **kwargs):
 
 @shared_task(bind=True)
 def scraper_url_task(self, url, *args, **kwargs):
+    if ScraperURL.objects.filter(url=url, estado_scrapeo="en_progreso").exists():
+        logger.info(f"Task {self.request.id}: La URL {url} ya está en progreso.")
+        return {"status": "skipped", "url": url, "message": "Scraping ya en progreso"}
     scraper_service = WebScraperService()
 
     try:
