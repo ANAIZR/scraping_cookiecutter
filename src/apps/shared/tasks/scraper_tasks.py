@@ -34,7 +34,6 @@ def process_scraped_data_task(self, url, *args, **kwargs):
 
 @shared_task(bind=True)
 def scraper_url_task(self, url, *args, **kwargs):
-    # Definir la URL que se ejecutará de forma local
     url_local = "www.cabidigitallibrary.org/product/qc"
 
     if url == url_local:
@@ -64,7 +63,6 @@ def scraper_url_task(self, url, *args, **kwargs):
         logger.error(f"Task {self.request.id}: Error al actualizar fecha de scraping para {url}: {str(e)}")
         return {"status": "failed", "url": url, "error": str(e)}
     
-    # Llamar al scraper solo si la URL no es local
     result = scraper_service.scraper_one_url(url, sobrenombre)
 
     if "error" in result:
