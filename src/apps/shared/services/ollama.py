@@ -20,9 +20,7 @@ class OllamaService:
         self.collection = self.db["fs.files"]
 
     def extract_and_save_species(self, url):
-        """
-        Busca y procesa documentos en MongoDB que coincidan con la URL dada.
-        """
+
         documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))
 
         if not documents:
@@ -39,10 +37,7 @@ class OllamaService:
                     logger.error(f"❌ Error procesando documento {futures[future]}: {e}")
 
     def process_document(self, doc):
-        """
-        Procesa un documento de MongoDB, convierte su contenido a JSON estructurado
-        y lo guarda en PostgreSQL.
-        """
+
         content = doc.get("contenido", "")
         source_url = doc.get("source_url", "")
         mongo_id = doc["_id"]
@@ -60,7 +55,6 @@ class OllamaService:
         if datos_son_validos(structured_data):
             self.save_species_to_postgres(structured_data, source_url, doc.get("url", ""), mongo_id)
 
-            # ✅ Marcar documento como procesado en MongoDB
             self.collection.update_one(
                 {"_id": mongo_id},
                 {"$set": {"processed": True, "processed_at": datetime.utcnow()}},
@@ -70,9 +64,7 @@ class OllamaService:
             logger.warning(f"⚠️ Datos vacíos para {mongo_id}, no se guardan en PostgreSQL.")
 
     def text_to_json(self, content, source_url, url):
-        """
-        Convierte el contenido en JSON estructurado utilizando Ollama.
-        """
+
         prompt = f"""
         Organiza el siguiente contenido en **formato JSON**, pero 
         **cada campo que contenga múltiples valores debe estar separado por comas dentro de un string, en lugar de usar un array JSON**.
