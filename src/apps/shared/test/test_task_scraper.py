@@ -35,15 +35,27 @@ class TestScraperTasks:
         assert result["status"] == "failed"
         assert "ScraperURL no encontrado" in result["error"]
 
-    def test_scraper_url_task_success(self, mock_scraper_service, mock_scraper_url_model):
-        mock_scraper_url = MagicMock(sobrenombre="test", estado_scrapeo="pendiente")  
-        mock_scraper_url_model.get.return_value = mock_scraper_url
+
+    @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL")
+    @patch("src.apps.shared.tasks.scraper_tasks.WebScraperService")
+    def test_scraper_url_task_success(mock_scraper_service, mock_scraper_url_model):
+        mock_scraper_url_model.objects.filter.return_value.exists.return_value = False
+
+        mock_scraper_url = MagicMock(sobrenombre="test", estado_scrapeo="pendiente")
+        mock_scraper_url_model.objects.get.return_value = mock_scraper_url
+
         mock_scraper_service.return_value.scraper_one_url.return_value = {"data": "scraped"}
 
         result = scraper_url_task(None, "https://validsite.com")
 
         assert result["status"] == "exitoso"
         assert "data" in result["data"]
+        assert result["data"] == {"data": "scraped"}
+
+        assert mock_scraper_url.estado_scrapeo == "exitoso"
+
+        mock_scraper_url.save.assert_called()
+
 
     @patch("src.apps.shared.tasks.scraper_tasks.WebScraperService")
     def test_scraper_expired_urls_task_no_urls(self,mock_scraper_service):
