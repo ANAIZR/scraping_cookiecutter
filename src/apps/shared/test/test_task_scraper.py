@@ -8,7 +8,7 @@ class TestScraperTasks:
 
     @pytest.fixture
     def mock_scraper_service(self, mocker):
-        return mocker.patch('src.apps.shared.services.scraper.WebScraperService')
+        return mocker.patch('src.apps.shared.services.scraper_service.WebScraperService')
 
     @pytest.fixture
     def mock_ollama_service(self, mocker):

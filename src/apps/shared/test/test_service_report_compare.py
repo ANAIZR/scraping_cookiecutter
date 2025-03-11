@@ -6,7 +6,7 @@ class TestScraperComparisonService:
 
     @pytest.fixture
     def mock_mongo_collection(self, mocker):
-        mock_client = mocker.patch('src.apps.shared.services.comparison.MongoClient')
+        mock_client = mocker.patch('src.apps.shared.services.report_compare.MongoClient')
         mock_db = mock_client.return_value.__getitem__.return_value
         mock_collection = mock_db.__getitem__.return_value
         return mock_collection
