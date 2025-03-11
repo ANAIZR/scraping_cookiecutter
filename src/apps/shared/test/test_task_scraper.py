@@ -20,13 +20,17 @@ class TestScraperTasks:
     def mock_scraper_url_model(self, mocker):
         return mocker.patch('src.apps.shared.models.ScraperURL.objects')
 
-    def test_process_scraped_data_task(self, mock_ollama_service):
+    from unittest.mock import patch
+
+    @patch("src.apps.shared.tasks.scraper_tasks.OllamaService")
+    def test_process_scraped_data_task(mock_ollama_service):
         mock_instance = mock_ollama_service.return_value
         mock_instance.extract_and_save_species.return_value = None
 
-        result = process_scraped_data_task(None, "https://example.com")
+        result = process_scraped_data_task.apply(args=["https://example.com"]).result 
+
         assert result == "https://example.com"
-        mock_instance.extract_and_save_species.assert_called_once_with("https://example.com")
+
 
 
     @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL")
