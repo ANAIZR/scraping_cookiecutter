@@ -1,5 +1,5 @@
 from celery import shared_task, chain
-from apps.shared.services.scraper_service import WebScraperService
+from src.apps.shared.services.scraper_service import WebScraperService
 from src.apps.shared.services.ollama import OllamaService
 from src.apps.shared.services.ollama_cabi import OllamaCabiService
 from src.apps.shared.models.urls import ScraperURL
