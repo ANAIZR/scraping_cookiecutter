@@ -46,7 +46,7 @@ class TestScraperTasks:
         assert "data" in result["data"]
 
     @patch("src.apps.shared.tasks.scraper_tasks.WebScraperService")
-    def test_scraper_expired_urls_task_no_urls(mock_scraper_service):
+    def test_scraper_expired_urls_task_no_urls(self,mock_scraper_service):
         mock_scraper_service.return_value.get_expired_urls.return_value = []
 
         result = scraper_expired_urls_task.apply(args=[None])  
