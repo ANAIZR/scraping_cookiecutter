@@ -35,15 +35,16 @@ class TestScraperTasks:
 
 
     @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL")
-    def test_scraper_url_task_not_found(self,mock_scraper_url_model):
+    def test_scraper_url_task_not_found(self, mock_scraper_url_model):
         mock_scraper_url_model.objects.filter.return_value.exists.return_value = False
-
         mock_scraper_url_model.objects.get.side_effect = Exception("ScraperURL no encontrado")
 
         result = scraper_url_task(None, "https://notfound.com")
 
+        print(f"Resultado de scraper_url_task: {result}")  
         assert result["status"] == "failed"
         assert "ScraperURL no encontrado" in result["error"]
+
 
 
 

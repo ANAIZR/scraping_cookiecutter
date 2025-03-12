@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 
-@shared_task(bind=True)
-def generate_comparison_report_task(self, url):
+@shared_task
+def generate_comparison_report_task(url):
 
     if not url:
         logger.error(
