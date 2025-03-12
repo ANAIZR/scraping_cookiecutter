@@ -31,7 +31,7 @@ class TestSpeciesNotificationService:
     def test_check_new_species_and_notify_with_matches(self, mock_species, mock_subscription, mock_email_service):
         mock_species_instance = MagicMock()
         mock_species_instance.exists.return_value = True
-        mock_species_instance.count.return_value = 1 
+        mock_species_instance.count.return_value = 1  
 
         mock_species.filter.return_value = mock_species_instance
         mock_subscription.filter.return_value = [MagicMock(user=MagicMock(email='user@example.com'),
@@ -40,9 +40,16 @@ class TestSpeciesNotificationService:
                                                         hosts='')]
 
         service = SpeciesNotificationService()
-        service.filter_species_by_subscription = MagicMock(return_value=[
+
+        # Simular un QuerySet-like en lugar de una lista
+        mock_species_queryset = MagicMock()
+        mock_species_queryset.exists.return_value = True
+        mock_species_queryset.count.return_value = 1
+        mock_species_queryset.__iter__.return_value = [
             MagicMock(scientific_name='Test Species', source_url='https://example.com/species/1')
-        ])
+        ]
+
+        service.filter_species_by_subscription = MagicMock(return_value=mock_species_queryset)
 
         service.check_new_species_and_notify(['https://example.com'])
 
@@ -54,6 +61,7 @@ class TestSpeciesNotificationService:
         assert '🔔 Se han añadido 1 nuevos registros' in args[0]
         assert ['user@example.com'] == args[1]
         assert 'Test Species - https://example.com/species/1' in args[2]
+
 
 
     def test_filter_species_by_subscription(self, mock_species):

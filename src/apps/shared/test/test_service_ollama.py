@@ -24,7 +24,7 @@ class TestOllamaService:
         mock_mongo_collection.find.assert_called_once()
 
 
-    @patch("src.apps.shared.services.ollama_service.MongoClient")
+    @patch("src.apps.shared.services.ollama.MongoClient")
     def test_process_document_already_processed(self, mock_mongo_client):
         mock_db = MagicMock()
         mock_collection = MagicMock()
@@ -58,15 +58,19 @@ class TestOllamaService:
     def test_text_to_json_success(self, mocker):
         mock_response = mocker.Mock()
         mock_response.iter_lines.return_value = [
-            b'{"message": {"content": "{\"nombre_cientifico\": \"Species Test\"}"}}'
+            b'{"message": {"content": "{\\"nombre_cientifico\\": \\"Species Test\\"}"}}'
         ]
+        
         mocker.patch('requests.post', return_value=mock_response)
 
         service = OllamaService()
         result = service.text_to_json("contenido válido", "https://source.com", "https://example.com")
 
-        assert isinstance(result, dict)
-        assert result.get("nombre_cientifico") is not None
+        print(f"Resultado de text_to_json: {result}") 
+
+        assert isinstance(result, dict), "El resultado no es un diccionario"
+        assert result.get("nombre_cientifico") is not None, "El campo 'nombre_cientifico' no está en el resultado"
+
 
     def test_text_to_json_invalid_response(self, mocker):
         mock_response = mocker.Mock()
