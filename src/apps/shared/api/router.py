@@ -7,7 +7,8 @@ from .viewsets.species_viewsets import (
     ReportComparisonDetailView,
     SpeciesSubscriptionViewSet,
     ScraperURLViewSet,
-    SpeciesCABIViewSet
+    SpeciesCABIViewSet,
+    get_related_species
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -26,6 +27,8 @@ urlpatterns = [
         ReportComparisonDetailView.as_view(),
         name="report-comparison-detail",
     ),
+    path("related_species/<str:query>/", get_related_species, name="related_species"),
+
 
 ]
 urlpatterns += router.urls

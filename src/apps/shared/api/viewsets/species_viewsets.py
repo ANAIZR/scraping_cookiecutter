@@ -17,10 +17,46 @@ from pymongo import MongoClient
 from django.conf import settings
 from src.apps.users.services.email import EmailService
 from rest_framework.pagination import PageNumberPagination
-
+from urllib.parse import unquote  
+from django.http import JsonResponse
+from django.db.models import Q
 logger = logging.getLogger(__name__)
 
+def get_related_species(request, query):
 
+    query = unquote(query).strip()  
+
+    related_species = Species.objects.filter(
+        Q(scientific_name__iexact=query) | Q(hosts__icontains=query)
+    ).distinct()
+
+    if not related_species.exists():
+        return JsonResponse({"error": "No se encontraron especies relacionadas"}, status=404)
+
+    species_list = [
+        {
+            "id": species.id,
+            "scientific_name": species.scientific_name,
+            "common_names": species.common_names,
+            "synonyms": species.synonyms,
+            "invasiveness_description": species.invasiveness_description,
+            "distribution": species.distribution,
+            "impact": species.impact,
+            "habitat": species.habitat,
+            "life_cycle": species.life_cycle,
+            "reproduction": species.reproduction,
+            "hosts": species.hosts,
+            "symptoms": species.symptoms,
+            "affected_organs": species.affected_organs,
+            "environmental_conditions": species.environmental_conditions,
+            "prevention_control": species.prevention_control,
+            "uses": species.uses,
+            "source_url": species.source_url,
+        }
+        for species in related_species
+    ]
+
+    return JsonResponse({"related_species": species_list})
 class Pagination(PageNumberPagination):
     page_size = 10 
     page_size_query_param = 'page_size' 
