@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from src.apps.shared.tasks.scraper_tasks import (
     scraper_url_task, process_scraped_data_task, scraper_expired_urls_task
 )
+from django.core.exceptions import ObjectDoesNotExist
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,11 +38,12 @@ class TestScraperTasks:
     @patch("src.apps.shared.tasks.scraper_tasks.ScraperURL")
     def test_scraper_url_task_not_found(self, mock_scraper_url_model):
         mock_scraper_url_model.objects.filter.return_value.exists.return_value = False
-        mock_scraper_url_model.objects.get.side_effect = Exception("ScraperURL no encontrado")
+        mock_scraper_url_model.objects.get.side_effect = ObjectDoesNotExist  # ✅ Usa la excepción correcta
 
         result = scraper_url_task(None, "https://notfound.com")
 
         print(f"Resultado de scraper_url_task: {result}")  
+
         assert result["status"] == "failed"
         assert "ScraperURL no encontrado" in result["error"]
 
