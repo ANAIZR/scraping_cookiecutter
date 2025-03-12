@@ -73,13 +73,6 @@ def scraper_url_task(self, url, *args, **kwargs):
             generate_comparison_report_task.s().set(ignore_result=True),
         ]
 
-        urls_permitidas = {
-            "https://www.ippc.int/en/countries/south-africa/pestreports/",
-            "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
-        }
-        if url in urls_permitidas:
-            tareas.append(check_new_species_task.si(url).set(ignore_result=True))
-
         chain(*tareas).apply_async()
         logger.info(f"Task {self.request.id}: Se ha encadenado el procesamiento para {url}")
 

@@ -74,6 +74,7 @@ class OllamaService:
         **Cada campo con múltiples valores debe ser un string separado por comas**, en lugar de un array JSON.
         **Las secciones `prevencion_control` e `impacto` deben mantenerse como objetos anidados con sus claves correspondientes.**
         **Si un campo no tiene información, usa `""`.**
+        
         **Contenido:**
         {content}
         **Estructura esperada en JSON:** 
@@ -104,7 +105,8 @@ class OllamaService:
         Devuelve solo el JSON. **No agregues texto antes o después del JSON.**
          **No uses comillas triples , ni bloques de código (`'''`).**
         - **Asegúrate de que el JSON devuelto tenga llaves de apertura y cierre correctamente.**
-
+        - no uses en los resultados , () [] ni llaves
+        - **Asegúrate de que los campos con múltiples valores estén separados por comas dentro de un string.**
         1. Extrae el nombre científico y los nombres comunes de la especie.
         2. Lista los sinónimos científicos si están disponibles.
         3. Proporciona una descripción de la invasividad de la especie.
@@ -120,7 +122,9 @@ class OllamaService:
         13. Usa la hora actual para completar el campo "hora".
             Devuelve solo el JSON con los datos extraídos, sin texto adicional.
         14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
-        15. En descripcion pones algo corto de 500 palabras acerca de que trataba el contentido
+        15. En descripcion pones algo corto de 500 palabras acerca de que trata el contentido
+        16. **Ten cuidado con los caracteres especiales y las comillas.**
+
         """
 
         response = requests.post(
