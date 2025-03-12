@@ -15,7 +15,7 @@ class TestGenerateComparisonReportTask:
 
 
     @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
-    def test_generate_comparison_report_task_no_comparison(mock_comparison_service):
+    def test_generate_comparison_report_task_no_comparison(self,mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.return_value = {"status": "no_comparison"}
 
         result = generate_comparison_report_task.apply(args=["https://example.com"]).result
@@ -25,7 +25,7 @@ class TestGenerateComparisonReportTask:
 
 
     @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
-    def test_generate_comparison_report_task_missing_content(mock_comparison_service):
+    def test_generate_comparison_report_task_missing_content(self,mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.return_value = {"status": "missing_content"}
 
         result = generate_comparison_report_task.apply(args=["https://example.com"]).result
@@ -35,7 +35,7 @@ class TestGenerateComparisonReportTask:
 
 
     @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
-    def test_generate_comparison_report_task_duplicate(mock_comparison_service):
+    def test_generate_comparison_report_task_duplicate(self,mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.return_value = {"status": "duplicate"}
 
         result = generate_comparison_report_task.apply(args=["https://example.com"]).result
@@ -45,7 +45,7 @@ class TestGenerateComparisonReportTask:
 
 
     @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
-    def test_generate_comparison_report_task_changed(mock_comparison_service):
+    def test_generate_comparison_report_task_changed(self,mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.return_value = {
             "status": "changed",
             "info_agregada": ["new_url"],
@@ -63,7 +63,7 @@ class TestGenerateComparisonReportTask:
 
 
     @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
-    def test_generate_comparison_report_task_exception(mock_comparison_service):
+    def test_generate_comparison_report_task_exception(self,mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.side_effect = Exception("Unexpected error")
 
         result = generate_comparison_report_task.apply(args=["https://example.com"]).result
