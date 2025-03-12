@@ -21,7 +21,6 @@ router.register(
 
 urlpatterns = [
     path("scraper-url/", ScraperAPIView.as_view(), name="scraper_url"),
-    path("scraper-url-cabi/", ScraperAPIView.as_view(), name="scraper_url_cabi"),
     path(
         "report-comparison/<int:scraper_id>/",
         ReportComparisonDetailView.as_view(),
