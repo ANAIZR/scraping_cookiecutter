@@ -40,7 +40,10 @@ class TestScraperComparisonService:
         assert result["status"] == "duplicate"
         assert "La comparación ya fue realizada anteriormente." in result["message"]
 
-    def test_compare_and_save_no_changes(self, mock_mongo_collection):
+    @patch("src.apps.shared.models.ScraperModel.objects") 
+    def test_compare_and_save_no_changes(self, mock_scraper_model, mock_mongo_collection):
+        mock_scraper_model.filter.return_value.exists.return_value = False  
+
         service = ScraperComparisonService()
         mock_mongo_collection.find.return_value.sort.return_value = [
             {"_id": "1", "contenido": "same content"},
@@ -50,6 +53,7 @@ class TestScraperComparisonService:
 
         assert result["status"] == "no_changes"
         assert "No se detectaron cambios en la comparación." in result["message"]
+
 
     def test_compare_and_save_with_changes(self, mock_mongo_collection, mock_report_comparison, mock_scraper_url):
         service = ScraperComparisonService()

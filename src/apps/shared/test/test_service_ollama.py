@@ -36,12 +36,15 @@ class TestOllamaService:
         service = OllamaService()
         service.collection = mock_collection  
 
+        service.text_to_json = MagicMock()
+
         doc = {"_id": "123", "contenido": "sample content", "source_url": "https://example.com"}
 
         service.process_document(doc)
 
         mock_collection.find_one.assert_called_once_with({"_id": "123"})
-        service.text_to_json.assert_not_called()
+        service.text_to_json.assert_not_called()  
+
 
 
 

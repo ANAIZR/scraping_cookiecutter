@@ -9,9 +9,10 @@ class TestGenerateComparisonReportTask:
         return mocker.patch('src.apps.shared.services.report_compare.ScraperComparisonService')
 
     def test_generate_comparison_report_task_invalid_url(self):
-        result = generate_comparison_report_task(None, None)
+        result = generate_comparison_report_task(None)  
         assert result["status"] == "error"
         assert result["message"] == "URL inválida"
+
 
 
     @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
