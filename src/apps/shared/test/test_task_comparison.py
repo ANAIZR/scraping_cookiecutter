@@ -13,15 +13,25 @@ class TestGenerateComparisonReportTask:
         assert result["status"] == "error"
         assert result["message"] == "URL inválida"
 
-    def test_generate_comparison_report_task_no_comparison(self, mock_comparison_service):
+
+    @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
+    def test_generate_comparison_report_task_no_comparison(mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.return_value = {"status": "no_comparison"}
-        result = generate_comparison_report_task(None, "https://example.com")
+
+        result = generate_comparison_report_task.apply(args=["https://example.com"]).result
+
         assert result["status"] == "no_comparison"
 
-    def test_generate_comparison_report_task_missing_content(self, mock_comparison_service):
+
+
+    @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
+    def test_generate_comparison_report_task_missing_content(mock_comparison_service):
         mock_comparison_service.return_value.get_comparison_for_url.return_value = {"status": "missing_content"}
-        result = generate_comparison_report_task(None, "https://example.com")
+
+        result = generate_comparison_report_task.apply(args=["https://example.com"]).result
+
         assert result["status"] == "missing_content"
+
 
 
     @patch("src.apps.shared.tasks.comparison_tasks.ScraperComparisonService")
