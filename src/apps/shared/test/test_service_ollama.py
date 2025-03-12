@@ -25,20 +25,24 @@ class TestOllamaService:
 
 
     @patch("src.apps.shared.services.ollama_service.MongoClient")
-    def test_process_document_already_processed(mock_mongo_client):
-        mock_collection = mock_mongo_client.return_value.__getitem__.return_value
-        mock_collection.find_one.return_value = {"_id": "123", "processed": True}  # ✅ Ahora existe
+    def test_process_document_already_processed(self, mock_mongo_client):
+        mock_db = MagicMock()
+        mock_collection = MagicMock()
+        mock_mongo_client.return_value.__getitem__.return_value = mock_db
+        mock_db.__getitem__.return_value = mock_collection
+
+        mock_collection.find_one.return_value = {"_id": "123", "processed": True}
 
         service = OllamaService()
-        service.collection = mock_collection 
+        service.collection = mock_collection  
 
         doc = {"_id": "123", "contenido": "sample content", "source_url": "https://example.com"}
 
         service.process_document(doc)
 
         mock_collection.find_one.assert_called_once_with({"_id": "123"})
-
         service.text_to_json.assert_not_called()
+
 
 
     def test_process_document_invalid_json(self, mocker, mock_mongo_collection):

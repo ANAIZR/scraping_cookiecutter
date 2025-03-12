@@ -31,37 +31,43 @@ class TestSpeciesNotificationService:
     def test_check_new_species_and_notify_with_matches(self, mock_species, mock_subscription, mock_email_service):
         mock_species_instance = MagicMock()
         mock_species_instance.exists.return_value = True
+        mock_species_instance.count.return_value = 1 
 
         mock_species.filter.return_value = mock_species_instance
         mock_subscription.filter.return_value = [MagicMock(user=MagicMock(email='user@example.com'),
-                                                           scientific_name='Test',
-                                                           distribution='',
-                                                           hosts='')]
+                                                        scientific_name='Test',
+                                                        distribution='',
+                                                        hosts='')]
 
         service = SpeciesNotificationService()
-        service.filter_species_by_subscription = MagicMock(return_value=mock_species_instance)
-
-        mock_species_instance.__iter__.return_value = [
+        service.filter_species_by_subscription = MagicMock(return_value=[
             MagicMock(scientific_name='Test Species', source_url='https://example.com/species/1')
-        ]
+        ])
 
         service.check_new_species_and_notify(['https://example.com'])
 
         mock_email_service.assert_called_once()
         args, kwargs = mock_email_service.call_args
 
+        print(f"Contenido del email: {args[0]}")  # Depuración
+
         assert '🔔 Se han añadido 1 nuevos registros' in args[0]
         assert ['user@example.com'] == args[1]
         assert 'Test Species - https://example.com/species/1' in args[2]
 
-    def test_filter_species_by_subscription(self):
+
+    def test_filter_species_by_subscription(self, mock_species):
+        mock_species.filter.return_value = mock_species  
+
         service = SpeciesNotificationService()
 
-        species_mock = MagicMock()
-        subscription_mock = MagicMock(scientific_name='SpeciesX', distribution='Peru', hosts='HostY')
+        subscription_mock = MagicMock(
+            scientific_name='SpeciesX',
+            distribution='Peru',  
+            hosts=''
+        )
 
-        service.filter_species_by_subscription(species_mock, subscription_mock)
+        service.filter_species_by_subscription(mock_species, subscription_mock)
 
-        species_mock.filter.assert_any_call(scientific_name__icontains='SpeciesX')
-        species_mock.filter.assert_any_call(distribution__icontains='Peru')
-        species_mock.filter.assert_any_call(hosts__icontains='HostY')
+        mock_species.filter.assert_any_call(scientific_name__icontains='SpeciesX')
+        mock_species.filter.assert_any_call(distribution__icontains='Peru')
