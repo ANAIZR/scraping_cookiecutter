@@ -10,7 +10,7 @@ from ..functions import get_logger, connect_to_mongo, process_scraper_data
 def scraper_gene_affrc(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     all_scraper = ""
     scraped_urls = []

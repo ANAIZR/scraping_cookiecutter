@@ -21,7 +21,7 @@ def scraper_eppo_int(url, sobrenombre):
     url_padre = url
     logger = get_logger("EPPO_INT")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     all_scraper = ""  # ✅ Se inicializa aquí antes de usar nonlocal
     processed_links = set()

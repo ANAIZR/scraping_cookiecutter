@@ -15,7 +15,7 @@ from datetime import datetime
 def scraper_agriculture(url, sobrenombre):
     logger = get_logger("scraper")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     nivel_1_links = []
     nivel_2_links = []

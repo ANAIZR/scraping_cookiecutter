@@ -22,7 +22,7 @@ logger = get_logger("scraper")
 
 def scraper_ecoport(url, sobrenombre):
     driver = driver_init()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     
     total_urls_found = 0
     total_urls_scraped = 0

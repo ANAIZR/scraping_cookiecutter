@@ -30,7 +30,7 @@ def scraper_pestnet(url, sobrenombre):
         failed_urls = []
         total_urls_found = 0
 
-        collection, fs = connect_to_mongo("scrapping-can", "collection")
+        collection, fs = connect_to_mongo()
         keywords = load_keywords("pruebas.txt")
 
         driver.get(url)

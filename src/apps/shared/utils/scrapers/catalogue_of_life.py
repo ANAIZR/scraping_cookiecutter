@@ -42,7 +42,7 @@ def scraper_catalogue_of_life(url, sobrenombre):
     global total_scraped_links
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     keywords = load_keywords()
     all_scraper = ""

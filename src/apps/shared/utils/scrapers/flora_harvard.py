@@ -17,7 +17,7 @@ def scraper_flora_harvard(url, sobrenombre):
 
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
 
     all_scraper = "" 
     visited_urls = set()

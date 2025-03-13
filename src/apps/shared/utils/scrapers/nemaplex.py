@@ -22,7 +22,7 @@ def scraper_nemaplex(
 
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     try:
         driver.get(url)

@@ -23,7 +23,7 @@ from ..functions import (
 def scraper_notification_aphis(url, sobrenombre):
     logger = get_logger("NOTIFICATION APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     total_scraped_links = 0
     scraped_urls = []
     non_scraped_urls = []
