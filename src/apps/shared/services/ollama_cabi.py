@@ -176,6 +176,17 @@ class OllamaCabiService:
 
     def save_species_to_postgres(self, structured_data, source_url, mongo_id):
         try:
+            nombre_cientifico = structured_data.get("nombre_cientifico", "").strip().lower()
+            hospedantes = structured_data.get("hospedantes", "").strip().lower()
+            distribucion = structured_data.get("distribucion", "").strip().lower()
+
+            if nombre_cientifico == "no encontrado":
+                logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
+                return
+
+            structured_data["hospedantes"] = "" if hospedantes == "no encontrado" else structured_data.get("hospedantes", "")
+            structured_data["distribucion"] = "" if distribucion == "no encontrado" else structured_data.get("distribucion", "")
+
             with transaction.atomic():
                 species_obj, created = CabiSpecies.objects.update_or_create(
                     source_url=source_url,
@@ -189,6 +200,8 @@ class OllamaCabiService:
 
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
+
+
 
     def datos_son_validos(self, datos, min_campos=2):
         campos_con_datos = sum(bool(datos.get(campo)) for campo in datos)
