@@ -17,10 +17,10 @@ class OllamaCabiService:
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
         self.collection = self.db["fs.files"]
-        self.cabi_url = "https://www.cabidigitallibrary.org/product/qc"  
+        self.cabi_url = "https://www.cabidigitallibrary.org/product/qc"
 
-    def extract_and_save_species(self,url):
-
+    def extract_and_save_species(self, url):
+        """Extrae y procesa documentos no procesados de una URL específica."""
         documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))
 
         if not documents:
@@ -34,7 +34,7 @@ class OllamaCabiService:
                 logger.error(f"❌ Error procesando documento CABI: {e}")
 
     def process_document(self, mongo_id):
-
+        """Procesa un documento individual, integrando datos extraídos y los generados por IA."""
         try:
             document = self.collection.find_one({"_id": ObjectId(mongo_id)})
 
@@ -49,20 +49,18 @@ class OllamaCabiService:
                 logger.warning(f"🚫 Documento {mongo_id} no tiene contenido.")
                 return
 
-            # Verificar si el documento ya fue procesado
-            existing_doc = self.collection.find_one({"_id": ObjectId(mongo_id), "processed": True})
-            if existing_doc:
-                logger.info(f"📌 Documento {mongo_id} ya fue procesado. Se ignora.")
-                return
+            # Extraer datos ya almacenados en MongoDB
+            existing_data = self.get_existing_species_data(mongo_id)
 
-            structured_data = self.text_to_json(content, source_url, self.cabi_url)
+            # Enviar solo los datos faltantes a Ollama
+            structured_data = self.analyze_content_with_ollama(content, source_url, existing_data)
 
             if not isinstance(structured_data, dict):
                 logger.warning(f"❌ JSON inválido para {mongo_id}, no es un diccionario")
                 return
 
-            if datos_son_validos(structured_data):
-                self.save_species_to_postgres(structured_data, source_url, self.cabi_url, mongo_id)
+            if self.datos_son_validos(structured_data):
+                self.save_species_to_postgres(structured_data, source_url, mongo_id)
 
                 # ✅ Marcar el documento como procesado
                 self.collection.update_one(
@@ -76,29 +74,51 @@ class OllamaCabiService:
         except Exception as e:
             logger.error(f"🚨 Error procesando documento CABI {mongo_id}: {e}")
 
-    def text_to_json(self, content, source_url, url):
+    def get_existing_species_data(self, object_id):
+        """Obtiene nombre científico, hospedantes y distribución directamente de MongoDB."""
+        document = self.collection.find_one({"_id": ObjectId(object_id)})
+        if document:
+            return {
+                "nombre_cientifico": document.get("nombre_cientifico", ""),
+                "hospedantes": document.get("hospedantes", ""),
+                "distribucion": document.get("distribucion", "")
+            }
+        return {}
+
+    def analyze_content_with_ollama(self, content, source_url, existing_data):
+        """Envía el contenido a Ollama para extraer los datos faltantes, integrando los ya extraídos."""
+
+        nombre_cientifico = existing_data.get("nombre_cientifico", "")
+        hospedantes = existing_data.get("hospedantes", "")
+        distribucion = existing_data.get("distribucion", "")
 
         prompt = f"""
         Organiza el siguiente contenido en **formato JSON**, pero 
         **cada campo que contenga múltiples valores debe estar separado por comas dentro de un string, en lugar de usar un array JSON**.
-        **Cada campo con múltiples valores debe ser un string separado por comas**, en lugar de un array JSON.
         **Las secciones `prevencion_control` e `impacto` deben mantenerse como objetos anidados con sus claves correspondientes.**
         **Si un campo no tiene información, usa `""`.**
-        **Contenido:**
+        
+        **Los siguientes campos ya han sido extraídos y deben mantenerse sin cambios:**
+        - `nombre_cientifico`: {nombre_cientifico}
+        - `hospedantes`: {hospedantes}
+        - `distribucion`: {distribucion}
+
+        **Contenido restante a analizar por IA:**
         {content}
+        
         **Estructura esperada en JSON:** 
 
         {{
-          "nombre_cientifico": "",
+          "nombre_cientifico": "{nombre_cientifico}",
           "nombres_comunes": "",
           "sinonimos": "",
           "descripcion_invasividad": "",
-          "distribucion": "",
+          "distribucion": "{distribucion}",
           "impacto": {{"Económico": "", "Ambiental": "", "Social": ""}},
           "habitat": "",
           "ciclo_vida": "",
           "reproduccion": "",
-          "hospedantes": "",
+          "hospedantes": "{hospedantes}",
           "sintomas": "",
           "organos_afectados": "",
           "condiciones_ambientales": "",
@@ -106,7 +126,7 @@ class OllamaCabiService:
           "usos": "",
           "url": "{source_url}",
           "hora": "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-          "fuente": "{url}"
+          "fuente": "{self.cabi_url}"
         }}
 
         **Instrucciones:**
@@ -114,24 +134,18 @@ class OllamaCabiService:
          **No uses comillas triples , ni bloques de código (`'''`).**
         - **Asegúrate de que el JSON devuelto tenga llaves de apertura y cierre correctamente.**
 
-        1. Extrae el nombre científico y los nombres comunes de la especie.
+        1. Extrae los nombres comunes de la especie.
         2. Lista los sinónimos científicos si están disponibles.
-        3. Proporciona una descripción de la invasividad de la especie.
-        4. Identifica los países o regiones donde está distribuida.
-        5. Extrae información sobre impacto económico, ambiental y social.
-        6. Describe el hábitat donde se encuentra.
-        7. Explica el ciclo de vida y los métodos de reproducción.
-        8. Lista los hospedantes afectados por la especie.
-        9. Describe los síntomas y los órganos afectados en los hospedantes.
-        10. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
-        11. Extrae información sobre métodos de prevención y control.
-        12. Lista los usos conocidos de la especie.
-        13. Usa la hora actual para completar el campo "hora".
+        3. Extrae información sobre impacto económico, ambiental y social.
+        4. Describe el hábitat donde se encuentra.
+        5. Explica el ciclo de vida y los métodos de reproducción.
+        6. Describe los síntomas y los órganos afectados en los hospedantes.
+        7. Extrae las condiciones ambientales clave como temperatura, humedad y precipitación.
+        8. Extrae información sobre métodos de prevención y control.
+        9. Lista los usos conocidos de la especie.
             Devuelve solo el JSON con los datos extraídos, sin texto adicional.
-        14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
-        15. En descripcion pones algo corto de 500 palabras acerca de que trataba el contentido
+        10 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
         """
-
 
         response = requests.post(
             "http://127.0.0.1:11434/api/chat",
@@ -160,31 +174,12 @@ class OllamaCabiService:
             logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
 
-    def save_species_to_postgres(self, structured_data, source_url, url, mongo_id):
-        """
-        Guarda los datos extraídos en PostgreSQL.
-        """
+    def save_species_to_postgres(self, structured_data, source_url, mongo_id):
         try:
             with transaction.atomic():
                 species_obj, created = CabiSpecies.objects.update_or_create(
                     source_url=source_url,
-                    defaults={
-                        "scientific_name": structured_data.get("nombre_cientifico", "").strip(),
-                        "common_names": structured_data.get("nombres_comunes", ""),
-                        "synonyms": structured_data.get("sinonimos", ""),
-                        "distribution": structured_data.get("distribucion", ""),
-                        "impact": structured_data.get("impacto", {"Económico": "", "Ambiental": "", "Social": ""}),
-                        "habitat": structured_data.get("habitat", ""),
-                        "life_cycle": structured_data.get("ciclo_vida", ""),
-                        "reproduction": structured_data.get("reproduccion", ""),
-                        "hosts": structured_data.get("hospedantes", ""),
-                        "symptoms": structured_data.get("sintomas", ""),
-                        "affected_organs": structured_data.get("organos_afectados", ""),
-                        "environmental_conditions": structured_data.get("condiciones_ambientales", {}),
-                        "prevention_control": structured_data.get("prevencion_control", {"Prevención": "", "Control": ""}),
-                        "uses": structured_data.get("usos", ""),
-                        "scraper_source": ScraperURL.objects.get(url=url),
-                    },
+                    defaults=structured_data,
                 )
 
                 if created:
@@ -195,33 +190,6 @@ class OllamaCabiService:
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
 
-def datos_son_validos(datos, min_campos=2):
-    print("🔍 Evaluando JSON:", datos)
-
-    if not datos or not isinstance(datos, dict):
-        print("❌ JSON inválido: No es un diccionario")
-        return False
-
-    if not datos.get("nombre_cientifico") or not datos["nombre_cientifico"].strip():
-        print("❌ JSON inválido: Falta nombre_cientifico")
-        return False
-
-    campos_con_datos = 0
-
-    for clave, valor in datos.items():
-        if isinstance(valor, list) and valor:
-            campos_con_datos += 1
-        elif isinstance(valor, dict):
-            for subvalor in valor.values():
-                if subvalor:
-                    campos_con_datos += 1
-                    break
-        elif isinstance(valor, str) and valor.strip():
-            campos_con_datos += 1
-
-        if campos_con_datos >= min_campos:
-            return True
-
-    print("⚠️ JSON descartado por falta de datos")
-    return False
-
+    def datos_son_validos(self, datos, min_campos=2):
+        campos_con_datos = sum(bool(datos.get(campo)) for campo in datos)
+        return campos_con_datos >= min_campos
