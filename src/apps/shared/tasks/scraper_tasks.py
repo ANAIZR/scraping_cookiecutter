@@ -35,22 +35,31 @@ def process_scraped_data_task(self, url, *args, **kwargs):
 
 @shared_task(bind=True, max_retries=2)
 def scraper_url_task(self, url, *args, **kwargs):
+    """
+    Tarea Celery para scrapear una URL. Se asegura de que la URL no se procese múltiples veces en paralelo.
+    """
 
     try:
-        if ScraperURL.objects.filter(url=url, estado_scrapeo="en_progreso").exists():
-            logger.info(f"Task {self.request.id}: La URL {url} ya está en progreso.")
-            return {"status": "skipped", "url": url, "message": "Scraping ya en progreso"}
-
         with transaction.atomic():
             try:
-                scraper_url = ScraperURL.objects.select_for_update().get(url=url)
+                scraper_url = ScraperURL.objects.select_for_update(nowait=True).get(url=url)
+
+                if scraper_url.estado_scrapeo == "en_progreso":
+                    logger.info(f"Task {self.request.id}: La URL {url} ya está en progreso.")
+                    return {"status": "skipped", "url": url, "message": "Scraping ya en progreso"}
+
                 scraper_url.estado_scrapeo = "en_progreso"
                 scraper_url.error_scrapeo = ""
                 scraper_url.fecha_scraper = timezone.now()
                 scraper_url.save()
+
             except ScraperURL.DoesNotExist:
                 logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
                 return {"status": "failed", "url": url, "error": "ScraperURL no encontrado"}
+
+            except Exception as e:
+                logger.error(f"Task {self.request.id}: Error al bloquear la URL {url}: {str(e)}")
+                return {"status": "failed", "url": url, "error": "No se pudo bloquear la URL"}
 
         scraper_service = WebScraperService()
         sobrenombre = scraper_url.sobrenombre
@@ -84,8 +93,8 @@ def scraper_url_task(self, url, *args, **kwargs):
 
     except Exception as e:
         logger.error(f"Task {self.request.id}: Error inesperado en el scraping de {url}: {str(e)}")
-        raise self.retry(exc=e, countdown=30) 
-
+        raise self.retry(exc=e, countdown=30)
+    
 @shared_task(bind=True, max_retries=3)
 def scraper_expired_urls_task(self, *args, **kwargs):
     try:
