@@ -6,7 +6,7 @@ import time
 import random
 from datetime import datetime
 from ..functions import (
-    driver_init,
+    initialize_driver,
     get_logger,
     connect_to_mongo,
     get_random_user_agent,
@@ -71,7 +71,7 @@ def scraper_ippc_int(url, sobrenombre):
         return new_links
 
     def extract_hrefs_from_url_main():
-        driver = driver_init()
+        driver = initialize_driver()
         driver.get(url)
         time.sleep(random.uniform(3, 6))
 

@@ -53,7 +53,7 @@ def scraper_acir_aphis_usda(url, sobrenombre):
             print(f"Buscando con la palabra clave: {keyword}")
             try:
                 list_search_input = WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "input.slds-input"))
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "#input-30"))
                 )
                 segundo_input = list_search_input[1]
 
