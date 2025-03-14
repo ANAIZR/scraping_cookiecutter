@@ -34,7 +34,6 @@ class OllamaCabiService:
                 logger.error(f"❌ Error procesando documento CABI: {e}")
 
     def process_document(self, mongo_id):
-        """Procesa un documento individual, integrando datos extraídos y los generados por IA."""
         try:
             document = self.collection.find_one({"_id": ObjectId(mongo_id)})
 
@@ -49,10 +48,8 @@ class OllamaCabiService:
                 logger.warning(f"🚫 Documento {mongo_id} no tiene contenido.")
                 return
 
-            # Extraer datos ya almacenados en MongoDB
             existing_data = self.get_existing_species_data(mongo_id)
 
-            # Enviar solo los datos faltantes a Ollama
             structured_data = self.analyze_content_with_ollama(content, source_url, existing_data)
 
             if not isinstance(structured_data, dict):
@@ -62,7 +59,6 @@ class OllamaCabiService:
             if self.datos_son_validos(structured_data):
                 self.save_species_to_postgres(structured_data, source_url, mongo_id)
 
-                # ✅ Marcar el documento como procesado
                 self.collection.update_one(
                     {"_id": ObjectId(mongo_id)},
                     {"$set": {"processed": True, "processed_at": datetime.utcnow()}},
@@ -86,7 +82,6 @@ class OllamaCabiService:
         return {}
 
     def analyze_content_with_ollama(self, content, source_url, existing_data):
-        """Envía el contenido a Ollama para extraer los datos faltantes, integrando los ya extraídos."""
 
         nombre_cientifico = existing_data.get("nombre_cientifico", "")
         hospedantes = existing_data.get("hospedantes", "")
@@ -187,17 +182,14 @@ class OllamaCabiService:
             structured_data["hospedantes"] = "" if hospedantes == "no encontrado" else structured_data.get("hospedantes", "")
             structured_data["distribucion"] = "" if distribucion == "no encontrado" else structured_data.get("distribucion", "")
 
-            # Normalizar valores (convertir a minúsculas y eliminar espacios en blanco)
             nombre_cientifico = structured_data.get("nombre_cientifico", "").strip().lower()
             hospedantes = structured_data.get("hospedantes", "").strip().lower()
             distribucion = structured_data.get("distribucion", "").strip().lower()
 
-            # Si nombre_cientifico es "No encontrado", no guardar en PostgreSQL
             if nombre_cientifico == "no encontrado":
                 logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
                 return
 
-            # Si hospedantes o distribucion es "No encontrado", guardarlos como cadena vacía
             structured_data["hospedantes"] = "" if hospedantes == "no encontrado" else structured_data.get("hospedantes", "")
             structured_data["distribucion"] = "" if distribucion == "no encontrado" else structured_data.get("distribucion", "")
 
