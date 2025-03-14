@@ -7,7 +7,8 @@ from ..functions import (
     get_logger,
     driver_init,
     process_scraper_data,
-    load_keywords
+    load_keywords,
+    save_to_mongo, 
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -16,7 +17,6 @@ import random
 import time
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from bson import ObjectId
 import requests
 
 logger = get_logger("scraper")
@@ -27,7 +27,7 @@ def scraper_apsnet(url, sobrenombre):
         driver = driver_init()
         object_id = None
 
-        collection, fs = connect_to_mongo()
+        db, fs = connect_to_mongo()  
         keywords = load_keywords("family.txt")
         scraped_urls = set()
         failed_urls = set()
@@ -64,9 +64,6 @@ def scraper_apsnet(url, sobrenombre):
                     driver.execute_script("document.body.style.zoom='100%'")
                     WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                     time.sleep(5)
-                    page_source = driver.page_source
-                    soup = BeautifulSoup(page_source, "html.parser")
-                    print(page_source)
                     continue
 
                 search_button = WebDriverWait(driver, 5).until(
@@ -117,25 +114,11 @@ def scraper_apsnet(url, sobrenombre):
                         content_text = content_div.get_text(strip=True) if content_div else soup.get_text(strip=True)
 
                         if content_text and content_text.strip():
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=link,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=url
-                            )
+                            object_id = save_to_mongo("urls_scraper", content_text, link, url)
                             total_scraped_successfully += 1
                             scraped_urls.add(link)
 
-                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                            existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                file_id = oldest_version._id  
-                                fs.delete(file_id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                            logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
                         else:
                             total_failed_scrapes += 1
                             failed_urls.add(link)

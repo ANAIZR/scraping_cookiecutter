@@ -1,16 +1,14 @@
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
 from urllib.parse import urljoin
-from datetime import datetime
-from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 
@@ -26,7 +24,7 @@ def scraper_fao_org(url, sobrenombre):
     urls_not_scraped = set()
 
     try:
-        current_url = url  # Mantiene la URL principal intacta
+        current_url = url 
         while current_url:
             driver.get(current_url)
             logger.info(f"🌐 Ingresando a la URL de FAO: {current_url}")
@@ -44,27 +42,11 @@ def scraper_fao_org(url, sobrenombre):
                         page_text += element.text.strip() + "\n"
 
                 if page_text:
-                    object_id = fs.put(
-                        page_text.encode("utf-8"),
-                        source_url=current_url,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["plantas", "plagas"],
-                        contenido=page_text,
-                        url=url,
-                    )
-                    urls_scraped.add(current_url)
-                    logger.info(
-                        f"✅ Contenido almacenado en MongoDB con ID: {object_id}"
-                    )
-                    existing_versions = list(
-                        fs.find({"source_url": current_url}).sort("scraping_date", -1)
-                    )
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id  
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                    object_id = save_to_mongo("urls_scraper", page_text, current_url, url)
+                    total_scraped_links += 1
+                    urls_scraped.append(current_url)
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                    
 
                 else:
                     logger.warning(f"⚠️ No se extrajo contenido de {current_url}")

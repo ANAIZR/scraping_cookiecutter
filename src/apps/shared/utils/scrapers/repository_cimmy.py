@@ -8,6 +8,7 @@ from ..functions import (
     driver_init,
     load_keywords,
     extract_text_from_pdf,
+    save_to_mongo
 )
 import time
 import random
@@ -131,29 +132,10 @@ def scraper_repository_cimmy(url, sobrenombre):
                     content_text = driver.find_element(By.CSS_SELECTOR, "div.col-xs-12.col-md-7").text.strip()
 
                 if content_text:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
-
-                    object_ids.append(object_id)
+                    object_id = save_to_mongo("urls_scraper", content_text, href, url)  # 📌 Guardar en `urls_scraper`
                     total_scraped_successfully += 1
-                    print(f"✅ Contenido guardado en MongoDB: {href}")  
-
-                    existing_versions = list(
-                        fs.find({"source_url": href}).sort("scraping_date", -1)
-                    )
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version._id))
-                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version._id}")
-                            
-                    logger.info(f"Contenido extraído de {href}.")
+                    logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                    
 
                 else:
                     print(f"⚠️ El contenido de {href} está vacío.")

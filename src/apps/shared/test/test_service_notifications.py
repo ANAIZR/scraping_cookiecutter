@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from src.apps.shared.services.notifications import SpeciesNotificationService
+from apps.shared.services.notifications_service import SpeciesNotificationService
 
 @pytest.mark.django_db
 class TestSpeciesNotificationService:

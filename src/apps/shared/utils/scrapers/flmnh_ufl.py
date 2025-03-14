@@ -5,13 +5,12 @@ from bs4 import BeautifulSoup
 from rest_framework.response import Response
 from rest_framework import status
 import time
-from datetime import datetime
-from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 def scraper_flmnh_ufl(url, sobrenombre):
@@ -56,23 +55,11 @@ def scraper_flmnh_ufl(url, sobrenombre):
                     content_text = content_soup.get_text()
 
                     if content_text and content_text.strip():
-                        object_id = fs.put(
-                            content_text.encode("utf-8"),
-                            source_url=link_href,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=content_text,
-                            url=url
-                        )
+                        object_id = save_to_mongo("urls_scraper", content_text, link_href, url)
                         total_scraped_successfully += 1
+                        
                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                        existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        
         except Exception as e:
             logger.error(f"Error durante el scraping de la página: {str(e)}")
             raise e

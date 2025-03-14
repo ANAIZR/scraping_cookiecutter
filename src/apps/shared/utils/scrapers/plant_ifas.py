@@ -4,14 +4,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
 import random
-from datetime import datetime
-from bson import ObjectId
 from urllib.parse import urljoin
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -75,27 +74,10 @@ def scraper_plant_ifas(url, sobrenombre):
 
                         if content_container:
                             cleaned_text = " ".join(content_container.text.split())
-
-                            object_id = fs.put(
-                                cleaned_text.encode("utf-8"),
-                                source_url=page,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=cleaned_text,
-                                url=url
-                            )
-
-                            
-
-                            scraped_urls.append(page)
+                            object_id = save_to_mongo("urls_scraper", cleaned_text, page, url)  # 📌 Guardar en `urls_scraper`
                             total_scraped_links += 1
-                            existing_versions = list(fs.find({"source_url": page}).sort("scraping_date", -1))
-
-                            if len(existing_versions) > 1:
-                                    oldest_version = existing_versions[-1]
-                                    file_id = oldest_version._id 
-                                    fs.delete(file_id)  
-                                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                            scraped_urls.append(page)
+                            logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
                             
 
                         else:

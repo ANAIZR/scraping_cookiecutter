@@ -8,9 +8,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rest_framework.response import Response
 from rest_framework import status
 import time
-import os
-from bson import ObjectId
-from datetime import datetime
 from ..functions import (
     connect_to_mongo,
     get_logger,
@@ -18,6 +15,7 @@ from ..functions import (
     process_scraper_data,
     initialize_driver,
     extract_text_from_pdf,
+    save_to_mongo
 )
 
 def scraper_notification_aphis(url, sobrenombre):
@@ -44,24 +42,11 @@ def scraper_notification_aphis(url, sobrenombre):
             body_text = extract_text_from_pdf(href)
 
             if body_text:
-                object_id = fs.put(
-                    body_text.encode("utf-8"),
-                    source_url=href,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=body_text,
-                    url=url
-                )
-                total_scraped_links += 1
+                object_id = save_to_mongo("news_articles", body_text, href, url)
                 scraped_urls.append(href)
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id 
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                total_scraped_links += 1
+                logger.info(f"📂 Noticia guardada en `news_articles` con object_id: {object_id}")
+                
 
                 
 
@@ -139,7 +124,6 @@ def scraper_notification_aphis(url, sobrenombre):
     try:
         extract_hrefs_from_url_main()
         logger.info(f"Total de enlaces encontrados: {len(hrefs)}")
-        print("hrefs by quma: ",hrefs)
 
         new_links = scrape_pages_in_parallel(hrefs)
 

@@ -13,6 +13,7 @@ from ..functions import (
     get_logger,
     initialize_driver,
     get_random_user_agent,
+    save_to_mongo
 )
 
 
@@ -83,28 +84,11 @@ def scraper_pest_alerts(url, sobrenombre):
                         + content_elements[1].get_text(separator="\n", strip=True)
                     )
 
-                    object_id = fs.put(
-                        page_text.encode("utf-8"),
-                        source_url=link,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["Pest Alerts", "Plagas"],
-                        contenido=page_text,
-                        url=url,
-                    )
-
+                    object_id = save_to_mongo("urls_scraper", page_text, link, url)  # 📌 Guardar en `urls_scraper`
                     urls_scraped.add(link)
-                    logger.info(
-                        f"✅ Contenido almacenado en MongoDB con ID: {object_id}"
-                    )
-                    existing_versions = list(
-                        fs.find({"source_url": link}).sort("scraping_date", -1)
-                    )
+                    logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
 
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id 
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                    
 
 
                 else:

@@ -6,7 +6,8 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     process_scraper_data,
-    get_random_user_agent
+    get_random_user_agent,
+    save_to_mongo
 )
 from django.utils.timezone import make_aware
 from rest_framework.response import Response
@@ -79,26 +80,10 @@ def scraper_hort_purdue(url, sobrenombre):
                 try:
                     body_text = future.result()
                     if body_text:
-                        object_id = fs.put(
-                            body_text.encode("utf-8"),
-                            source_url=link,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=body_text,
-                            url=url
-                        )
-                        logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                        existing_versions = list(
-                            fs.find({"source_url": link}).sort("scraping_date", -1)
-                        )
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
+                        object_id = save_to_mongo("urls_scraper", body_text, link, url)
                         urls_scraped.append(link)
+                        logger.info(f"📂 Texto de PDF guardado en `urls_scraper` con object_id: {object_id}")
+                        
                     else:
                         urls_not_scraped.append(link)
                 except Exception as e:

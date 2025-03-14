@@ -6,6 +6,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 from datetime import datetime
 from bson import ObjectId
@@ -56,24 +57,11 @@ def scraper_nemaplex(
             print("href by quma: ", href)
 
             if row_data:
-                object_id = fs.put(
-                    row_data.encode("utf-8"),
-                    source_url=href,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=row_data,
-                    url=url
-                )
+                object_id = save_to_mongo("urls_scraper", row_data, href, url)  # 📌 Guardar en `urls_scraper`
                 total_scraped_links += 1
                 scraped_urls.append(href)
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  # Esto obtiene el ID correcto
-                    fs.delete(file_id)  # Eliminar la versión más antigua
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                
             else:
                 non_scraped_urls.append(href)
 

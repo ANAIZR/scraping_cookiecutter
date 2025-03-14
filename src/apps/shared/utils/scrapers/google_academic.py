@@ -8,7 +8,8 @@ from ..functions import (
     driver_init,
     extract_text_from_pdf,
     load_keywords,
-    process_scraper_data
+    process_scraper_data,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
@@ -81,34 +82,12 @@ def scraper_google_academic(url, sobrenombre):
                                 content_text = body_element.text.strip() if body_element else ""
 
                             if content_text and not content_text.lower().startswith("error al extraer contenido del pdf"):
-                                object_id = fs.put(
-                                    content_text.encode("utf-8"),
-                                    source_url=full_url,
-                                    scraping_date=datetime.now(),
-                                    Etiquetas=["planta", "plaga"],
-                                    contenido=content_text,
-                                    url=url
-                                )
-                                total_scraped_successfully += 1
+
+                                object_id = save_to_mongo("urls_scraper", content_text, full_url, url)
+                                total_scraped_links += 1
                                 scraped_urls.append(full_url)
                                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                                collection.insert_one({
-                                    "_id": object_id,
-                                    "source_url": full_url,
-                                    "scraping_date": datetime.now(),
-                                    "Etiquetas": ["planta", "plaga"],
-                                    "url": url,
-                                })
-
-                                existing_versions = list(
-                                    collection.find({"source_url": full_url}).sort("scraping_date", -1)
-                                )
-                                if len(existing_versions) > 1:
-                                    oldest_version = existing_versions[-1]
-                                    fs.delete(oldest_version._id)  
-                                    collection.delete_one({"_id": ObjectId(oldest_version["_id"])})
-                                    logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+                                
 
                             else:
                                 total_failed_scrapes += 1

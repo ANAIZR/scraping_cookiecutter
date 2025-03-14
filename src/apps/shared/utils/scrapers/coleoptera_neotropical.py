@@ -4,14 +4,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 import logging
-from bson import ObjectId
 from rest_framework.response import Response
 from rest_framework import status
 
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
-    initialize_driver
+    initialize_driver,
+    save_to_mongo
 )
 
 logger = logging.getLogger(__name__)
@@ -47,36 +47,22 @@ def scraper_coleoptera_neotropical(url, sobrenombre):
         scraped_text = "\n".join(all_scraper_data)
 
         if scraped_text:
-            object_id = fs.put(
-            scraped_text.encode("utf-8"),
-            source_url=url,
-            scraping_date=datetime.now(),
-            Etiquetas=["planta", "plaga"],
-            contenido=scraped_text,
-            url=url
-            )
-            existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
+            object_id = save_to_mongo("urls_scraper", scraped_text, url, url)
+            logger.info(f"Contenido almacenado en MongoDB con object_id: {object_id}")
 
-            if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-                        
+        report_text = (
+            f"Total filas encontradas: {len(rows)}\n"
+            f"Filas scrapeadas: {scraped_rows}\n"
+            f"Filas no scrapeadas: {failed_rows}\n"
+        )
 
+        logger.info(f"Filas scrapeadas: {scraped_rows}, Filas fallidas: {failed_rows}")
 
-
-        report_text = f"Total filas encontradas: {len(rows)}\n"
-        report_text += f"Filas scrapeadas: {scraped_rows}\n"
-        report_text += f"Filas no scrapeadas: {failed_rows}\n"
-
-        logger.info(f"Contenido almacenado en MongoDB con object_id: {object_id}, filas scrapeadas: {scraped_rows}, filas fallidas: {failed_rows}")
-
-        
         response = process_scraper_data(report_text, url, sobrenombre)
         return response
 
     except Exception as e:
+        logger.error(f"Error en el scraper: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:

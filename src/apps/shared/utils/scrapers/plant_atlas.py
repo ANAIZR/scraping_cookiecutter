@@ -15,7 +15,8 @@ from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_random_user_agent,
-    get_logger
+    get_logger,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -51,24 +52,11 @@ def extract_text(current_url):
                 body_text += ";\n"
 
             if body_text:
-                object_id = fs.put(
-                    body_text.encode("utf-8"),
-                    source_url=current_url,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=body_text,
-                    url=url_padre
-                )
+                object_id = save_to_mongo("urls_scraper", body_text, current_url, url_padre)  # 📌 Guardar en `urls_scraper`
                 total_scraped_links += 1
                 scraped_urls.append(current_url)
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id 
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                
             else:
                 non_scraped_urls.append(current_url)
 
@@ -171,7 +159,6 @@ def scraper_card_page(driver, link_card):
                 )
                 if next_button.is_enabled():
                     number_page += 1
-                    print(f"=========================== Siguiente pagina: {number_page} ===========================")
                     next_button.click()
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located(
@@ -179,7 +166,6 @@ def scraper_card_page(driver, link_card):
                         )
                     )
                 else:
-                    print("No more pages.")
                     break
             except Exception as e:
                 print(f"Error during pagination: {e}")

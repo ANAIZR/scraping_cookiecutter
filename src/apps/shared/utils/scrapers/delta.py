@@ -9,6 +9,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 from datetime import datetime
 from bson import ObjectId
@@ -65,26 +66,12 @@ def scraper_delta(url, sobrenombre):
                                     if body_url:
                                         content_text = body_url.text.strip()
                                         if content_text:
-                                            object_id = fs.put(
-                                                content_text.encode("utf-8"),
-                                                source_url=href,
-                                                scraping_date=datetime.now(),
-                                                Etiquetas=["planta", "plaga"],
-                                                contenido=content_text,
-                                                url=url
-                                            )
+                                            object_id = save_to_mongo("urls_scraper", content_text, href, url)
                                             total_enlaces_scrapeados += 1
                                             scraped_urls.append(href)
                                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                            existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-
-                                            if len(existing_versions) > 1:
-                                                oldest_version = existing_versions[-1]
-                                                file_id = oldest_version._id  
-                                                fs.delete(file_id)  
-                                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
                                             
+                                                    
 
 
                                         elementos_p_url = body_url.find_elements(By.CSS_SELECTOR, "p")
@@ -111,28 +98,15 @@ def scraper_delta(url, sobrenombre):
                                                                     )
                                                                 )
                                                                 if body:
-                                                                    total_enlaces_scrapeados += 1
-                                                                    scraped_urls.append(href_url)
+                                                                    
                                                                     content_text = body.text.strip()
                                                                     if content_text:
-                                                                        object_id = fs.put(
-                                                                            content_text.encode("utf-8"),
-                                                                            source_url=href_url,
-                                                                            scraping_date=datetime.now(),
-                                                                            Etiquetas=["planta", "plaga"],
-                                                                            contenido=content_text,
-                                                                            url=url
-                                                                        )
+                                                                        object_id = save_to_mongo("urls_scraper", content_text, href, url)
+                                                                        total_enlaces_scrapeados += 1
+                                                                        scraped_urls.append(href)
                                                                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                                                        existing_versions = list(fs.find({"source_url": href_url}).sort("scraping_date", -1))
 
-                                                                        if len(existing_versions) > 1:
-                                                                            oldest_version = existing_versions[-1]
-                                                                            file_id = oldest_version._id  
-                                                                            fs.delete(file_id)  
-                                                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
-                                                                        
+                                                                                                            
 
                                                             except Exception as e:
                                                                 print(f"Error cargando {href_url}: {e}")

@@ -4,13 +4,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from rest_framework.response import Response
 from rest_framework import status
 import time
-from datetime import datetime
-from bson import ObjectId
+
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 def close_modal(driver):
@@ -105,23 +105,11 @@ def scraper_mycobank_org(url, sobrenombre):
             all_scraper += f"Total: {total_failed_scrapes}\n\n"
 
         if content_text.strip():
-            object_id = fs.put(
-                content_text.encode("utf-8"),
-                source_url=url,
-                scraping_date=datetime.now(),
-                Etiquetas=["planta", "micología"],
-                contenido=content_text,
-                url=url
-            )
 
-            logger.info(f"Documento completo almacenado en MongoDB con object_id: {object_id}")
-
-            existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
-            if len(existing_versions) > 1:
-                oldest_version = existing_versions[-1]
-                file_id = oldest_version._id 
-                fs.delete(file_id)  
-                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+            object_id = save_to_mongo("urls_scraper", content_text, link_href, url)  # 📌 Guardar en `urls_scraper`
+            logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+            
+            
 
 
         response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)

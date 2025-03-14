@@ -8,7 +8,8 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -71,27 +72,11 @@ def scraper_flora_harvard(url, sobrenombre):
             panel_treatment = soup.find("div", id="panelTaxonTreatment")
             if panel_treatment:
                 content_text = panel_treatment.get_text(strip=True)
-
-                object_id = fs.put(
-                    content_text.encode("utf-8"),
-                    source_url=current_url,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=content_text,
-                    url=url  
-                )
-
-                
-
-                scraped_urls.append(current_url)
+                object_id = save_to_mongo("urls_scraper", content_text, current_url, url)
                 total_scraped_links += 1
-                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
-
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                scraped_urls.append(current_url)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                
 
                 
 

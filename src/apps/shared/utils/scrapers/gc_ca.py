@@ -4,13 +4,13 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
 from bs4 import BeautifulSoup
-from datetime import datetime
 from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
     process_scraper_data,
     load_keywords,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -173,29 +173,11 @@ def scraper_gc_ca(url, sobrenombre):
                     )
 
                     if content_text:
-                        object_id = fs.put(
-                            content_text.encode("utf-8"),
-                            source_url=link,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=content_text,
-                            url=url,
-                        )
-                        total_scraped_successfully += 1
-                        scraped_urls.add(link)
-
-                        logger.info(
-                            f"Archivo almacenado en MongoDB con object_id: {object_id}"
-                        )
-
-                        existing_versions = list(
-                            fs.find({"source_url": link}).sort("uploadDate", -1)
-                        )
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        object_id = save_to_mongo("urls_scraper", content_text, link, url)
+                        total_scraped_links += 1
+                        scraped_urls.append(link)
+                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                        
                     else:
                         total_failed_scrapes += 1
                         failed_urls.add(link)

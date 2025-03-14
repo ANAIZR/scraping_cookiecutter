@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from src.apps.shared.services.report_compare import ScraperComparisonService
+from apps.shared.services.report_compare_service import ScraperComparisonService
 
 class TestScraperComparisonService:
 

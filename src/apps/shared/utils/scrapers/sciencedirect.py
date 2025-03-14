@@ -13,7 +13,8 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data
+    process_scraper_data,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -103,24 +104,11 @@ def scraper_sciencedirect(url, sobrenombre):
 
 
                             if contenido:
-                                object_id = fs.put(
-                                    contenido.encode("utf-8"),
-                                    source_url=full_url,
-                                    scraping_date=datetime.now(),
-                                    Etiquetas=["planta", "plaga"],
-                                    contenido=contenido,
-                                    url=url
-                                )
+                                object_id = save_to_mongo("urls_scraper", contenido, full_url, url)  # 📌 Guardar en `urls_scraper`
                                 total_scraped_links += 1
                                 scraped_urls.append(full_url)
-                                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                                existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
-                                if len(existing_versions) > 1:
-                                    oldest_version = existing_versions[-1]
-                                    file_id = oldest_version._id 
-                                    fs.delete(file_id)  
-                                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                                logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                                
 
                             else:
                                 non_scraped_urls.append(full_url)

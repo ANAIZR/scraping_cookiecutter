@@ -10,7 +10,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    extract_text_from_pdf,
+    save_to_mongo,
     load_keywords,
 )
 import time
@@ -172,28 +172,12 @@ def scraper_gbif(url, sobrenombre):
 
                 if content_div:
                     content_text = content_div.get_text(strip=True)
-
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=scraped_url,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "hongo"],
-                        contenido=content_text,
-                        url=url
-                    )
-                    
-                    object_ids.append(object_id)
+                    content_text.encode("utf-8"),
+                    object_id = save_to_mongo("urls_scraper", content_text, scraped_url, url)
                     total_scraped_successfully += 1
-                    print(f"✅ Contenido guardado en MongoDB: {href}")  
-
-                    existing_versions = list(
-                        fs.find({"source_url": scraped_url}).sort("scraping_date", -1)
-                    )
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version._id))
-                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{scraped_url}' y object_id: {oldest_version._id}")
+                    scraped_urls.append(scraped_url)
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                    
 
                 logger.info(f"✅ Información extraída de {scraped_url}")
 

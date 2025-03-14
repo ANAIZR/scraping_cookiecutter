@@ -12,6 +12,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 def scraper_iucnredlist(url, sobrenombre):
@@ -98,24 +99,10 @@ def scraper_iucnredlist(url, sobrenombre):
                     text_content = "\n".join([title, taxonomy, habitat]).strip()
 
                     if text_content:
-                        object_id = fs.put(
-                            text_content.encode("utf-8"),
-                            source_url=href,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["IUCN", "Especies"],
-                            contenido=text_content,
-                            url=url
-                        )
-
-                        urls_scraped.add(href)
-                        logger.info(f"✅ Contenido almacenado en MongoDB con ID: {object_id}")
-                        existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-
-                        if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                file_id = oldest_version._id 
-                                fs.delete(file_id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        object_id = save_to_mongo("urls_scraper", text_content, href, url)  # 📌 Guardar en `urls_scraper`
+                        urls_scraped.append(href)
+                        logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                        
 
                     else:
                         urls_not_scraped.add(href)

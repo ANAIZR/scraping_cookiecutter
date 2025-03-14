@@ -1,25 +1,26 @@
 import time
 from datetime import datetime
-from bson import ObjectId
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException
+from rest_framework.response import Response
+from rest_framework import status
+
 from ..functions import (
     initialize_driver,
     connect_to_mongo,
     get_logger,
     process_scraper_data,
+    save_to_mongo,  
 )
-from rest_framework.response import Response
-from rest_framework import status
 
 def scraper_ansci_cornell(url, sobrenombre):
     logger = get_logger("ANSCI_CORNELL")
     logger.info(f"Iniciando scraping para URL: {url}")
 
     driver = initialize_driver()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()  
     
     total_links_found = 0
     total_scraped_successfully = 0
@@ -71,27 +72,11 @@ def scraper_ansci_cornell(url, sobrenombre):
                         content_text = extract_content(driver, link_href, logger)
 
                         if content_text and content_text.strip():
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=link_href,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=url
-                            )
+                            object_id = save_to_mongo("urls_scraper", content_text, link_href, url)
                             total_scraped_successfully += 1
 
-                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                            logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
 
-                            
-                            existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
-
-
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                file_id = oldest_version._id  
-                                fs.delete(file_id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                         else:
                             failed_urls.append(link_href)
                             total_failed_scrapes += 1

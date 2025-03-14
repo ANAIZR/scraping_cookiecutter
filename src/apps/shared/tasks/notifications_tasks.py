@@ -1,5 +1,5 @@
 from celery import shared_task
-from src.apps.shared.services.notifications import SpeciesNotificationService
+from apps.shared.services.notifications_service import SpeciesNotificationService
 import logging
 
 logger = logging.getLogger(__name__)

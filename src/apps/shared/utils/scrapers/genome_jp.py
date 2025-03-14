@@ -13,11 +13,11 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 def navigate_multiple_pages(driver, wait_time, max_pages=3):
-    """Navega a la siguiente página hasta un máximo de `max_pages` veces."""
-    pages_navigated = 0  # Contador de páginas visitadas
+    pages_navigated = 0 
 
     while pages_navigated < max_pages:
         try:
@@ -25,12 +25,12 @@ def navigate_multiple_pages(driver, wait_time, max_pages=3):
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "a.next"))
             )
             driver.execute_script("arguments[0].click();", next_button)
-            time.sleep(2)  # Esperar a que cargue la siguiente página
+            time.sleep(2) 
             pages_navigated += 1
             print(f"Página {pages_navigated}: Se hizo clic en 'Next'.")
         except Exception as e:
             print(f"Intento fallido en la página {pages_navigated + 1}: {e}")
-            break  # Salir del bucle si no puede hacer clic en 'Next'
+            break  
 
     print(f"Navegación finalizada. Se avanzó hasta {pages_navigated} páginas.")
 
@@ -112,24 +112,15 @@ def scraper_genome_jp(url, sobrenombre):
         ) = extract_all_data(driver, 30)
 
         if total_records > 0:
-            object_id = fs.put(
-                all_scraper.encode("utf-8"),
-                source_url=url,
-                scraping_date=datetime.now(),
-                Etiquetas=["virus", "genome"],
-                contenido=all_scraper,
-                url=url
-            )
+            for scraped_url in urls_scraped:
+                object_id = save_to_mongo(
+                    collection_name="urls_scraper",  
+                    content_text=all_scraper,       
+                    href=scraped_url,               
+                    url=url                        
+                )
 
-            existing_versions = list(
-                fs.find({"source_url": url}).sort("scraping_date", -1)
-            )
-
-            if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                logger.info(f"✅ Contenido almacenado en MongoDB con ID: {object_id} para {scraped_url}")
 
         report = (
             f"Resumen del scraping:\n"

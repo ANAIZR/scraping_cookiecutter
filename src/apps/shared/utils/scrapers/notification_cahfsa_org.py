@@ -7,6 +7,7 @@ from ..functions import (
     get_logger,
     driver_init,
     extract_text_from_pdf,
+    save_to_mongo
 )
 import time
 import random
@@ -75,24 +76,11 @@ def scraper_notification_cahfsa_org(url, sobrenombre):
                     content_text = driver.find_element(By.CSS_SELECTOR, "li").text.strip()
                 
                 if content_text:
-                    object_id= fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
+                    object_id = save_to_mongo("news_articles", content_text, href, url)
                     total_scraped_successfully +=1
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                    object_ids.append(object_id) 
+                    logger.info(f"📂 Noticia guardada en `news_articles` con object_id: {object_id}")
                     
-                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id 
-                        fs.delete(file_id)
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}") 
+                    
 
                 logger.info(f"✅ Contenido extraído de {href}")
 

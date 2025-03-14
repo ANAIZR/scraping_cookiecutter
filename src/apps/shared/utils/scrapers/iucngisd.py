@@ -9,13 +9,12 @@ from rest_framework.response import Response
 from rest_framework import status
 import time
 import requests
-from datetime import datetime
-from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 lock = Lock()
@@ -36,23 +35,9 @@ def fetch_content(href, logger, scraped_count, failed_hrefs, collection, fs, url
             with lock:
                 scraped_count[0] += 1
 
-            object_id = fs.put(
-                content_text.encode("utf-8"),
-                source_url=href,
-                scraping_date=datetime.now(),
-                Etiquetas=["planta", "plaga"],
-                contenido=content_text,
-                url=url
-            )
-            existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+            object_id = save_to_mongo("urls_scraper", content_text, href, url)  # 📌 Guardar en `urls_scraper`
+            logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
 
-            if len(existing_versions) > 1:
-                oldest_version = existing_versions[-1]
-                fs.delete(oldest_version._id)  
-                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
-                        
-                        
-                        
             
             
             return href

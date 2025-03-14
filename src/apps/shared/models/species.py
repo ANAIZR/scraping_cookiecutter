@@ -122,3 +122,17 @@ class SpeciesSubscription(models.Model):
 
         filters_text = " | ".join(filters) if filters else "All"
         return f"{self.user.email} -> {filters_text}"
+    
+class SpeciesNews(models.Model):
+    scientific_name = models.CharField(max_length=255, blank=True, null=True)  
+    distribution = models.TextField(blank=True, null=True)
+    summary = models.TextField()
+    publication_date = models.DateField(blank=True, null=True)
+    source_url = models.URLField(max_length=500, unique=True)
+
+    class Meta:
+        db_table = "species_news"
+        ordering = ["-publication_date"]
+
+    def __str__(self):
+        return f"Noticia sobre {self.scientific_name} - {self.publication_date}"

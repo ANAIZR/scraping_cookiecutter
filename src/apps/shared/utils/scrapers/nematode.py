@@ -14,6 +14,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
+    save_to_mongo
 )
 
 def scraper_nematode(url, sobrenombre):
@@ -92,29 +93,13 @@ def scraper_nematode(url, sobrenombre):
                 page_source = driver.page_source
                 page_soup = BeautifulSoup(page_source, "html.parser")
                 page_text = page_soup.body.text.strip()
-
+                
                 if page_text:
-                    object_id = fs.put(
-                        page_text.encode("utf-8"),
-                        source_url=link,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=page_text,
-                        url=url
-                    )
-                    scraped_urls.add(link) 
+                    object_id = save_to_mongo("urls_scraper", page_text, link, url)  # 📌 Guardar en `urls_scraper`
                     total_scraped_successfully += 1
+                    scraped_urls.add(link) 
+                    logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
                     
-                    existing_versions = list(
-                        fs.find({"source_url": link}).sort("scraping_date", -1)
-                    )
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version._id))
-                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{link}' y object_id: {oldest_version._id}")
-
-                    logger.info(f"Contenido extraído de {link}.")
             except Exception as e:
                 logger.error(f"❌ Error en la URL {link}: {e}")
 
@@ -139,4 +124,3 @@ def scraper_nematode(url, sobrenombre):
     finally:
         driver.quit()
         logger.info("✅ Navegador cerrado.")
-        print("✅ Navegador cerrado.")

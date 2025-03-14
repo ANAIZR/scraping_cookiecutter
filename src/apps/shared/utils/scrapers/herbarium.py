@@ -5,17 +5,16 @@ from rest_framework.response import Response
 from rest_framework import status
 from bs4 import BeautifulSoup
 import time
-import requests
 from datetime import datetime
-from bson import ObjectId
 from urllib.parse import urljoin
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     driver_init,
     load_keywords,
+    save_to_mongo
 )
 
 logger = get_logger("scraper")
@@ -95,27 +94,11 @@ def scraper_herbarium(url, sobrenombre):
                         content_text = "\n".join(";".join(cell.get_text(strip=True) for cell in row.find_all("td")) for row in rows)
 
                         if content_text:
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=new_url,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=url
-                            )
+                            object_id = save_to_mongo("urls_scraper", content_text, new_url, url)
+                            total_scraped_links += 1
+                            scraped_urls.append(new_url)
+                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
                             
-                            existing_versions = list(
-                                fs.find({"source_url": new_url}).sort("scraping_date", -1)
-                            )
-                            object_ids.append(object_id)
-                            total_scraped_successfully += 1
-                            logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                file_id = oldest_version._id  
-                                fs.delete(file_id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
 
                     except Exception as e:
                         logger.error(f"❌ Error en búsqueda con palabra clave {keyword}: {str(e)}")

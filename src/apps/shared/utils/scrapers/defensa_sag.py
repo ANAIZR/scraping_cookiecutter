@@ -10,7 +10,8 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     process_scraper_data,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    save_to_mongo
 )
 from bson import ObjectId
 import time
@@ -118,13 +119,7 @@ def scraper_defensa_sag(url, sobrenombre):
         print("🚪 Navegador cerrado.")
 
 def process_dropdowns(driver, logger, visited_urls, scraped_urls, fs):
-    """
-    Procesa cada opción en los dropdowns:
-    - "Buscar por" (`#buscar`)
-    - "Nombre Científico" (`#nombre`)
-    - "País" (`#select4`)
-    Luego extrae la URL final y busca PDFs.
-    """
+
     try:
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "buscar"))
@@ -204,24 +199,10 @@ def process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs):
                         content_text = extract_text_from_pdf(href)
 
                         if content_text:
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=href,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=result_url
-                            )
+                            object_id = save_to_mongo("urls_scraper", content_text, href, url)
                             total_scraped_links += 1
-                            scraped_urls.add(href)
+                            scraped_urls.append(href)
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                            existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                file_id = oldest_version._id  # Esto obtiene el ID correcto
-                                fs.delete(file_id)  # Eliminar la versión más antigua
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                         else:
                             non_scraped_urls.append(href)
  

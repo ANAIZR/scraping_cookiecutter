@@ -12,7 +12,8 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    process_scraper_data
+    process_scraper_data,
+    save_to_mongo
 )
 def scraper_ndrs_org(url, sobrenombre):
     driver = driver_init()
@@ -91,27 +92,11 @@ def scraper_ndrs_org(url, sobrenombre):
                     if body_text:
                         content_text = body_text.text.strip()
                         if content_text:
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=article_full_url,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=url
-                            )
-                            object_ids.append(object_id)
+                            object_id = save_to_mongo("urls_scraper", content_text, article_full_url, url)  # 📌 Guardar en `urls_scraper`
                             total_scraped_successfully += 1
                             scraped_urls.add(article_full_url)
-                            logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                            existing_versions = list(
-                                fs.find({"source_url": article_full_url}).sort("scraping_date", -1)
-                            )
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                file_id = oldest_version._id  
-                                fs.delete(file_id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                            logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                            
                         else:
                             total_failed_scrapes += 1
                             failed_urls.add(article_full_url)

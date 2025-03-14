@@ -1,11 +1,10 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from bson import ObjectId
 from rest_framework.response import Response
 from rest_framework import status
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,6 +14,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo, 
 )
 
 logger = get_logger("INICIANDO EL SCRAPER")
@@ -105,7 +105,7 @@ def click_next_page(driver, wait_time):
         logger.error(f"Error al intentar ir a la siguiente página: {str(e)}")
         return False
 
-def scrape_content_from_links(state, collection, fs, main_url):
+def scrape_content_from_links(state, db, main_url):
     def process_link(link):
         try:
             response = requests.get(link, timeout=10)
@@ -116,27 +116,11 @@ def scrape_content_from_links(state, collection, fs, main_url):
                     content_text = content.get_text(strip=True)
                     logger.info(f"Contenido extraído de: {link}")
 
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=link,  
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=main_url  
-                    )
-                    
-                    
+                    # 📌 Guardar en `urls_scraper` en lugar de GridFS
+                    object_id = save_to_mongo("urls_scraper", content_text, link, main_url)
+
                     state.scraped_urls.append(link)
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                    existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
-
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id  
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")  # Log correcto
+                    logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
 
                     return link, True, None  
                 else:
@@ -174,19 +158,21 @@ def scraper_aguiar_hvr(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     state = ScraperState()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()
 
     try:
         driver.get(url)
         while True:
-            wait_for_element(driver, 30, (By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
-            process_table_rows(driver, state) 
-            if not click_next_page(driver, 30): 
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "#DataTables_Table_0_wrapper tbody"))
+            )
+            process_table_rows(driver, state)  
+            if not click_next_page(driver, 30):  
                 break
 
         logger.info(f"Se recolectaron {len(state.extracted_hrefs)} enlaces. Procesando contenido...")
-        scrape_content_from_links(state, collection, fs, url) 
-        state.all_scraper +=(
+        scrape_content_from_links(state, db, url)  
+        state.all_scraper += (
             "\n\nLista de enlaces scrapeados:\n" + "\n".join(state.scraped_urls)
         )
         response = process_scraper_data(state.all_scraper, url, sobrenombre)

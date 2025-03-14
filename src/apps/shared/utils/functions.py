@@ -29,7 +29,9 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/89.0.4389.114",
 ]
 
-
+MONGO_URI = os.getenv("MONGO_URI")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
+MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME")
 OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR"))
 LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR"))
 LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS"))
@@ -223,15 +225,13 @@ def initialize_driver_cabi(retries=3):
 
 
 
-def connect_to_mongo():
-    logger = get_logger("MONGO_CONNECTION")
-    
-    try:
-        MONGO_URI = os.getenv("MONGO_URI")
-        MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
-        MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME")
 
-        if not all([MONGO_URI, MONGO_DB_NAME, MONGO_COLLECTION_NAME]):
+def connect_to_mongo():
+
+    logger = get_logger("MONGO_CONNECTION")
+
+    try:
+        if not all([MONGO_URI, MONGO_DB_NAME]):
             raise ValueError("⚠️ Faltan variables de entorno en el archivo .env")
 
         client = MongoClient(MONGO_URI)
@@ -239,11 +239,46 @@ def connect_to_mongo():
         fs = gridfs.GridFS(db)
 
         logger.info(f"✅ Conexión a MongoDB establecida correctamente: {MONGO_DB_NAME}")
-        return db[MONGO_COLLECTION_NAME], fs
+        return db, fs  # 📌 Devuelve la base de datos, no una colección específica
 
     except Exception as e:
         logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
         raise
+
+def save_to_mongo(collection_name, content_text, href, url):
+
+    logger = get_logger("GUARDAR EN MONGO")
+
+    if not content_text:
+        logger.warning("⚠️ No hay contenido para guardar en MongoDB.")
+        return None
+
+    db, fs = connect_to_mongo() 
+    collection = db[collection_name] 
+
+    document = {
+        "source_url": href,
+        "scraping_date": datetime.now(),
+        "etiquetas": ["planta", "plaga"],
+        "contenido": content_text,
+        "url": url
+    }
+
+    object_id = collection.insert_one(document).inserted_id
+    logger.info(f"📂 Noticia guardada en `{collection_name}` con object_id: {object_id}")
+
+    existing_versions = list(
+        collection.find({"source_url": href}).sort("scraping_date", -1)
+    )
+
+    if len(existing_versions) > 1:
+        oldest_version = existing_versions[-1]
+        collection.delete_one({"_id": oldest_version["_id"]})
+        logger.info(f"🗑 Se eliminó la versión más antigua en `{collection_name}`: '{href}' con object_id: {oldest_version['_id']}")
+
+    logger.info(f"✅ Contenido extraído y guardado en `{collection_name}` para {href}.")
+    
+    return object_id
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):

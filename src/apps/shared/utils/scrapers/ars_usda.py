@@ -11,16 +11,17 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    save_to_mongo  # 📌 Nueva función para almacenar en `urls_scraper`
 )
 from datetime import datetime
-from bson import ObjectId
 
 def scraper_ars_usda(url, sobrenombre):
     url_padre = url
     logger = get_logger("ARS")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo()
+
+    db, fs = connect_to_mongo() 
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]
@@ -54,23 +55,10 @@ def scraper_ars_usda(url, sobrenombre):
                 pdf_text = extract_text_from_pdf(url)
 
                 if pdf_text and pdf_text.strip():
-                    object_id = fs.put(
-                        pdf_text.encode("utf-8"),
-                        source_url=url,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=pdf_text,
-                        url=url_padre
-                    )
+                    object_id = save_to_mongo("urls_scraper", pdf_text, url, url_padre)
                     total_scraped_links += 1
                     scraped_urls.append(url)
-                    logger.info(f"Texto de PDF almacenado en MongoDB con object_id: {object_id}")
-
-                    existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        fs.delete(oldest_version._id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
+                    logger.info(f"📂 Texto de PDF guardado en `urls_scraper` con object_id: {object_id}")
                 else:
                     non_scraped_urls.append(url)
                     total_non_scraped_links += 1
@@ -80,27 +68,12 @@ def scraper_ars_usda(url, sobrenombre):
                 main_content = soup.find("main", id="main-content")
 
                 if main_content:
-                    nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
                     if page_text:
-                        object_id = fs.put(
-                            page_text.encode("utf-8"),
-                            source_url=url,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=page_text,
-                            url=url_padre
-                        )
+                        object_id = save_to_mongo("urls_scraper", page_text, url, url_padre)
                         total_scraped_links += 1
                         scraped_urls.append(url)
-                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                        existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        logger.info(f"📂 Página guardada en `urls_scraper` con object_id: {object_id}")
                     else:
                         non_scraped_urls.append(url)
 

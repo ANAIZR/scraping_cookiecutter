@@ -10,6 +10,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
+    save_to_mongo
 )
 import time
 import random
@@ -80,28 +81,10 @@ def scraper_nemaplex_plant_host(url, sobrenombre):
                     logger.warning(f"⚠️ No se encontró la tabla en {result_url}")
 
                 try:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=result_url,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
+                    object_id = save_to_mongo("urls_scraper", content_text, result_url, url)  # 📌 Guardar en `urls_scraper`
                     total_scraped_successfully += 1
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                    object_ids.append(object_id) 
-                    existing_versions = list(
-                        fs.find({"source_url": result_url}).sort("scraping_date", -1)
-                    )
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id
-                        fs.delete(file_id)
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
-                    logger.info(f"✅ Contenido extraído y guardado de {result_url}.")
+                    logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                    
 
                 except Exception as e:
                     logger.error(f"❌ Error al guardar en MongoDB: {e}")

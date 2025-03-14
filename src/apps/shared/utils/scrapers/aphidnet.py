@@ -3,21 +3,22 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from django.http import JsonResponse
 from datetime import datetime
-from bson import ObjectId
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import chardet
+
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    save_to_mongo,  
 )
 
 def scraper_aphidnet(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("APHIDNET")
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo() 
     
     total_urls_found = 0
     total_urls_scraped = 0
@@ -64,25 +65,11 @@ def scraper_aphidnet(url, sobrenombre):
             full_content = f"{content_text}\n{portfolio_text}".strip()
             
             if full_content and full_content.strip():
-                object_id = fs.put(
-                    full_content.encode("utf-8"),
-                    source_url=current_url,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=full_content,
-                    url=url
-                )
+                object_id = save_to_mongo("urls_scraper", full_content, current_url, url)
                 total_urls_scraped += 1
                 urls_scraped.append(current_url)
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
 
-                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
-
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
             else:
                 urls_not_scraped.append(current_url)
                 total_failed_scrapes += 1

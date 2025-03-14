@@ -1,19 +1,15 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import os
 import time
 import random
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
 from urllib.parse import urljoin
-from bson import ObjectId
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     driver_init,
+    save_to_mongo, 
 )
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException
 
@@ -41,7 +37,7 @@ def scraper_agresearchmag(url, sobrenombre):
 
         logger.info(f"Iniciando scraping para URL: {url}")
 
-        collection, fs = connect_to_mongo()
+        db, fs = connect_to_mongo()  
 
         panel = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "div.panel-body ul.als-wrapper"))
@@ -140,17 +136,10 @@ def scraper_agresearchmag(url, sobrenombre):
                     logger.info(f"No se encontró div.row:nth-of-type(3), extrayendo body de {href}")
 
                 if content_text:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
+                    object_id = save_to_mongo("urls_scraper", content_text, href, url)
                     object_ids.append(object_id)
                     total_scraped_successfully += 1
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                    logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
 
                 else:
                     raise Exception("Contenido vacío o no extraído correctamente")

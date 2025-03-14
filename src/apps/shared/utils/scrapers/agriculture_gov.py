@@ -8,11 +8,10 @@ from ..functions import (
     driver_init,
     load_keywords,
     extract_text_from_pdf,
+    save_to_mongo, 
 )
 import time
 import random
-from datetime import datetime
-from bson import ObjectId
 from urllib.parse import urljoin
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
@@ -20,20 +19,18 @@ from bs4 import BeautifulSoup
 def scraper_agriculture_gov(url, sobrenombre):
     logger = get_logger("AGRICULTURE_GOV")
     logger.info(f"Iniciando scraping para URL: {url}")
-    
+
     driver = driver_init()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()  
     total_links_found = 0
     total_scraped_successfully = 0
     total_failed_scrapes = 0
     all_scraper = ""
     scraped_urls = set()
     failed_urls = set()
-    object_ids = []
-    
+
     try:
         driver.get(url)
-        
         driver.execute_script("document.body.style.zoom='100%'")
         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
         time.sleep(5)
@@ -102,7 +99,6 @@ def scraper_agriculture_gov(url, sobrenombre):
                             content_text = extract_text_from_pdf(href)
                         else:
                             driver.get(href)
-                            
                             driver.execute_script("document.body.style.zoom='100%'")
                             WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                             time.sleep(5)
@@ -114,30 +110,11 @@ def scraper_agriculture_gov(url, sobrenombre):
                             content_text = driver.find_element(By.CSS_SELECTOR, "div.region-content").text.strip()
                         
                         if content_text and content_text.strip():
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=href,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=url
-                            )
-                            object_ids.append(object_id)
+                            object_id = save_to_mongo("urls_scraper", content_text, href, url)
                             total_scraped_successfully += 1
 
-                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                            logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
 
-                            existing_versions = list(
-                                fs.find({"source_url": href}).sort("scraping_date", -1)
-                            )
-
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                file_id = oldest_version._id  
-                                fs.delete(file_id)  
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")  # Log correcto
-
-                            
                             logger.info(f"Contenido extraído de {href}.")
                     except Exception as e:
                         logger.error(f"No se pudo extraer contenido de {href}: {e}")

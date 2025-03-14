@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from src.apps.shared.services.ollama import OllamaService
+from apps.shared.services.urls_ollama_service import OllamaService
 from django.conf import settings
 
 class TestOllamaService:

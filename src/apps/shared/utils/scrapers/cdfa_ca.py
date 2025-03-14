@@ -7,7 +7,8 @@ from ..functions import (
     get_logger,
     driver_init,
     load_keywords,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    save_to_mongo
 )
 import time
 import random
@@ -21,7 +22,7 @@ def scraper_cdfa(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     
     driver = driver_init()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()
     
     total_links_found = 0
     total_scraped_successfully = 0
@@ -144,29 +145,11 @@ def scraper_cdfa(url, sobrenombre):
                                 except TimeoutException:
                                     content_text = driver.find_element(By.TAG_NAME, "body").text.strip()
                         if content_text:
-                            object_id = fs.put(
-                                content_text.encode("utf-8"),
-                                source_url=href,
-                                scraping_date=datetime.now(),
-                                Etiquetas=["planta", "plaga"],
-                                contenido=content_text,
-                                url=url
-                            )
+                            object_id = save_to_mongo("urls_scraper", content_text, href, url)
                             object_ids.append(object_id)
                             total_scraped_successfully += 1
                             logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                            existing_versions = list(
-                                fs.find({"source_url": href}).sort("scraping_date", -1)
-                            )
-
-                            if len(existing_versions) > 1:
-                                oldest_version = existing_versions[-1]
-                                fs.delete(oldest_version._id)
-                                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
-                            
-                            logger.info(f"Contenido extraído de {href}.")
-                            
                         else:
                             raise Exception("Contenido vacío")
 

@@ -15,7 +15,8 @@ from ..functions import (
     connect_to_mongo,
     load_keywords,
     extract_text_from_pdf,
-    process_scraper_data
+    process_scraper_data,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -122,24 +123,11 @@ def scraper_cdnsciencepub(url, sobrenombre):
                                     )
 
                                 if body_text:
-                                    object_id = fs.put(
-                                        body_text.encode("utf-8"),
-                                        source_url=href,
-                                        scraping_date=datetime.now(),
-                                        Etiquetas=["planta", "plaga"],
-                                        contenido=body_text,
-                                        url=url
-                                    )
+                                    object_id = save_to_mongo("urls_scraper", body_text, href, url)
                                     total_scraped_links += 1
                                     scraped_urls.append(href)
                                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                                    if len(existing_versions) > 1:
-                                        oldest_version = existing_versions[-1]
-                                        file_id = oldest_version._id  # Esto obtiene el ID correcto
-                                        fs.delete(file_id)  # Eliminar la versión más antigua
-                                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                                 else:
                                     non_scraped_urls.append(href)
                                 driver.back()

@@ -6,7 +6,8 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data
+    process_scraper_data,
+    save_to_mongo
 )
 import os
 import random
@@ -141,26 +142,12 @@ def scraper_padil(url, sobrenombre):
                                 if pest_details:
                                     content_accumulated = f"{pest_details.text.strip()}\n\n"
                                     if content_accumulated:
-
-                                        object_id = fs.put(
-                                            content_accumulated.encode("utf-8"),
-                                            source_url=href,
-                                            scraping_date=datetime.now(),
-                                            Etiquetas=["planta", "plaga"],
-                                            contenido=content_accumulated,
-                                            url=url,
-                                        )
+                                        object_id = save_to_mongo("urls_scraper", content_accumulated, href, url)  # 📌 Guardar en `urls_scraper`
                                         total_scraped_links += 1
-                                        scraped_urls.append(href)
-                                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                        existing_versions = list(
-                                            fs.find({"source_url": href}).sort("scraping_date", -1)
-                                        )
-                                        if len(existing_versions) > 1:
-                                            oldest_version = existing_versions[-1]
-                                            file_id = oldest_version._id 
-                                            fs.delete(file_id)  
-                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                                        scraped_urls.append(url)
+                                        logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+
+                                        
                                 else:
                                     logger.error(
                                         f"El elemento 'div.pest-details' no se encontró en {href}."

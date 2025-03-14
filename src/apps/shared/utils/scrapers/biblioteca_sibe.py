@@ -7,14 +7,14 @@ from ..functions import (
     get_logger,
     driver_init,
     load_keywords,
+    save_to_mongo 
 )
 from rest_framework.response import Response
 import time
 import random
 from datetime import datetime
-from bson import ObjectId
 from urllib.parse import urljoin
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
 
 def scraper_biblioteca_sibe(url, sobrenombre):
@@ -22,7 +22,7 @@ def scraper_biblioteca_sibe(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     
     driver = driver_init()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()  
     
     total_links_found = 0
     total_scraped_successfully = 0
@@ -33,8 +33,7 @@ def scraper_biblioteca_sibe(url, sobrenombre):
     
     scraped_urls = set()
     failed_urls = set()
-    object_ids = []
-    
+
     try:
         driver.get(url)
         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
@@ -103,13 +102,6 @@ def scraper_biblioteca_sibe(url, sobrenombre):
                 logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
                 continue
         
-        # -------------------------------------------------------------------
-        # 3) Extraer información de cada enlace encontrado
-        # - Si se encuentra div#descriptions.ui-tabs-panel, se extrae su texto.
-        # - Sino, se hace clic en a#ui-id-2.ui-tabs-anchor y se vuelve a buscar.
-        # - Si no se obtiene contenido, se intenta con div.div.record.
-        # -------------------------------------------------------------------
-        
         for href in scraped_urls:
             try:
                 driver.get(href)
@@ -144,41 +136,27 @@ def scraper_biblioteca_sibe(url, sobrenombre):
                         logger.warning(f"⚠️ No se pudo hacer clic en la pestaña o no se encontró el div tras el clic.")
                 
                 if not content_text:
-                    logger.info("🔎 Buscando div.div.record como último recurso.")
+                    logger.info("🔎 Buscando div.record como último recurso.")
                     try:
                         catalogue_biblio_div = WebDriverWait(driver, 5).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.record    "))
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.record"))
                         )
                         content_text = catalogue_biblio_div.text.strip()
-                        logger.info("✅ Se encontró div.div.record.")
+                        logger.info("✅ Se encontró div.record.")
                     except TimeoutException:
-                        logger.warning("⚠️ No se encontró div.div.record como último recurso.")
+                        logger.warning("⚠️ No se encontró div.record como último recurso.")
                 
                 if content_text:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
-                    object_ids.append(object_id)
+                    object_id = save_to_mongo("urls_scraper", content_text, href, url)  # 📌 Guardar en `urls_scraper`
                     total_scraped_successfully += 1
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        fs.delete(oldest_version._id)
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version._id}")
-
-                    logger.info(f"Contenido extraído de {href}.")
+                    logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
                 else:
-                    logger.warning(f"Contenido vacío o no disponible en {href}.")
+                    logger.warning(f"❌ Contenido vacío o no disponible en {href}.")
                 
             except Exception as e:
                 logger.warning(f"Error extrayendo información de {href}: {e}")
+                total_failed_scrapes += 1
+                failed_urls.add(href)
         
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"

@@ -2,13 +2,12 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from bson import ObjectId
-from datetime import datetime
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -58,26 +57,11 @@ def scraper_flora_habitas(url, sobrenombre):
                 all_scraper += f"URL: {link_href}\n\n{content_text}\n{'-' * 80}\n\n"
                 
                 if content_text and content_text.strip():
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=link_href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
+                    object_id = save_to_mongo("urls_scraper", content_text, link_href, url)
                     total_scraped_successfully += 1
-
                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                    existing_versions = list(fs.find({"source_url": link_href}).sort("scraping_date", -1))
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id  
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                    
             else:
                 logger.info(f"No se encontró el div#contents en {link_href}")
 

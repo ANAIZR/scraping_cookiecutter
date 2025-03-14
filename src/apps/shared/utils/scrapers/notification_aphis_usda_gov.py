@@ -6,6 +6,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
+    save_to_mongo
 )
 import time
 import random
@@ -91,18 +92,11 @@ def scraper_aphis_usda_gov(url, sobrenombre):
                 content_text = driver.find_element(By.CSS_SELECTOR, "div.c-field--name-body").text.strip()
 
                 if content_text:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
-
+                    object_id = save_to_mongo("news_articles", content_text, href, url)
                     object_ids.append(object_id)
                     total_scraped_successfully += 1
-                    logger.info(f"📂 Archivo almacenado en MongoDB con object_id: {object_id}")
+                    logger.info(f"📂 Noticia guardada en `news_articles` con object_id: {object_id}")
+                    
 
             except Exception as e:
                 logger.error(f"❌ No se pudo extraer contenido de {href}: {e}")

@@ -15,7 +15,8 @@ from ..functions import (
     get_logger,
     driver_init,
     load_keywords,
-    process_scraper_data
+    process_scraper_data,
+    save_to_mongo
 )
 
 logger = get_logger("scraper")
@@ -112,27 +113,10 @@ def scraper_ecoport(url, sobrenombre):
                                 content_text += "-" * 100 + "\n\n"
                                 
                                 if content_text:
-                                    object_id = fs.put(
-                                        content_text.encode("utf-8"),
-                                        source_url=full_href,
-                                        scraping_date=datetime.now(),
-                                        Etiquetas=["planta", "plaga"],
-                                        contenido=content_text,
-                                        url=url
-                                    )
-                                    object_ids.append(object_id)
+                                    object_id = save_to_mongo("urls_scraper", content_text, href, url)
                                     total_urls_scraped += 1
-                                    
+                                    scraped_urls.append(full_href)
                                     logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                                
-                                    existing_versions = list(
-                                        fs.find({"source_url": full_href}).sort("scraping_date", -1)
-                                    )
-                                    if len(existing_versions) > 1:
-                                        oldest_version = existing_versions[-1]
-                                        file_id = oldest_version._id  
-                                        fs.delete(file_id)  
-                                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                                 else:
                                     failed_urls.add(full_href)
                             except Exception as e:

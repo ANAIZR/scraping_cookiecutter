@@ -4,20 +4,21 @@ import random
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
     extract_text_from_pdf,
+    save_to_mongo,  
 )
-from datetime import datetime
-from bson import ObjectId
 
 def scraper_aphis_usda(url, sobrenombre):
     logger = get_logger("APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()  
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]  
@@ -57,28 +58,14 @@ def scraper_aphis_usda(url, sobrenombre):
                         content_text = main_content.get_text(separator=" ", strip=True)
 
             if content_text and content_text.strip():
-                object_id = fs.put(
-                    content_text.encode("utf-8"),
-                    source_url=current_url,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=content_text,
-                    url=url
-                )
+                object_id = save_to_mongo("urls_scraper", content_text, current_url, url)
                 total_scraped_links += 1
                 scraped_urls.append(current_url)
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
 
-                
-
-                existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
-
-
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+            else:
+                total_non_scraped_links += 1
+                non_scraped_urls.append(current_url)
 
             for link in soup.find_all("a", href=True):
                 inner_href = link.get("href")
@@ -93,28 +80,10 @@ def scraper_aphis_usda(url, sobrenombre):
                 if full_url.lower().endswith(".pdf"):
                     content_text = extract_text_from_pdf(full_url)
                     if content_text:
-                        object_id = fs.put(
-                            content_text.encode("utf-8"),
-                            source_url=full_url,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=content_text,
-                            url=url
-                        )
+                        object_id = save_to_mongo("urls_scraper", content_text, full_url, url)
                         total_scraped_links += 1
                         scraped_urls.append(full_url)
-                        logger.info(f"Archivo PDF almacenado en MongoDB con object_id: {object_id}")
-
-                        
-
-                        existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
-
-
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        logger.info(f"📂 Archivo PDF guardado en `urls_scraper` con object_id: {object_id}")
                     else:
                         total_non_scraped_links += 1
                         non_scraped_urls.append(full_url)

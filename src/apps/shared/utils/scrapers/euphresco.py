@@ -6,7 +6,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    extract_text_from_pdf,
+    save_to_mongo
 )
 import time
 import random
@@ -98,27 +98,10 @@ def scraper_euphresco(url, sobrenombre):
                     logger.info("✅ Encontrado: div.row div.margin10")
                 
                 if content_text:
-                    object_id= fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
-                    total_scraped_successfully +=1
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                    object_ids.append(object_id) 
+                    object_id = save_to_mongo("urls_scraper", content_text, href, url)
+                    total_scraped_successfully += 1
+                    scraped_urls.append(href)
                     
-                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id 
-                        fs.delete(file_id)
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}") 
-                        
-                    scraped_urls.add(href)
-
                 logger.info(f"✅ Contenido extraído de {href}")
                  
             except Exception as e:

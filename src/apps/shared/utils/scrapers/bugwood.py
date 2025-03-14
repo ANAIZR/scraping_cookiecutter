@@ -8,15 +8,15 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
+    save_to_mongo  
 )
-from bson import ObjectId
 from datetime import datetime
 
 def scraper_bugwood(url, sobrenombre):
-    max_depth=3
+    max_depth = 3
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()  
 
     all_scraper = ""
     total_urls_found = 0
@@ -25,7 +25,6 @@ def scraper_bugwood(url, sobrenombre):
 
     visited_urls = set()
     urls_to_scrape = []
-    object_ids = []
 
     scraped_urls = []
     failed_urls = []
@@ -95,25 +94,11 @@ def scraper_bugwood(url, sobrenombre):
             if container_div:
                 content_text = container_div.get_text(strip=True)
                 if content_text:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=current_url,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
+                    object_id = save_to_mongo("urls_scraper", content_text, current_url, url)  # 📌 Guardar en `urls_scraper`
                     total_urls_scraped += 1
                     scraped_urls.append(current_url)
-                    object_ids.append(object_id)
-                    logger.info(f"✅ Archivo almacenado en MongoDB con object_id: {object_id}")
+                    logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
 
-                    existing_versions = list(fs.find({"source_url": current_url}).sort("scraping_date", -1))
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id  
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                 else:
                     total_non_scraped_links += 1
                     failed_urls.append(current_url)

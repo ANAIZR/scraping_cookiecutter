@@ -12,6 +12,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 
@@ -54,7 +55,7 @@ def scraper_eppo_quarentine(url, sobrenombre):
                             full_link = urljoin(url, link_tag["href"])
 
                             if full_link in urls_found:
-                                continue  # Evitar duplicados
+                                continue  
 
                             urls_found.add(full_link)
                             logger.info(f"🔗 URL encontrada: {full_link}")
@@ -84,30 +85,12 @@ def scraper_eppo_quarentine(url, sobrenombre):
                                         [item.get_text(strip=True) for item in content]
                                     )
 
-                                    object_id = fs.put(
-                                        page_text.encode("utf-8"),
-                                        source_url=full_link,
-                                        scraping_date=datetime.now(),
-                                        Etiquetas=["planta", "plaga"],
-                                        contenido=page_text,
-                                        url=url,
-                                    )
-                                    logger.info(
-                                        f"✅ Contenido almacenado en MongoDB con ID: {object_id}"
-                                    )
+                                    object_id = save_to_mongo("urls_scraper", page_text, full_link, url)
+                                    total_scraped_links += 1
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
                                     urls_scraped.add(full_link)
-                                    existing_versions = list(
-                                        fs.find({"source_url": full_link}).sort(
-                                            "scraping_date", -1
-                                        )
-                                    )
-
-                                    if len(existing_versions) > 1:
-                                        oldest_version = existing_versions[-1]
-                                        file_id = oldest_version._id  
-                                        fs.delete(file_id)  
-                                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                                   
 
 
                             except Exception as scrape_error:

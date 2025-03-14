@@ -11,6 +11,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
+    save_to_mongo
 )
 import time
 import random
@@ -80,29 +81,12 @@ def scraper_fws_gov(url, sobrenombre):
                             if content:
                                 page_text = content.get_text(separator="\n", strip=True)
                                 if page_text:
-                                    object_id = fs.put(
-                                        page_text.encode("utf-8"),
-                                        source_url=full_url,
-                                        scraping_date=datetime.now(),
-                                        Etiquetas=["planta", "plaga"],
-                                        contenido=page_text,
-                                        url=url
-                                    )
-                                    object_ids.append(object_id)
-                                    total_scraped_successfully += 1
-                                    print(f"✅ Contenido guardado en MongoDB: {full_url}")
-                                    urls_scraped.append(full_url)
 
-                                    existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
-                                    if len(existing_versions) > 1:
-                                        oldest_version = existing_versions[-1]
-                                        fs.delete(ObjectId(oldest_version._id))
-                                        logger.info(
-                                            f"Se eliminó la versión más antigua con este enlace: '{full_url}' "
-                                            f"y object_id: {oldest_version._id}"
-                                        )
+                                    object_id = save_to_mongo("urls_scraper", page_text, full_url, url)
+                                    total_scraped_successfully += 1
+                                    urls_scraped.append(full_url)
+                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
                                     
-                                    logger.info(f"Contenido extraído de {full_url}.")
                                 else:
                                     logger.warning(f"⚠ Contenido vacío en {full_url}")
                                     urls_not_scraped.append(full_url)

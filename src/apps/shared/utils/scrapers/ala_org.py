@@ -8,22 +8,23 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
+    save_to_mongo,  
 )
 import random
 from datetime import datetime
-from bson import ObjectId
 from urllib.parse import urljoin
 
 def scraper_ala_org(url, sobrenombre):
     logger = get_logger("ALA_ORG")
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = driver_init()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo() 
     total_links_found = 0
     total_scraped_successfully = 0
     total_failed_scrapes = 0
     all_scraper = ""
     scraped_urls = []
+    failed_urls = []
 
     try:
         driver.get(url)
@@ -39,9 +40,6 @@ def scraper_ala_org(url, sobrenombre):
         except Exception as e:
             logger.error(f"No se pudo hacer clic en el botón de búsqueda: {e}")
             return {"error": "No se encontró el botón de búsqueda"}
-        
-        object_ids = []
-        failed_urls = []
 
         while True:
             try:
@@ -83,26 +81,11 @@ def scraper_ala_org(url, sobrenombre):
                                 if content:
                                     content_text = content.text.strip()
                                     
-                                    object_id = fs.put(
-                                        content_text.encode("utf-8"),
-                                        source_url=href,
-                                        scraping_date=datetime.now(),
-                                        Etiquetas=["planta", "plaga"],
-                                        contenido=content_text,
-                                        url=url
-                                    )
-                                    object_ids.append(object_id)
+                                    object_id = save_to_mongo("urls_scraper", content_text, href, url)
                                     total_scraped_successfully += 1
 
-                                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                                    if len(existing_versions) > 1:
-                                            oldest_version = existing_versions[-1]
-                                            file_id = oldest_version._id  
-                                            fs.delete(file_id)  
-                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
-                                    
+                                    logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
+                                
                             except Exception as e:
                                 logger.warning(f"No se pudo extraer contenido de {href}: {e}")
                                 total_failed_scrapes += 1
@@ -169,7 +152,6 @@ def scraper_ala_org(url, sobrenombre):
                         break
 
                 logger.info("Se alcanzó el límite de navegación o no hay más páginas.")
-
 
             except Exception as e:
                 logger.error(f"Error al cargar los resultados: {e}")

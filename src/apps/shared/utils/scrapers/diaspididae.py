@@ -11,6 +11,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 
@@ -81,25 +82,17 @@ def scraper_diaspididae(url, sobrenombre):
                 logger.info(f"🔗 URL encontrada: {full_url}")
 
                 if scraped_data["text"]:
-                    # Guardar en MongoDB
-                    object_id = fs.put(
-                        scraped_data["text"].encode("utf-8"),
-                        source_url=full_url,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["Diaspididae", "Especies"],
-                        contenido=scraped_data["text"],
+                    object_id = save_to_mongo(
+                        collection_name="urls_scraper",
+                        content_text=scraped_data["text"],
+                        href=full_url,
                         url=url
                     )
 
-                    urls_scraped.add(full_url)
-                    logger.info(f"✅ Contenido almacenado en MongoDB con ID: {object_id}")
-                    existing_versions = list(fs.find({"source_url": full_url}).sort("scraping_date", -1))
+                    if object_id:
+                        urls_scraped.add(full_url)
+                        logger.info(f"✅ Contenido almacenado en MongoDB con ID: {object_id}")
 
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id  
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
 
                 else:
                     urls_not_scraped.add(full_url)

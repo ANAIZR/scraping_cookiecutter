@@ -6,23 +6,21 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     driver_init,
-    load_keywords,
     extract_text_from_pdf,
+    save_to_mongo  
 )
 import time
 import random
-from datetime import datetime
-from bson import ObjectId
-from urllib.parse import urljoin
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 def scraper_notification_ippc(url, sobrenombre):
     logger = get_logger("IPPC INT")
     logger.info(f"Iniciando scraping para URL: {url}")
     
     driver = driver_init()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo() 
     total_links_found = 0
     total_scraped_successfully = 0
     total_failed_scrapes = 0
@@ -31,27 +29,25 @@ def scraper_notification_ippc(url, sobrenombre):
     failed_urls = set()
     visited_urls = set()
     object_ids = []
-    
+
     try:
         driver.get(url)
-        
         driver.execute_script("document.body.style.zoom='100%'")
         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
         time.sleep(5)
-        
+
         logger.info("Página cargada correctamente.")
         domain = "https://www.ippc.int"
-        
+
         while True:
             page_source = driver.page_source
             soup = BeautifulSoup(page_source, "html.parser")
 
             results_divs = soup.select("tbody tr.odd td:first-child a, tbody tr.even td:first-child a")
-            print(f"**********Resultados: {results_divs}")
 
             for link in results_divs:
                 href = urljoin(domain, link["href"])
-                
+
                 if href not in visited_urls:
                     visited_urls.add(href)
                     scraped_urls.add(href)
@@ -59,7 +55,7 @@ def scraper_notification_ippc(url, sobrenombre):
                     print(f"✅ Enlace agregado: {href}")
 
             next_button_soup = soup.select_one("li.c-pager__item--next a.c-pager__link--next")
-            
+
             if not next_button_soup:
                 logger.info("No se encontró el botón 'Next' en el HTML. Terminando la paginación.")
                 break
@@ -71,7 +67,7 @@ def scraper_notification_ippc(url, sobrenombre):
                 driver.execute_script("arguments[0].click();", next_button)
                 logger.info("Clic en 'Next' realizado correctamente.")
                 time.sleep(random.uniform(5, 10))
-            
+
             except (TimeoutException, NoSuchElementException) as e:
                 logger.warning(f"No se pudo hacer clic en 'Next': {e}")
                 break  
@@ -86,44 +82,25 @@ def scraper_notification_ippc(url, sobrenombre):
                     driver.execute_script("document.body.style.zoom='100%'")
                     WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
                     time.sleep(5)
-                    
+
                     WebDriverWait(driver, 30).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "div#divmainbox"))
                     )
                     time.sleep(random.randint(2, 4))
                     content_text = driver.find_element(By.CSS_SELECTOR, "div#divmainbox").text.strip()
-                        
+
                 if content_text:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
-                    
+                    object_id = save_to_mongo("news_articles", content_text, href, url)
                     object_ids.append(object_id)
                     total_scraped_successfully += 1
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                    existing_versions = list(
-                        fs.find({"source_url": href}).sort("scraping_date", -1)
-                    )
-
-                    if len(existing_versions) > 2:
-                        oldest_version = existing_versions[-1]
-                        fs.delete(ObjectId(oldest_version["_id"]))
-                        logger.info(f"Se eliminó la versión más antigua con este enlace: '{href}' y object_id: {oldest_version['_id']}")
-                    
-                    logger.info(f"Contenido extraído de {href}.")
+                    logger.info(f"📂 Noticia guardada en `news_articles` con object_id: {object_id}")
 
             except Exception as e:
-                logger.error(f"No se pudo extraer contenido de {href}.")
+                logger.error(f"No se pudo extraer contenido de {href}. Error: {e}")
                 total_failed_scrapes += 1
                 failed_urls.add(href)
                 scraped_urls.remove(href)
-                
+
         all_scraper += f"Total enlaces encontrados: {total_links_found}\n"
         all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
         all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
@@ -132,7 +109,7 @@ def scraper_notification_ippc(url, sobrenombre):
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
-    
+
     except Exception as e:
         logger.error(f"Error general durante el scraping: {str(e)}")
         return {"error": str(e)}

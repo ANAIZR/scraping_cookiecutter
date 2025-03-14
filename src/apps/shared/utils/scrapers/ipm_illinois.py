@@ -2,20 +2,18 @@ import requests
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
     extract_text_from_pdf,
     driver_init,
+    save_to_mongo
 )
 from datetime import datetime
 from rest_framework.response import Response
 from rest_framework import status
-from bson import ObjectId
 from urllib.parse import urljoin
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
 def scraper_ipm_illinoes(url, sobrenombre):
@@ -82,29 +80,11 @@ def scraper_ipm_illinoes(url, sobrenombre):
                     content_text = page_soup.body.text.strip()
 
                 if content_text:
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
-                    object_ids.append(object_id)
-                    scraped_urls.add(href) 
+                    object_id = save_to_mongo("urls_scraper", content_text, href, url)  # 📌 Guardar en `urls_scraper`
                     total_scraped_successfully += 1
-
-                    existing_versions = list(
-                        fs.find({"source_url": href}).sort("scraping_date", -1)
-                    )
-
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id
-                        fs.delete(file_id)
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
-                    logger.info(f"✅ Enlace procesado con éxito: {href}")
+                    scraped_urls.append(href)
+                    logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                    
 
                 else:
                     raise ValueError("No se pudo extraer contenido")

@@ -7,6 +7,8 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo,
+    load_keywords
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -15,7 +17,6 @@ import random
 import time
 from bs4 import BeautifulSoup
 from datetime import datetime
-from bson import ObjectId
 
 logger = get_logger("scraper")
 non_scraped_urls = []  
@@ -24,40 +25,26 @@ total_scraped_links = 0
 
 
 
-# Cargar palabras clave desde utils/txt/all.txt
-def load_keywords(file_path="../txt/all.txt"):
-    try:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        absolute_path = os.path.join(base_path, file_path)
-        with open(absolute_path, "r", encoding="utf-8") as f:
-            keywords = [line.strip() for line in f if line.strip()]
-        # logger.info(f"Palabras clave cargadas: {keywords}")
-        return keywords
-    except Exception as e:
-        logger.error(f"Error al cargar palabras clave desde {file_path}: {str(e)}")
-        raise
-
-
 def scraper_catalogue_of_life(url, sobrenombre):
     global total_scraped_links
-    logger.info(f"Iniciando scraping para URL: {url}")
+    logger.info(f"🚀 Iniciando scraping para URL: {url}")
     driver = initialize_driver()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()
 
-    keywords = load_keywords()
+    keywords = load_keywords("plants.txt")
     all_scraper = ""
 
     try:
         driver.get(url)
-        logger.info("Página cargada exitosamente.")
+        logger.info("✅ Página cargada exitosamente.")
 
         search_box = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "search_string"))
         )
-        logger.info("Barra de búsqueda localizada.")
+        logger.info("🔎 Barra de búsqueda localizada.")
 
         for index, keyword in enumerate(keywords):
-            logger.info(f"Buscando la palabra clave: {keyword}")
+            logger.info(f"🔍 Buscando la palabra clave: {keyword}")
             all_scraper += f"Palabra clave {index + 1}: {keyword}\n"
             random_wait()
 
@@ -68,16 +55,14 @@ def scraper_catalogue_of_life(url, sobrenombre):
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
             )
-            logger.info(f"Resultados cargados para: {keyword}")
+            logger.info(f"📄 Resultados cargados para: {keyword}")
 
             rows = driver.find_elements(By.XPATH, "//tr[starts-with(@id, 'record_')]")
             for index in range(len(rows)):
-                rows = driver.find_elements(
-                    By.XPATH, "//tr[starts-with(@id, 'record_')]"
-                )
+                rows = driver.find_elements(By.XPATH, "//tr[starts-with(@id, 'record_')]")
                 row = rows[index]
                 record_id = row.get_attribute("id")
-                logger.info(f"Procesando fila con id: {record_id}")
+                logger.info(f"📌 Procesando fila con id: {record_id}")
 
                 try:
                     next_row = row.find_element(By.XPATH, "following-sibling::tr")
@@ -85,9 +70,10 @@ def scraper_catalogue_of_life(url, sobrenombre):
                     link = first_td.find_element(By.TAG_NAME, "a")
                     if link and link.get_attribute("href"):
                         href = link.get_attribute("href")
-                        logger.info(f"Accediendo al enlace: {href}")
+                        logger.info(f"🌐 Accediendo al enlace: {href}")
                         driver.get(href)
-                        all_scraper += f"Link: {href}\n"
+                        all_scraper += f"🔗 Link: {href}\n"
+                        
                         WebDriverWait(driver, 30).until(
                             EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
                         )
@@ -98,32 +84,18 @@ def scraper_catalogue_of_life(url, sobrenombre):
                         )
                         if td_element:
                             cleaned_text = " ".join(td_element[0].get_text().split())
-                            # all_scraper += cleaned_text + "\n"
+                            
                             if cleaned_text:
-                                object_id = fs.put(
-                                    cleaned_text.encode("utf-8"),
-                                    source_url=href,
-                                    scraping_date=datetime.now(),
-                                    Etiquetas=["planta", "plaga"],
-                                    contenido=cleaned_text,
-                                    url=url
-                                )
+                                object_id = save_to_mongo("urls_scraper", cleaned_text, href, url)  # 📌 Guardar en `urls_scraper`
                                 total_scraped_links += 1
                                 scraped_urls.append(href)
-                                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                                logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
 
-                                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                                if len(existing_versions) > 1:
-                                    oldest_version = existing_versions[-1]
-                                    file_id = oldest_version._id  # Esto obtiene el ID correcto
-                                    fs.delete(file_id)  # Eliminar la versión más antigua
-                                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
                             else:
                                 non_scraped_urls.append(href)
                         else:
-                            logger.warning(
-                                f"No se encontró el tercer <td> para el enlace {href}"
-                            )
+                            logger.warning(f"⚠️ No se encontró contenido válido en {href}")
+                        
                         all_scraper += "\n\n******************\n\n"
                         driver.back()
                         WebDriverWait(driver, 10).until(
@@ -133,41 +105,34 @@ def scraper_catalogue_of_life(url, sobrenombre):
                         random_wait()
 
                 except Exception as e:
-                    logger.error(
-                        f"Error procesando el enlace en la fila con id {record_id}: {str(e)}"
-                    )
+                    logger.error(f"❌ Error procesando el enlace en la fila con id {record_id}: {str(e)}")
 
-            # Regresar a la página principal después de procesar todas las filas
             driver.get(url)
             search_box = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.NAME, "search_string"))
             )
-            logger.info("Barra de búsqueda localizada.")
-
-            logger.info(
-                f"Palabra clave {keyword} procesada. Regresando a la página principal."
-            )
+            logger.info("🔄 Regresando a la página principal para la siguiente búsqueda.")
 
         all_scraper = (
-            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
-            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
-            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
-            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
+            f"📌 **Resumen del scraping:**\n"
+            f"✅ Total enlaces scrapeados: {len(scraped_urls)}\n"
+            f"🔗 URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"⚠️ Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"❌ URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
         response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
-        logger.error(f"Error durante el scraping: {str(e)}")
+        logger.error(f"❌ Error durante el scraping: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     finally:
         driver.quit()
+        logger.info("🛑 Navegador cerrado.")
 
-
-# Función auxiliar para introducir un tiempo de espera aleatorio
 def random_wait(min_wait=2, max_wait=6):
     wait_time = random.uniform(min_wait, max_wait)
-    logger.info(f"Esperando {wait_time:.2f} segundos...")
+    logger.info(f"⏳ Esperando {wait_time:.2f} segundos...")
     time.sleep(wait_time)

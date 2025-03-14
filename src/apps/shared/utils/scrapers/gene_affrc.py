@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
 from datetime import datetime
 from bson import ObjectId
-from ..functions import get_logger, connect_to_mongo, process_scraper_data
+from ..functions import get_logger, connect_to_mongo, process_scraper_data, save_to_mongo
 
 
 def scraper_gene_affrc(url, sobrenombre):
@@ -55,28 +55,15 @@ def scraper_gene_affrc(url, sobrenombre):
             extracted_data += f"URL: {link}\n"
 
             if extracted_data.strip():
-                object_id = fs.put(
-                    extracted_data.encode("utf-8"),
-                    source_url=link,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=extracted_data,
-                    url=url
-                )
-
-                
-
-                scraped_urls.append(link)
+                extracted_data.encode("utf-8"),
                 global total_scraped_links
+
+
+                object_id = save_to_mongo("urls_scraper", extracted_data, link, url)
                 total_scraped_links += 1
-                existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
-
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  
-                    fs.delete(file_id)  
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-
+                scraped_urls.append(link)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                
                 
             return extracted_data
 

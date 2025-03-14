@@ -1,4 +1,3 @@
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -8,20 +7,20 @@ from ..functions import (
     get_logger,
     driver_init,
     extract_text_from_pdf,
+    save_to_mongo,  
 )
 import time
 import random
 from datetime import datetime
-from bson import ObjectId
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 def scraper_cahfsa(url, sobrenombre):
     logger = get_logger("CAHFSA SCRAPER")
     logger.info(f"Iniciando scraping para URL: {url}")
-    
+
     driver = driver_init()
-    collection, fs = connect_to_mongo()
+    db, fs = connect_to_mongo()  
     scraped_urls = set()
     failed_urls = set()
     total_links_found = 0
@@ -114,28 +113,10 @@ def scraper_cahfsa(url, sobrenombre):
                     content_text = soup.get_text()
 
                 if content_text and content_text.strip():
-                    object_id = fs.put(
-                        content_text.encode("utf-8"),
-                        source_url=href,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=content_text,
-                        url=url
-                    )
-                    
+                    object_id = save_to_mongo("news_articles", content_text, href, url)
                     successfully_scraped.add(href)
                     total_scraped_successfully += 1
-                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                    existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        file_id = oldest_version._id 
-                        fs.delete(file_id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-                else:
-                    failed_urls.add(href)
-                    total_failed_scrapes += 1
+                    logger.info(f"📂 Noticia guardada en `news_articles` con object_id: {object_id}")
 
             except Exception as e:
                 logger.error(f"No se pudo extraer contenido de {href}: {e}")

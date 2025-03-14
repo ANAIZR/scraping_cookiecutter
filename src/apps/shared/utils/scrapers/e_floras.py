@@ -12,6 +12,7 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     initialize_driver,
+    save_to_mongo
 )
 
 logger = get_logger("Iniciando")
@@ -94,27 +95,11 @@ def scraper_e_floras(
                                     if content_container:
                                         cleaned_text = " ".join(content_container.text.split())
 
-                                        object_id = fs.put(
-                                            cleaned_text.encode("utf-8"),
-                                            source_url=page,
-                                            scraping_date=datetime.now(),
-                                            Etiquetas=["planta", "plaga"],
-                                            contenido=cleaned_text,
-                                            url=url
-                                        )
-
-                                        
-
+                                        object_id = save_to_mongo("urls_scraper", cleaned_text, href, url)
                                         total_scraped_links += 1
-                                        scraped_urls.append(page)
-                                        existing_versions = list(fs.find({"source_url": page}).sort("scraping_date", -1))
+                                        scraped_urls.append(href)
+                                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                                        if len(existing_versions) > 1:
-                                            oldest_version = existing_versions[-1]
-                                            file_id = oldest_version._id  
-                                            fs.delete(file_id)  
-                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
-                                        
                                         total_td_scraped += 1  
 
                                     driver.back()

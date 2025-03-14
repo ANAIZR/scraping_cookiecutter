@@ -7,14 +7,14 @@ from ..functions import (
     get_logger,
     driver_init,
     process_scraper_data,
-    load_keywords
+    load_keywords,
+    save_to_mongo  # 📌 Nueva función para guardar en `urls_scraper`
 )
 from rest_framework.response import Response
 from rest_framework import status
 import time
 import random
 from datetime import datetime
-from bson import ObjectId
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 
@@ -27,7 +27,7 @@ def scraper_canada_ca(url, sobrenombre):
         time.sleep(random.uniform(3, 6))
         logger.info(f"Iniciando scraping para URL: {url}")
 
-        collection, fs = connect_to_mongo()
+        db, fs = connect_to_mongo()  # 📌 Corrección en la conexión a MongoDB
         keywords = load_keywords("plants.txt")
 
         if not keywords:
@@ -45,7 +45,7 @@ def scraper_canada_ca(url, sobrenombre):
         failed_urls = []
 
         for keyword in keywords:
-            logger.info(f"Buscando la palabra clave: {keyword}")
+            logger.info(f"🔍 Buscando la palabra clave: {keyword}")
 
             try:
                 driver.get(url)
@@ -64,12 +64,12 @@ def scraper_canada_ca(url, sobrenombre):
                 search_button.click()
                 time.sleep(random.uniform(3, 6))
             except Exception as e:
-                logger.error(f"Error al buscar la palabra clave: {keyword}. Error: {str(e)}")
+                logger.error(f"❌ Error al buscar la palabra clave: {keyword}. Error: {str(e)}")
                 continue
 
             hrefs = set()
             total_urls_found = 0
-            max_first_result = 20
+            max_first_result = 20  # 📌 Límite para evitar loops infinitos
             
             while True:
                 try:
@@ -78,7 +78,7 @@ def scraper_canada_ca(url, sobrenombre):
                     links = soup.select("section#wb-land a[href]")
 
                     if not links:
-                        logger.warning(f"No se encontraron enlaces en la búsqueda para '{keyword}'")
+                        logger.warning(f"⚠️ No se encontraron enlaces en la búsqueda para '{keyword}'")
                         break
 
                     for link in links:
@@ -91,7 +91,7 @@ def scraper_canada_ca(url, sobrenombre):
                     first_result_value = int(current_url.split("firstResult=")[1].split("&")[0]) if "firstResult=" in current_url else 0
 
                     if first_result_value >= max_first_result:
-                        logger.info(f"Se alcanzó el límite de paginación (firstResult={max_first_result}). Deteniendo el scraping.")
+                        logger.info(f"⏹️ Se alcanzó el límite de paginación (firstResult={max_first_result}). Deteniendo el scraping.")
                         break
 
                     try:
@@ -99,16 +99,14 @@ def scraper_canada_ca(url, sobrenombre):
                         next_button = WebDriverWait(driver, 5).until(
                             EC.element_to_be_clickable((By.CSS_SELECTOR, "button.page-button.next-page-button"))
                         )
-                        print("✅ Botón 'Next' encontrado, haciendo clic.")
+                        logger.info("➡️ Botón 'Next' encontrado, haciendo clic.")
                         driver.execute_script("arguments[0].click();", next_button)
-                        logger.info(f"Se hizo clic en el botón 'Next'. Nueva URL: {driver.current_url}")
                         time.sleep(random.uniform(3, 6))
                     except (TimeoutException, NoSuchElementException):
-                        print("❌ Botón 'Next' no encontrado, terminando la paginación.")
-                        logger.info("No hay más páginas disponibles o no se encontró el botón 'Next'.")
+                        logger.info("⏹️ No hay más páginas disponibles o no se encontró el botón 'Next'.")
                         break
                 except Exception as e:
-                    logger.error(f"Error al obtener los resultados de la búsqueda: {str(e)}")
+                    logger.error(f"❌ Error al obtener los resultados de la búsqueda: {str(e)}")
                     break
             
             for href in hrefs:
@@ -121,47 +119,36 @@ def scraper_canada_ca(url, sobrenombre):
 
                     if content:
                         content_text = content.text.strip()
-                        object_id = fs.put(
-                            content_text.encode("utf-8"),
-                            source_url=href,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=content_text,
-                            url=url
-                        )
+                        object_id = save_to_mongo("urls_scraper", content_text, href, url)  
                         total_scraped_successfully += 1
                         scraped_urls.append(href)
                         
-                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                        
-                        existing_versions = list(
-                            fs.find({"source_url": href}).sort("scraping_date", -1)
-                        )
-                        
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
 
-                    
+                    else:
+                        total_failed_scrapes += 1
+                        failed_urls.append(href)
+                        logger.warning(f"⚠️ No se encontró contenido en {href}")
+
                 except Exception as e:
-                    logger.error(f"Error al extraer contenido de {href}: {str(e)}")
+                    logger.error(f"❌ Error al extraer contenido de {href}: {str(e)}")
                     total_failed_scrapes += 1
                     failed_urls.append(href)
 
-        all_scraper += f"Total enlaces encontrados: {total_urls_found}\n"
-        all_scraper += f"Total scrapeados con éxito: {total_scraped_successfully}\n"
-        all_scraper += "URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
-        all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
-        all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
+        all_scraper += f"📌 **Resumen del scraping:**\n"
+        all_scraper += f"🔗 Total enlaces encontrados: {total_urls_found}\n"
+        all_scraper += f"✅ Total scrapeados con éxito: {total_scraped_successfully}\n"
+        all_scraper += "🌐 URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n"
+        all_scraper += f"⚠️ Total fallidos: {total_failed_scrapes}\n"
+        all_scraper += "❌ URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
         
         response = process_scraper_data(all_scraper, url, sobrenombre)
         return response
 
     except Exception as e:
-        logger.error(f"Error en el scraper: {str(e)}")
+        logger.error(f"❌ Error en el scraper: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     finally:
         driver.quit()
+        logger.info("🛑 Navegador cerrado.")

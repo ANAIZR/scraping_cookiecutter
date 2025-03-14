@@ -10,8 +10,8 @@ from ..functions import (
     get_logger,
     initialize_driver,
     get_random_user_agent,
+    save_to_mongo
 )
-from datetime import datetime
 
 def scraper_pest_report(url, sobrenombre):
     logger = get_logger("scraper")
@@ -74,23 +74,10 @@ def scraper_pest_report(url, sobrenombre):
                     )
                     # all_scraper += f"URL: {link}\n{content}\n{'-'*80}\n\n"
                     if content:
-                        object_id = fs.put(
-                            content.encode("utf-8"),
-                            source_url=link,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=content,
-                            url=url
-                        )
+                        object_id = save_to_mongo("urls_scraper", content, link, url)  # 📌 Guardar en `urls_scraper`
                         scraped_urls.append(link)
-                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                        existing_versions = list(fs.find({"source_url": link}).sort("scraping_date", -1))
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  # Esto obtiene el ID correcto
-                            fs.delete(file_id)  # Eliminar la versión más antigua
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                        
                     else:
                         non_scraped_urls.append(link)
 

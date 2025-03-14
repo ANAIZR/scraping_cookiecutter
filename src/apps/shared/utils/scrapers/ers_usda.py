@@ -11,7 +11,8 @@ from ..functions import (
     connect_to_mongo,
     get_logger,
     get_random_user_agent,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    save_to_mongo
 )
 from datetime import datetime
 from bson import ObjectId
@@ -54,23 +55,12 @@ def scraper_ers_usda(url, sobrenombre):
                 pdf_text = extract_text_from_pdf(url)
 
                 if pdf_text:
-                    object_id = fs.put(
-                        pdf_text.encode("utf-8"),
-                        source_url=url,
-                        scraping_date=datetime.now(),
-                        Etiquetas=["planta", "plaga"],
-                        contenido=pdf_text,
-                        url=url_padre
-                    )
+                    object_id = save_to_mongo("urls_scraper", pdf_text, url, url_padre)
                     total_scraped_links += 1
                     scraped_urls.append(url)
-                    logger.info(f"Texto de PDF almacenado en MongoDB con object_id: {object_id}")
+                    logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                    existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
-                    if len(existing_versions) > 1:
-                        oldest_version = existing_versions[-1]
-                        fs.delete(oldest_version._id)  
-                        logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version.id}")
+                    
                 else:
                     non_scraped_urls.append(url)
                     total_non_scraped_links += 1
