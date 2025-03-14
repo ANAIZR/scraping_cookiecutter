@@ -1,5 +1,5 @@
 from celery import shared_task
-from apps.shared.services.report_compare_service import ScraperComparisonService
+from src.apps.shared.services.report_compare_service import ScraperComparisonService
 import logging
 
 

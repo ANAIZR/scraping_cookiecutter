@@ -1,7 +1,7 @@
 from celery import shared_task, chain
 from src.apps.shared.services.scraper_service import WebScraperService
-from apps.shared.services.urls_ollama_service import OllamaService
-from apps.shared.services.cabi_ollama_service import OllamaCabiService
+from src.apps.shared.services.urls_ollama_service import OllamaService
+from src.apps.shared.services.cabi_ollama_service import OllamaCabiService
 from src.apps.shared.models.urls import ScraperURL
 import logging
 from django.utils import timezone
