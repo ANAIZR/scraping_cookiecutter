@@ -377,7 +377,7 @@ def save_scraper_data(all_scraper, url, sobrenombre):
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
 
-def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
+def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
 
     try:
