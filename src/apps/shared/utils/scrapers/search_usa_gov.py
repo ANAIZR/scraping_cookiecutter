@@ -14,7 +14,8 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    extract_text_from_pdf
+    extract_text_from_pdf,
+    save_to_mongo
 )
 from bson import ObjectId
 from rest_framework.response import Response
@@ -118,22 +119,14 @@ def scraper_search_usa_gov(url, sobrenombre):
                                 body_text = body.get_text(separator=" ", strip=True) if body else "No body found"
                             
                             if body_text:
-                                object_id = fs.put(
-                                    body_text.encode("utf-8"),
-                                    source_url=href,
-                                    scraping_date=datetime.now(),
-                                    Etiquetas=["planta", "plaga"],
-                                    contenido=body_text,
-                                    url=url
-                                )
-                                object_ids.append(object_id)
+                                object_id = save_to_mongo("urls_scraper", body_text, href, url)  # 📌 Guardar en `urls_scraper`
                                 total_scraped_successfully += 1
-                                scraped_urls.append(href)  # Agregar la URL scrapeada
-
-                                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                                scraped_urls.append(href)  
+                                logger.info(f"📂 Contenido guardado en `urls_scraper` con object_id: {object_id}")
+                                
                             else:
                                 total_failed_scrapes += 1
-                                failed_urls.append(href)  # Agregar la URL fallida
+                                failed_urls.append(href) 
                                 print("No se encontró contenido en la página.")
                             
                             driver.back()
