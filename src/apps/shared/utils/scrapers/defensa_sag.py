@@ -20,6 +20,107 @@ non_scraped_urls = []
 total_scraped_links = 0
 
 def scraper_defensa_sag(url, sobrenombre):
+    def process_dropdowns(driver, logger, visited_urls, scraped_urls, fs):
+
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "buscar"))
+            )
+            dropdown_buscar = Select(driver.find_element(By.ID, "buscar"))
+            logger.info("📌 Dropdown 'Buscar por' encontrado.")
+
+            for i in range(1, len(dropdown_buscar.options)):  # Saltar "Ingrese Búsqueda"
+                try:
+                    dropdown_buscar = Select(driver.find_element(By.ID, "buscar"))
+                    option_text = dropdown_buscar.options[i].text.strip()
+                    logger.info(f"🔄 Procesando opción {i} en 'Buscar por': {option_text}")
+
+                    dropdown_buscar.select_by_index(i)
+                    time.sleep(2)
+
+                    if is_element_present(driver, By.ID, "nombre"):
+                        process_second_dropdown(driver, logger, visited_urls, scraped_urls, fs)
+
+                except NoSuchElementException:
+                    logger.warning(f"⚠️ No se encontró opción {i} en 'Buscar por'.")
+
+        except TimeoutException:
+            logger.warning("❌ No se encontraron los dropdowns principales.")
+
+    def process_second_dropdown(driver, logger, visited_urls, scraped_urls, fs):
+        try:
+            dropdown_nombre = Select(driver.find_element(By.ID, "nombre"))
+            logger.info("📌 Dropdown 'Nombre Científico' encontrado.")
+
+            for j in range(1, len(dropdown_nombre.options)):
+                try:
+                    dropdown_nombre = Select(driver.find_element(By.ID, "nombre"))
+                    dropdown_nombre.select_by_index(j)
+                    time.sleep(2)
+
+                    if is_element_present(driver, By.ID, "select4"):
+                        process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs)
+
+                except NoSuchElementException:
+                    logger.warning(f"⚠️ No se encontró opción {j} en 'Nombre Científico'.")
+
+        except TimeoutException:
+            logger.warning("❌ No se encontró el dropdown 'Nombre Científico'.")
+
+    def process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs):
+        global total_scraped_links
+        try:
+            dropdown_pais = Select(driver.find_element(By.ID, "select4"))
+            logger.info("📌 Dropdown 'País' encontrado.")
+
+            for k in range(1, len(dropdown_pais.options)):
+                try:
+                    dropdown_pais = Select(driver.find_element(By.ID, "select4"))
+                    dropdown_pais.select_by_index(k)
+                    time.sleep(2)
+
+                    detail_button = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "div.texto_titulo"))
+                    )
+                    driver.execute_script("arguments[0].click();", detail_button)
+                    time.sleep(2)
+
+                    result_url = driver.current_url
+                    if result_url not in visited_urls:
+                        visited_urls.add(result_url)
+                        scraped_urls.add(result_url)
+                        logger.info(f"✅ URL extraída: {result_url}")
+
+                    page_soup = BeautifulSoup(driver.page_source, "html.parser")
+                    pdf_links = page_soup.select("td.cssBodyListado tbody a")
+
+                    for link in pdf_links:
+                        href = link.get("href")
+                        if href and href.endswith(".pdf"):
+                            logger.info(f"📄 Extrayendo texto de PDF: {href}")
+                            content_text = extract_text_from_pdf(href)
+
+                            if content_text:
+                                object_id = save_to_mongo("urls_scraper", content_text, href, url)
+                                total_scraped_links += 1
+                                scraped_urls.append(href)
+                                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+                            else:
+                                non_scraped_urls.append(href)
+    
+                except NoSuchElementException:
+                    continue
+
+        except TimeoutException:
+            logger.warning("❌ No se encontró el dropdown 'País'.")
+
+    def is_element_present(driver, by, value):
+        try:
+            driver.find_element(by, value)
+            return True
+        except NoSuchElementException:
+            return False
+
     logger = get_logger("DEFENSA SAG")
     logger.info(f"Iniciando scraping para URL: {url}")
 
@@ -107,7 +208,7 @@ def scraper_defensa_sag(url, sobrenombre):
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:
@@ -118,103 +219,3 @@ def scraper_defensa_sag(url, sobrenombre):
         driver.quit()
         print("🚪 Navegador cerrado.")
 
-def process_dropdowns(driver, logger, visited_urls, scraped_urls, fs):
-
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "buscar"))
-        )
-        dropdown_buscar = Select(driver.find_element(By.ID, "buscar"))
-        logger.info("📌 Dropdown 'Buscar por' encontrado.")
-
-        for i in range(1, len(dropdown_buscar.options)):  # Saltar "Ingrese Búsqueda"
-            try:
-                dropdown_buscar = Select(driver.find_element(By.ID, "buscar"))
-                option_text = dropdown_buscar.options[i].text.strip()
-                logger.info(f"🔄 Procesando opción {i} en 'Buscar por': {option_text}")
-
-                dropdown_buscar.select_by_index(i)
-                time.sleep(2)
-
-                if is_element_present(driver, By.ID, "nombre"):
-                    process_second_dropdown(driver, logger, visited_urls, scraped_urls, fs)
-
-            except NoSuchElementException:
-                logger.warning(f"⚠️ No se encontró opción {i} en 'Buscar por'.")
-
-    except TimeoutException:
-        logger.warning("❌ No se encontraron los dropdowns principales.")
-
-def process_second_dropdown(driver, logger, visited_urls, scraped_urls, fs):
-    try:
-        dropdown_nombre = Select(driver.find_element(By.ID, "nombre"))
-        logger.info("📌 Dropdown 'Nombre Científico' encontrado.")
-
-        for j in range(1, len(dropdown_nombre.options)):
-            try:
-                dropdown_nombre = Select(driver.find_element(By.ID, "nombre"))
-                dropdown_nombre.select_by_index(j)
-                time.sleep(2)
-
-                if is_element_present(driver, By.ID, "select4"):
-                    process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs)
-
-            except NoSuchElementException:
-                logger.warning(f"⚠️ No se encontró opción {j} en 'Nombre Científico'.")
-
-    except TimeoutException:
-        logger.warning("❌ No se encontró el dropdown 'Nombre Científico'.")
-
-def process_third_dropdown(driver, logger, visited_urls, scraped_urls, fs):
-    global total_scraped_links
-    try:
-        dropdown_pais = Select(driver.find_element(By.ID, "select4"))
-        logger.info("📌 Dropdown 'País' encontrado.")
-
-        for k in range(1, len(dropdown_pais.options)):
-            try:
-                dropdown_pais = Select(driver.find_element(By.ID, "select4"))
-                dropdown_pais.select_by_index(k)
-                time.sleep(2)
-
-                detail_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div.texto_titulo"))
-                )
-                driver.execute_script("arguments[0].click();", detail_button)
-                time.sleep(2)
-
-                result_url = driver.current_url
-                if result_url not in visited_urls:
-                    visited_urls.add(result_url)
-                    scraped_urls.add(result_url)
-                    logger.info(f"✅ URL extraída: {result_url}")
-
-                page_soup = BeautifulSoup(driver.page_source, "html.parser")
-                pdf_links = page_soup.select("td.cssBodyListado tbody a")
-
-                for link in pdf_links:
-                    href = link.get("href")
-                    if href and href.endswith(".pdf"):
-                        logger.info(f"📄 Extrayendo texto de PDF: {href}")
-                        content_text = extract_text_from_pdf(href)
-
-                        if content_text:
-                            object_id = save_to_mongo("urls_scraper", content_text, href, url)
-                            total_scraped_links += 1
-                            scraped_urls.append(href)
-                            logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                        else:
-                            non_scraped_urls.append(href)
- 
-            except NoSuchElementException:
-                continue
-
-    except TimeoutException:
-        logger.warning("❌ No se encontró el dropdown 'País'.")
-
-def is_element_present(driver, by, value):
-    try:
-        driver.find_element(by, value)
-        return True
-    except NoSuchElementException:
-        return False

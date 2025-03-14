@@ -18,7 +18,7 @@ from ..functions import (
 def scraper_aphis_usda(url, sobrenombre):
     logger = get_logger("APHIS")
     logger.info(f"Iniciando scraping para URL: {url}")
-    db, fs = connect_to_mongo()  
+    collection, fs = connect_to_mongo()  
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]  
@@ -127,5 +127,5 @@ def scraper_aphis_usda(url, sobrenombre):
         f"Non-scraped URLs:\n" + "\n".join(non_scraped_urls) + "\n"
     )
 
-    response = process_scraper_data(all_scraper, url, sobrenombre)
+    response = process_scraper_data(all_scraper, url, sobrenombre,collection)
     return response

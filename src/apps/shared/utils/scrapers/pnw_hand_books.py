@@ -144,7 +144,7 @@ def scraper_pnw_hand_books(url, sobrenombre):
                 "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
             )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre, collection, fs)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

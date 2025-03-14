@@ -377,7 +377,7 @@ def save_scraper_data(all_scraper, url, sobrenombre):
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
 
-def save_scraper_data_pdf(all_scraper, url, sobrenombre, db):
+def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
 
     try:
@@ -386,7 +386,7 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, db):
             logger.warning("⚠️ El contenido está vacío, no se guardará en MongoDB.")
             return {"error": "El contenido del scraper está vacío."}
 
-        urls_scraper_collection = db["urls_scraper"]
+        urls_scraper_collection = collection["urls_scraper"]
         record = {
             "source_url": url,
             "scraping_date": datetime.now(),
@@ -403,8 +403,8 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, db):
             urls_scraper_collection.delete_one({"_id": oldest_record["_id"]})
             logger.info(f"🗑 Se eliminó la versión más antigua en `urls_scraper` con ObjectId: {oldest_record['_id']}")
 
-        collection = db["collection"]
-        collection.insert_one({
+        collection_db = collection["collection"]
+        collection_db.insert_one({
             "_id": object_id,
             "source_url": url,
             "scraping_date": datetime.now(),
@@ -414,10 +414,10 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, db):
         })
         logger.info(f"📄 Se registró la acción en `collection` con ObjectId: {object_id}")
 
-        existing_records_collection = list(collection.find({"source_url": url}).sort("scraping_date", -1))
+        existing_records_collection = list(collection_db.find({"source_url": url}).sort("scraping_date", -1))
         if len(existing_records_collection) > 2:  
             oldest_record_collection = existing_records_collection[-1]
-            collection.delete_one({"_id": oldest_record_collection["_id"]})
+            collection_db.delete_one({"_id": oldest_record_collection["_id"]})
             logger.info(f"🗑 Se eliminó la versión más antigua en `collection` con ObjectId: {oldest_record_collection['_id']}")
 
         response_data = {
@@ -436,30 +436,30 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, db):
         return {"error": f"Error al guardar datos del scraper: {str(e)}"}
 
 
-
-def process_scraper_data(all_scraper, url, sobrenombre):
+def process_scraper_data(all_scraper, url, sobrenombre, collection):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
+
     try:
-        collection,fs = connect_to_mongo()
         db_name = collection.database.name  
         collection_name = collection.name 
         logger.info(f"✅ Conectado a MongoDB en la base de datos: '{db_name}', colección: '{collection_name}'")
+
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
-            collection.insert_one(
-                {
-                    "scraping_date": datetime.now(),
-                    "Etiquetas": ["planta", "plaga"],
-                    "contenido": all_scraper,
-                    "url": url,
-                }
-            )
+            
+            collection.insert_one({
+                "scraping_date": datetime.now(),
+                "Etiquetas": ["planta", "plaga"],
+                "contenido": all_scraper,
+                "url": url,
+            })
 
+            # Mantener solo las 2 versiones más recientes en `collection`
             existing_versions = list(collection.find({"url": url}).sort("scraping_date", -1))
             if len(existing_versions) > 2:
                 oldest_version = existing_versions[-1]
                 collection.delete_one({"_id": oldest_version["_id"]})
-                logger.info(f"Se eliminó la versión más antigua con object_id: {oldest_version['_id']}")
+                logger.info(f"🗑 Se eliminó la versión más antigua con ObjectId: {oldest_version['_id']}")
 
             return response_data
 
@@ -470,6 +470,7 @@ def process_scraper_data(all_scraper, url, sobrenombre):
                 "url": url,
                 "message": "No se encontraron datos para scrapear.",
             }
+
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return {
@@ -492,6 +493,7 @@ def process_scraper_data(all_scraper, url, sobrenombre):
             "message": "Ocurrió un error al procesar los datos.",
             "error": str(e),
         }
+
 
 
 

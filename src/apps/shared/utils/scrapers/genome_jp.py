@@ -134,7 +134,7 @@ def scraper_genome_jp(url, sobrenombre):
             f"Enlaces no procesados:\n" + "\n".join(urls_not_scraped) + "\n"
         )
 
-        response = process_scraper_data(report, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         logger.info("Scraping completado exitosamente.")
         return response
 

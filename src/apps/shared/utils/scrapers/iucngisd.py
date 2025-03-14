@@ -112,7 +112,7 @@ def scraper_iucngisd(url, sobrenombre):
             f"Enlaces fallidos:\n" + "\n".join(failed_hrefs) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

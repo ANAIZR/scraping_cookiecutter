@@ -132,7 +132,7 @@ def scraper_pestnet(url, sobrenombre):
         all_scraper += f"Total fallidos: {len(failed_urls)}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
         
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

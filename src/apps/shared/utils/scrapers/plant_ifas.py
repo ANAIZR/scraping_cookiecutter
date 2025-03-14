@@ -102,7 +102,7 @@ def scraper_plant_ifas(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "URLs no scrapeadas:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

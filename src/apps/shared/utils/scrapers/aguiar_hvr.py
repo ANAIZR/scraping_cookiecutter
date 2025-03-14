@@ -158,7 +158,7 @@ def scraper_aguiar_hvr(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     driver = initialize_driver()
     state = ScraperState()
-    db, fs = connect_to_mongo()
+    collection, fs = connect_to_mongo()
 
     try:
         driver.get(url)
@@ -171,11 +171,11 @@ def scraper_aguiar_hvr(url, sobrenombre):
                 break
 
         logger.info(f"Se recolectaron {len(state.extracted_hrefs)} enlaces. Procesando contenido...")
-        scrape_content_from_links(state, db, url)  
+        scrape_content_from_links(state, collection, url)  
         state.all_scraper += (
             "\n\nLista de enlaces scrapeados:\n" + "\n".join(state.scraped_urls)
         )
-        response = process_scraper_data(state.all_scraper, url, sobrenombre)
+        response = process_scraper_data(state.all_scraper, url, sobrenombre,collection)
         return response
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

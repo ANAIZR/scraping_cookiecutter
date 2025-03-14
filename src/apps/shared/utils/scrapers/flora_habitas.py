@@ -94,7 +94,7 @@ def scraper_flora_habitas(url, sobrenombre):
                 "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
             )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

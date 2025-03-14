@@ -32,7 +32,7 @@ def scraper_biota_nz(url, sobrenombre):
         driver.get(url)
         time.sleep(random.uniform(6, 10))
         logger.info(f"Iniciando scraping para URL: {url}")
-        db, fs = connect_to_mongo()  
+        collection, fs = connect_to_mongo()  
         keywords = load_keywords("plants.txt")
         if not keywords:
             return Response(
@@ -137,7 +137,7 @@ def scraper_biota_nz(url, sobrenombre):
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

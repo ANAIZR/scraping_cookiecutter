@@ -62,7 +62,7 @@ def scraper_ipm_illinoes(url, sobrenombre):
 
         if not collected_links:
             logger.error("⚠️ No se encontraron enlaces dentro del segundo tbody.")
-            return process_scraper_data("No se encontraron enlaces dentro del segundo tbody.", url, sobrenombre)
+            return process_scraper_data("No se encontraron enlaces dentro del segundo tbody.", url, sobrenombre,collection)
 
         for href in collected_links:
             try:
@@ -102,7 +102,7 @@ def scraper_ipm_illinoes(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

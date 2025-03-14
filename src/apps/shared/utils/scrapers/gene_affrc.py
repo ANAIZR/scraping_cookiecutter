@@ -99,7 +99,7 @@ def scraper_gene_affrc(url, sobrenombre):
             + "\n".join(scraped_urls)
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

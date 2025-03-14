@@ -20,7 +20,7 @@ def scraper_cahfsa(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
 
     driver = driver_init()
-    db, fs = connect_to_mongo()  
+    collection, fs = connect_to_mongo()  
     scraped_urls = set()
     failed_urls = set()
     total_links_found = 0
@@ -131,7 +131,7 @@ def scraper_cahfsa(url, sobrenombre):
         all_scraper += f"Total fallidos: {len(failed_urls)}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
     
     except Exception as e:

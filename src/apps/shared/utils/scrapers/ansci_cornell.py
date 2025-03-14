@@ -20,7 +20,7 @@ def scraper_ansci_cornell(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
 
     driver = initialize_driver()
-    db, fs = connect_to_mongo()  
+    collection, fs = connect_to_mongo()  
     
     total_links_found = 0
     total_scraped_successfully = 0
@@ -94,7 +94,7 @@ def scraper_ansci_cornell(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "\nURLs fallidas:\n" + "\n".join(failed_urls)
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

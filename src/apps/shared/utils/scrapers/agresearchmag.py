@@ -37,7 +37,7 @@ def scraper_agresearchmag(url, sobrenombre):
 
         logger.info(f"Iniciando scraping para URL: {url}")
 
-        db, fs = connect_to_mongo()  
+        collection, fs = connect_to_mongo()  
 
         panel = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "div.panel-body ul.als-wrapper"))
@@ -156,7 +156,7 @@ def scraper_agresearchmag(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:

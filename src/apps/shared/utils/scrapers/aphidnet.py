@@ -18,7 +18,7 @@ from ..functions import (
 def scraper_aphidnet(url, sobrenombre):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("APHIDNET")
-    db, fs = connect_to_mongo() 
+    collection, fs = connect_to_mongo() 
     
     total_urls_found = 0
     total_urls_scraped = 0
@@ -135,7 +135,7 @@ def scraper_aphidnet(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "URLs fallidas:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
     except requests.RequestException as e:
         return JsonResponse(

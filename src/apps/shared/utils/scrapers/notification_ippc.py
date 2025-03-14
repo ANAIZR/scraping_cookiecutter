@@ -20,7 +20,7 @@ def scraper_notification_ippc(url, sobrenombre):
     logger.info(f"Iniciando scraping para URL: {url}")
     
     driver = driver_init()
-    db, fs = connect_to_mongo() 
+    collection, fs = connect_to_mongo() 
     total_links_found = 0
     total_scraped_successfully = 0
     total_failed_scrapes = 0
@@ -107,7 +107,7 @@ def scraper_notification_ippc(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)
+        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
         return response
 
     except Exception as e:
