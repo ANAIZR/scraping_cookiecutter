@@ -239,7 +239,7 @@ def connect_to_mongo():
         fs = gridfs.GridFS(db)
 
         logger.info(f"✅ Conexión a MongoDB establecida correctamente: {MONGO_DB_NAME}")
-        return db, fs  # 📌 Devuelve la base de datos, no una colección específica
+        return db, fs  
 
     except Exception as e:
         logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
@@ -377,47 +377,48 @@ def save_scraper_data(all_scraper, url, sobrenombre):
         logger.error(f"Error al guardar datos del scraper: {str(e)}")
         raise
 
-def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
+def save_scraper_data_pdf(all_scraper, url, sobrenombre, db):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
+
     try:
         content_text = all_scraper.strip()
         if not content_text:
-            logger.warning("El contenido está vacío, no se guardará en MongoDB.")
+            logger.warning("⚠️ El contenido está vacío, no se guardará en MongoDB.")
             return {"error": "El contenido del scraper está vacío."}
 
-        object_id = fs.put(
-            content_text.encode("utf-8"),
-            source_url=url,
-            scraping_date=datetime.now(),
-            contenido =content_text,
-            Etiquetas=["planta", "plaga"],
-            url=url
-        )
+        urls_scraper_collection = db["urls_scraper"]
+        record = {
+            "source_url": url,
+            "scraping_date": datetime.now(),
+            "contenido": content_text,
+            "Etiquetas": ["planta", "plaga"],
+            "url": url
+        }
+        object_id = urls_scraper_collection.insert_one(record).inserted_id
+        logger.info(f"✅ Contenido guardado en `urls_scraper` con ObjectId: {object_id}")
 
-        logger.info(f"Archivo almacenado en MongoDB GridFS con ObjectId: {object_id}")
+        existing_records = list(urls_scraper_collection.find({"source_url": url}).sort("scraping_date", -1))
+        if len(existing_records) > 1:  
+            oldest_record = existing_records[-1]
+            urls_scraper_collection.delete_one({"_id": oldest_record["_id"]})
+            logger.info(f"🗑 Se eliminó la versión más antigua en `urls_scraper` con ObjectId: {oldest_record['_id']}")
 
+        collection = db["collection"]
         collection.insert_one({
             "_id": object_id,
             "source_url": url,
             "scraping_date": datetime.now(),
-            "contenido": f"Se scrapeo 1 url: {url}", 
+            "contenido": f"Se scrapeó 1 URL: {url}",
             "Etiquetas": ["planta", "plaga"],
             "url": url,
         })
+        logger.info(f"📄 Se registró la acción en `collection` con ObjectId: {object_id}")
 
-        existing_files = list(fs.find({"source_url": url}).sort("uploadDate", -1))
-
-        if len(existing_files) > 1:  
-            oldest_file = existing_files[-1]
-            fs.delete(oldest_file._id)
-            logger.info(f"Se eliminó el archivo más antiguo en fs con ObjectId: {oldest_file._id}")
-
-        existing_records = list(collection.find({"source_url": url}).sort("scraping_date", -1))
-
-        if len(existing_records) > 2: 
-            oldest_record = existing_records[-1]
-            collection.delete_one({"_id": oldest_record["_id"]})
-            logger.info(f"Se eliminó la versión más antigua en collection con ObjectId: {oldest_record['_id']}")
+        existing_records_collection = list(collection.find({"source_url": url}).sort("scraping_date", -1))
+        if len(existing_records_collection) > 2:  
+            oldest_record_collection = existing_records_collection[-1]
+            collection.delete_one({"_id": oldest_record_collection["_id"]})
+            logger.info(f"🗑 Se eliminó la versión más antigua en `collection` con ObjectId: {oldest_record_collection['_id']}")
 
         response_data = {
             "Tipo": "Documento",
@@ -427,12 +428,13 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection, fs):
             "Mensaje": "Los datos han sido scrapeados y guardados correctamente en MongoDB.",
         }
 
-        logger.info(f"Datos guardados en MongoDB para la URL: {url}")
+        logger.info(f"📂 Datos guardados correctamente en `collection` y `urls_scraper` para la URL: {url}")
         return response_data
+
     except Exception as e:
-        logger.error(f"Error al guardar datos del scraper: {str(e)}")
+        logger.error(f"❌ Error al guardar datos del scraper: {str(e)}")
         return {"error": f"Error al guardar datos del scraper: {str(e)}"}
-        
+
 
 
 def process_scraper_data(all_scraper, url, sobrenombre):
