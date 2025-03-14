@@ -17,7 +17,7 @@ from selenium_stealth import stealth
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
-from selenium.webdriver.chrome.options import Options
+from pymongo.errors import PyMongoError
 
 
 USER_AGENTS = [
@@ -247,38 +247,44 @@ def connect_to_mongo():
 
 def save_to_mongo(collection_name, content_text, href, url):
 
+
     logger = get_logger("GUARDAR EN MONGO")
 
     if not content_text:
         logger.warning("⚠️ No hay contenido para guardar en MongoDB.")
         return None
 
-    db, fs = connect_to_mongo() 
-    collection = db[collection_name] 
+    try:
+        db, fs = connect_to_mongo()  
+        collection = db[collection_name]  
 
-    document = {
-        "source_url": href,
-        "scraping_date": datetime.now(),
-        "etiquetas": ["planta", "plaga"],
-        "contenido": content_text,
-        "url": url
-    }
+        document = {
+            "source_url": href,
+            "scraping_date": datetime.now(),
+            "etiquetas": ["planta", "plaga"],
+            "contenido": content_text,
+            "url": url
+        }
 
-    object_id = collection.insert_one(document).inserted_id
-    logger.info(f"📂 Noticia guardada en `{collection_name}` con object_id: {object_id}")
+        object_id = collection.insert_one(document).inserted_id
+        logger.info(f"📂 Documento guardado en `{collection_name}` con object_id: {object_id}")
 
-    existing_versions = list(
-        collection.find({"source_url": href}).sort("scraping_date", -1)
-    )
+        existing_versions = list(
+            collection.find({"source_url": href}).sort("scraping_date", -1)
+        )
 
-    if len(existing_versions) > 1:
-        oldest_version = existing_versions[-1]
-        collection.delete_one({"_id": oldest_version["_id"]})
-        logger.info(f"🗑 Se eliminó la versión más antigua en `{collection_name}`: '{href}' con object_id: {oldest_version['_id']}")
+        if len(existing_versions) > 1:
+            oldest_version = existing_versions[-1]  
+            collection.delete_one({"_id": oldest_version["_id"]})
+            logger.info(f"🗑 Eliminada versión más antigua en `{collection_name}`: '{href}' con object_id: {oldest_version['_id']}")
 
-    logger.info(f"✅ Contenido extraído y guardado en `{collection_name}` para {href}.")
-    
-    return object_id
+        logger.info(f"✅ Contenido guardado correctamente en `{collection_name}` para {href}.")
+
+        return object_id
+
+    except PyMongoError as e:
+        logger.error(f"❌ Error al guardar en MongoDB: {str(e)}")
+        return None
 
 
 def generate_directory(url, output_dir=OUTPUT_DIR):
