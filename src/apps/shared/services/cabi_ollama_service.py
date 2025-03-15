@@ -229,7 +229,4 @@ class OllamaCabiService:
         campos_con_datos = sum(bool(datos.get(campo)) for campo in datos)
         return campos_con_datos >= min_campos
     
-def safe_get_string(value):
-        if isinstance(value, list):
-            return ", ".join(str(v).strip() for v in value if v)  
-        return str(value).strip() if value else ""  
+
