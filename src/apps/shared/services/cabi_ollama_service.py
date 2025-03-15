@@ -169,30 +169,23 @@ class OllamaCabiService:
         else:
             logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
             return None
+        
+    
+
 
     def save_species_to_postgres(self, structured_data, source_url, mongo_id):
         try:
-            nombre_cientifico = structured_data.get("nombre_cientifico", "").strip().lower()
-            hospedantes = structured_data.get("hospedantes", "").strip().lower()
-            distribucion = structured_data.get("distribucion", "").strip().lower()
+            nombre_cientifico = safe_get_string(structured_data.get("nombre_cientifico", "")).lower()
+            hospedantes = safe_get_string(structured_data.get("hospedantes", "")).lower()
+            distribucion = safe_get_string(structured_data.get("distribucion", "")).lower()
 
             if nombre_cientifico == "no encontrado":
                 logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
                 return
 
-            structured_data["hospedantes"] = "" if hospedantes == "no encontrado" else structured_data.get("hospedantes", "")
-            structured_data["distribucion"] = "" if distribucion == "no encontrado" else structured_data.get("distribucion", "")
-
-            nombre_cientifico = structured_data.get("nombre_cientifico", "").strip().lower()
-            hospedantes = structured_data.get("hospedantes", "").strip().lower()
-            distribucion = structured_data.get("distribucion", "").strip().lower()
-
-            if nombre_cientifico == "no encontrado":
-                logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
-                return
-
-            structured_data["hospedantes"] = "" if hospedantes == "no encontrado" else structured_data.get("hospedantes", "")
-            structured_data["distribucion"] = "" if distribucion == "no encontrado" else structured_data.get("distribucion", "")
+            structured_data["hospedantes"] = "" if hospedantes == "no encontrado" else hospedantes
+            structured_data["distribucion"] = "" if distribucion == "no encontrado" else distribucion
+            structured_data["nombre_cientifico"] = nombre_cientifico
 
             with transaction.atomic():
                 species_obj, created = CabiSpecies.objects.update_or_create(
@@ -210,6 +203,12 @@ class OllamaCabiService:
 
 
 
+
     def datos_son_validos(self, datos, min_campos=2):
         campos_con_datos = sum(bool(datos.get(campo)) for campo in datos)
         return campos_con_datos >= min_campos
+    
+def safe_get_string(value):
+        if isinstance(value, list):
+            return ", ".join(str(v).strip() for v in value if v)  
+        return str(value).strip() if value else ""  
