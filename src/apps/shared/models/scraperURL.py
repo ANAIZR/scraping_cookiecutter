@@ -228,3 +228,20 @@ class SpeciesSubscription(models.Model):
 
         filters_text = " | ".join(filters) if filters else "All"
         return f"{self.user.email} -> {filters_text}"
+class SpeciesNews(models.Model):
+    species = models.ForeignKey(
+        "NewSpecies",
+        on_delete=models.CASCADE,
+        related_name="news",
+    )
+    distribution = models.TextField(blank=True, null=True)  
+    summary = models.TextField() 
+    publication_date = models.DateField()  
+    source_url = models.URLField(max_length=500, unique=True)  
+
+    class Meta:
+        db_table = "species_news"
+        ordering = ["-publication_date"]  
+
+    def __str__(self):
+        return f"Noticia sobre {self.species.scientific_name} - {self.publication_date}"

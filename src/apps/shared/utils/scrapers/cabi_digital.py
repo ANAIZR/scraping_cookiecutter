@@ -196,25 +196,11 @@ def scraper_cabi_digital(url, sobrenombre):
                                         print(f"🔬 Nombre científico: {nombre_cientifico}")
                                         print(f"🌍 Distribución: {distribucion}")
                                         print(f"🦠 Hospedantes: {hospedantes}")
-                                        object_id = fs.put(
-                                            content_accumulated.encode("utf-8"),
-                                            source_url=absolut_href,
-                                            scraping_date=datetime.now(),
-                                            Etiquetas=["planta", "plaga"],
-                                            contenido=content_accumulated,
-                                            url=url
-                                        )
+                                        object_id = save_to_mongo("urls_scraper", content_text, absolut_href, url,nombre_cientifico,distribucion,hospedantes)
+                                        object_ids.append(object_id)
                                         total_scraped_links += 1
-                                        logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-                                        object_ids.append(object_id) 
-                                        existing_versions = list(fs.find({"source_url": absolut_href}).sort("scraping_date", -1))
-                                        if len(existing_versions) > 1:
-                                            oldest_version = existing_versions[-1]
-                                                
-                                            # ✅ Acceder al `_id` correctamente
-                                            file_id = oldest_version._id  # Esto obtiene el ID correcto
-                                            fs.delete(file_id)  # Eliminar la versión más antigua
-                                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")  # Log correcto
+                                        logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
+                                        
 
 
                                         scraping_exitoso = True
