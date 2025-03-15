@@ -10,8 +10,8 @@ from datetime import datetime
 from ..functions import (
     uc_initialize_driver,
     get_logger,
-    connect_to_mongo_cabi
-    ,
+    connect_to_mongo_cabi,
+    save_to_mongo,
     load_keywords,
     process_scraper_data_v2
 )
@@ -121,7 +121,7 @@ def scraper_cabi_digital(url, sobrenombre):
                 continue
 
             visited_counts =0
-            max_visits = 8
+            max_visits = 50
             
             while True:
                 try:
@@ -196,7 +196,7 @@ def scraper_cabi_digital(url, sobrenombre):
                                         print(f"🔬 Nombre científico: {nombre_cientifico}")
                                         print(f"🌍 Distribución: {distribucion}")
                                         print(f"🦠 Hospedantes: {hospedantes}")
-                                        object_id = save_to_mongo("cabi_scraper", content_text, absolut_href, url,nombre_cientifico,distribucion,hospedantes)
+                                        object_id = save_to_mongo("cabi_scraper", content_accumulated, absolut_href, url,nombre_cientifico,distribucion,hospedantes)
                                         object_ids.append(object_id)
                                         total_scraped_links += 1
                                         logger.info(f"📂 Noticia guardada en `cabi_scraper` con object_id: {object_id}")

@@ -243,7 +243,7 @@ def save_to_mongo(collection_name, content_text, href, url, nombre_cientifico,ho
         return None
 
     try:
-        db, fs = connect_to_mongo()  
+        db, fs = connect_to_mongo_cabi()  
         collection = db[collection_name]  
 
         document = {
