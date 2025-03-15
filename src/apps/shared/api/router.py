@@ -30,7 +30,7 @@ urlpatterns = [
     ),
     path("related_species/<str:query>/", get_related_species, name="related_species"),
         
-    path('api/plague-summary/<int:cabi_id>/', get_plague_summary_view, name='plague_summary'),
+    path('plague-summary/<int:cabi_id>/', get_plague_summary_view, name='plague_summary'),
 
 ]
 urlpatterns += router.urls

@@ -17,7 +17,7 @@ class OllamaService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
-        self.collection = self.db["fs.files"]
+        self.collection = self.db["urls_scraper"]
 
     def extract_and_save_species(self, url):
 

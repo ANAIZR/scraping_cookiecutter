@@ -16,7 +16,7 @@ class OllamaCabiService:
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
-        self.collection = self.db["fs.files"]
+        self.collection = self.db["cabi_scraper"]
         self.cabi_url = "https://www.cabidigitallibrary.org/product/qc"
 
     def extract_and_save_species(self, url):
