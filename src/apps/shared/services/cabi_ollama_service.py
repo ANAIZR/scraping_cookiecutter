@@ -153,8 +153,17 @@ class OllamaCabiService:
                 logger.error(f"❌ Error en la petición a Ollama: {response.status_code} - {response.text}")
                 return None
 
-            full_response = response.text.strip()
-            logger.info(f"📥 Respuesta cruda de Ollama: {full_response}")  # Muestra solo los primeros 500 caracteres
+            full_response = ""
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        json_line = json.loads(line.decode("utf-8"))
+                        message_content = json_line.get("message", {}).get("content", "")
+                        full_response += message_content  # 🟢 Ensamblamos las partes de la respuesta
+                    except json.JSONDecodeError:
+                        logger.error(f"❌ Error al decodificar JSON parcial de Ollama: {line}")
+
+            logger.info(f"📥 Respuesta completa de Ollama (500 caracteres): {full_response[:500]}")
 
             match = re.search(r"\{.*\}", full_response, re.DOTALL)
             if match:
