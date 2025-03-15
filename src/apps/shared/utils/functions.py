@@ -252,9 +252,9 @@ def save_to_mongo(collection_name, content_text, href, url, nombre_cientifico,ho
             "etiquetas": ["planta", "plaga"],
             "contenido": content_text,
             "url": url,
-            "nombre_cientifico"=nombre_cientifico,
-            "hospedantes"=hospedantes,
-            "distribucion" = distribucion
+            "nombre_cientifico":nombre_cientifico,
+            "hospedantes":hospedantes,
+            "distribucion":distribucion
         }
 
         object_id = collection.insert_one(document).inserted_id

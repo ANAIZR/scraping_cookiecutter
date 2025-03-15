@@ -196,10 +196,10 @@ def scraper_cabi_digital(url, sobrenombre):
                                         print(f"🔬 Nombre científico: {nombre_cientifico}")
                                         print(f"🌍 Distribución: {distribucion}")
                                         print(f"🦠 Hospedantes: {hospedantes}")
-                                        object_id = save_to_mongo("urls_scraper", content_text, absolut_href, url,nombre_cientifico,distribucion,hospedantes)
+                                        object_id = save_to_mongo("cabi_scraper", content_text, absolut_href, url,nombre_cientifico,distribucion,hospedantes)
                                         object_ids.append(object_id)
                                         total_scraped_links += 1
-                                        logger.info(f"📂 Noticia guardada en `urls_scraper` con object_id: {object_id}")
+                                        logger.info(f"📂 Noticia guardada en `cabi_scraper` con object_id: {object_id}")
                                         
 
 
