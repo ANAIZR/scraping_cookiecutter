@@ -187,12 +187,9 @@ class OllamaCabiService:
             logger.error(f"❌ Error en la petición a Ollama: {str(e)}")
             return None
         
-    
-
-
     def save_species_to_postgres(self, structured_data, source_url, mongo_id):
         try:
-            # Mapeo de nombres de campos del JSON a los nombres en el modelo Django
+            # Mapeo de nombres de campos del JSON al modelo Django
             mapeo_campos = {
                 "nombre_cientifico": "scientific_name",
                 "nombres_comunes": "common_names",
@@ -210,8 +207,8 @@ class OllamaCabiService:
                 "prevencion_control": "prevention_control",
                 "usos": "uses",
                 "url": "source_url",
-                "hora": "created_at",
-                "fuente": "scraper_source"
+                "hora": "created_at",  # Convertir hora a formato de Django
+                "fuente": "scraper_source"  # Debe ser una instancia de ScraperURL, si existe
             }
 
             # Renombrar los campos del JSON antes de guardarlos en PostgreSQL
@@ -225,6 +222,15 @@ class OllamaCabiService:
 
             for key in structured_data:
                 structured_data[key] = safe_get_string(structured_data[key])
+
+            # 🔹 Buscar si la URL ya existe en ScraperURL sin crear una nueva
+            scraper_url = structured_data.get("scraper_source", None)
+            if scraper_url:
+                scraper_url_obj = ScraperURL.objects.filter(url=scraper_url).first()  # Solo obtener si existe
+                if scraper_url_obj:
+                    structured_data["scraper_source"] = scraper_url_obj  # Asignar solo si existe
+                else:
+                    del structured_data["scraper_source"]  # Eliminar del JSON si no existe en la BD
 
             nombre_cientifico = structured_data.get("scientific_name", "").lower()
 
