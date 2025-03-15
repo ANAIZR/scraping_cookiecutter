@@ -74,6 +74,7 @@ class OllamaService:
         **Cada campo con múltiples valores debe ser un string separado por comas**, en lugar de un array JSON.
         **Las secciones `prevencion_control` e `impacto` deben mantenerse como objetos anidados con sus claves correspondientes.**
         **Si un campo no tiene información, usa `""`.**
+        **En descripcion, tienes que poner un resumen de hasta 500 paralabras para saber que trata el CONTENT**
         
         **Contenido:**
         {content}
@@ -122,7 +123,7 @@ class OllamaService:
         13. Usa la hora actual para completar el campo "hora".
             Devuelve solo el JSON con los datos extraídos, sin texto adicional.
         14 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
-        15. En descripcion pones algo corto de 500 palabras acerca de que trata el contentido
+        15. En descripcion pones algo corto de 500 palabras acerca de que trata el content
         16. **Ten cuidado con los caracteres especiales y las comillas.**
 
         """
