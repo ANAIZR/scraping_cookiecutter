@@ -207,14 +207,14 @@ class OllamaCabiService:
                 "prevencion_control": "prevention_control",
                 "usos": "uses",
                 "url": "source_url",
-                "hora": "created_at",  # Convertir hora a formato de Django
-                "fuente": "scraper_source"  # Debe ser una instancia de ScraperURL, si existe
+                "hora": "created_at",
+                "fuente": "scraper_source",
             }
 
-            # Renombrar los campos del JSON antes de guardarlos en PostgreSQL
+            # 🔹 Renombrar los campos del JSON antes de guardarlos en PostgreSQL
             structured_data = {mapeo_campos.get(k, k): v for k, v in structured_data.items()}
 
-            # Convertir listas en cadenas antes de guardar
+            # 🔹 Convertir listas en cadenas antes de guardar
             def safe_get_string(value):
                 if isinstance(value, list):
                     return ", ".join(str(v).strip() for v in value if v)
@@ -223,21 +223,23 @@ class OllamaCabiService:
             for key in structured_data:
                 structured_data[key] = safe_get_string(structured_data[key])
 
-            # 🔹 Buscar si la URL ya existe en ScraperURL sin crear una nueva
-            scraper_url = structured_data.get("scraper_source", None)
+            # 🔹 Validar si la URL existe en ScraperURL y evitar valores incorrectos
+            scraper_url = structured_data.get("scraper_source")
             if scraper_url:
-                scraper_url_obj = ScraperURL.objects.filter(url=scraper_url).first()  # Solo obtener si existe
+                scraper_url_obj = ScraperURL.objects.filter(url=scraper_url).first()
                 if scraper_url_obj:
-                    structured_data["scraper_source"] = scraper_url_obj  # Asignar solo si existe
+                    structured_data["scraper_source"] = scraper_url_obj
                 else:
-                    del structured_data["scraper_source"]  # Eliminar del JSON si no existe en la BD
+                    logger.warning(f"⚠️ La URL '{scraper_url}' no existe en ScraperURL. Se omite scraper_source.")
+                    structured_data.pop("scraper_source", None)  # 🔹 Eliminar si no existe
 
+            # 🔹 Validar si `nombre_cientifico` es "No encontrado" y detener la ejecución
             nombre_cientifico = structured_data.get("scientific_name", "").lower()
-
             if nombre_cientifico == "no encontrado":
                 logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
-                return
+                return  # 🔹 Salir de la función inmediatamente
 
+            # 🔹 Guardar en PostgreSQL solo si el documento es válido
             with transaction.atomic():
                 species_obj, created = CabiSpecies.objects.update_or_create(
                     source_url=source_url,
@@ -250,7 +252,8 @@ class OllamaCabiService:
                     logger.info(f"🔄 Especie actualizada en PostgreSQL: {species_obj.scientific_name}")
 
         except Exception as e:
-            logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
+            logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}", exc_info=True)  # 🔹 Agrega traceback para mejor debugging
+
 
 
 
