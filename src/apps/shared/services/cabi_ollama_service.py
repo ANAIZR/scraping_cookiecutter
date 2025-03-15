@@ -71,15 +71,18 @@ class OllamaCabiService:
             logger.error(f"🚨 Error procesando documento CABI {mongo_id}: {e}")
 
     def get_existing_species_data(self, object_id):
-        """Obtiene nombre científico, hospedantes y distribución directamente de MongoDB."""
         document = self.collection.find_one({"_id": ObjectId(object_id)})
         if document:
-            return {
+            extracted_data = {
                 "nombre_cientifico": document.get("nombre_cientifico", ""),
                 "hospedantes": document.get("hospedantes", ""),
                 "distribucion": document.get("distribucion", "")
             }
+            logger.info(f"📦 Datos extraídos de MongoDB: {json.dumps(extracted_data, indent=2, ensure_ascii=False)}")
+            return extracted_data
+        logger.warning(f"🚫 Documento con ID {object_id} no encontrado en MongoDB.")
         return {}
+
 
     def analyze_content_with_ollama(self, content, source_url, existing_data):
 
