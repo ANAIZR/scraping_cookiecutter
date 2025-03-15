@@ -141,33 +141,41 @@ class OllamaCabiService:
             Devuelve solo el JSON con los datos extraídos, sin texto adicional.
         10 **Evita respuestas como "Aquí está el JSON" o "Formato JSON esperado". Solo envía el JSON puro.**
         """
+        try:
+            response = requests.post(
+                "http://100.122.137.82:11434/api/chat"
+    ,
+                json={"model": "llama3:70b", "messages": [{"role": "user", "content": prompt}]},
+                stream=True,
+            )
 
-        response = requests.post(
-            "http://100.122.137.82:11434/api/chat"
-,
-            json={"model": "llama3:70b", "messages": [{"role": "user", "content": prompt}]},
-            stream=True,
-        )
-
-        full_response = ""
-        for line in response.iter_lines():
-            if line:
-                try:
-                    json_line = json.loads(line.decode("utf-8"))
-                    full_response += json_line.get("message", {}).get("content", "")
-                except json.JSONDecodeError:
-                    logger.error("❌ Error al decodificar JSON de Ollama")
-
-        match = re.search(r"\{.*\}", full_response, re.DOTALL)
-        if match:
-            json_text = match.group(0)
-            try:
-                return json.loads(json_text)
-            except json.JSONDecodeError:
-                logger.error("❌ Error al convertir JSON de Ollama")
+            if response.status_code != 200:
+                logger.error(f"❌ Error en la petición a Ollama: {response.status_code} - {response.text}")
                 return None
-        else:
-            logger.warning("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
+
+            full_response = response.text.strip()
+            logger.info(f"📥 Respuesta cruda de Ollama: {full_response}")  # Muestra solo los primeros 500 caracteres
+
+            match = re.search(r"\{.*\}", full_response, re.DOTALL)
+            if match:
+                json_text = match.group(0)
+                logger.info(f"✅ JSON extraído de la respuesta de Ollama: {json_text}")  # Ver JSON antes de convertir
+
+                try:
+                    structured_data = json.loads(json_text)
+                    if isinstance(structured_data, dict):
+                        return structured_data
+                    else:
+                        logger.warning(f"❌ JSON inválido para {source_url}, no es un diccionario")
+                        return None
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ Error al convertir JSON de Ollama: {str(e)}")
+                    return None
+            else:
+                logger.warning(f"⚠️ No se encontró un JSON válido en la respuesta de Ollama: {full_response[:500]}")
+                return None
+        except requests.RequestException as e:
+            logger.error(f"❌ Error en la petición a Ollama: {str(e)}")
             return None
         
     
