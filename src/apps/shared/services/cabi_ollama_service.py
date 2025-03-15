@@ -175,17 +175,38 @@ class OllamaCabiService:
 
     def save_species_to_postgres(self, structured_data, source_url, mongo_id):
         try:
-            nombre_cientifico = safe_get_string(structured_data.get("nombre_cientifico", "")).lower()
-            hospedantes = safe_get_string(structured_data.get("hospedantes", "")).lower()
-            distribucion = safe_get_string(structured_data.get("distribucion", "")).lower()
+            mapeo_campos = {
+                "nombre_cientifico": "scientific_name",
+                "nombres_comunes": "common_names",
+                "sinonimos": "synonyms",
+                "descripcion_invasividad": "invasiveness_description",
+                "distribucion": "distribution",
+                "impacto": "impact",
+                "habitat": "habitat",
+                "ciclo_vida": "life_cycle",
+                "reproduccion": "reproduction",
+                "hospedantes": "hosts",
+                "sintomas": "symptoms",
+                "organos_afectados": "affected_organs",
+                "condiciones_ambientales": "environmental_conditions",
+                "prevencion_control": "prevention_control",
+                "usos": "uses",
+                "url": "source_url",
+                "hora": "created_at",
+                "fuente": "scraper_source"
+            }
 
-            if nombre_cientifico == "no encontrado":
-                logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
-                return
+            # Renombrar los campos del JSON antes de guardarlos en PostgreSQL
+            structured_data = {mapeo_campos.get(k, k): v for k, v in structured_data.items()}
 
-            structured_data["hospedantes"] = "" if hospedantes == "no encontrado" else hospedantes
-            structured_data["distribucion"] = "" if distribucion == "no encontrado" else distribucion
-            structured_data["nombre_cientifico"] = nombre_cientifico
+            # Convertir listas en cadenas antes de guardar
+            def safe_get_string(value):
+                if isinstance(value, list):
+                    return ", ".join(str(v).strip() for v in value if v)
+                return str(value).strip() if value else ""
+
+            for key in structured_data:
+                structured_data[key] = safe_get_string(structured_data[key])
 
             with transaction.atomic():
                 species_obj, created = CabiSpecies.objects.update_or_create(
