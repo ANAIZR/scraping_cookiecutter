@@ -8,7 +8,8 @@ from .viewsets.species_viewsets import (
     SpeciesSubscriptionViewSet,
     ScraperURLViewSet,
     SpeciesCABIViewSet,
-    get_related_species
+    get_related_species,
+    get_plague_summary_view
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -28,7 +29,8 @@ urlpatterns = [
         name="report-comparison-detail",
     ),
     path("related_species/<str:query>/", get_related_species, name="related_species"),
-
+        
+    path('api/plague-summary/<int:cabi_id>/', get_plague_summary_view, name='plague_summary'),
 
 ]
 urlpatterns += router.urls

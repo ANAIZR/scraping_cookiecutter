@@ -20,6 +20,7 @@ from rest_framework.pagination import PageNumberPagination
 from urllib.parse import unquote  
 from django.http import JsonResponse
 from django.db.models import Q
+from src.apps.shared.services.resume_service import ResumeService
 logger = logging.getLogger(__name__)
 
 def get_related_species(request, query):
@@ -57,6 +58,16 @@ def get_related_species(request, query):
     ]
 
     return JsonResponse({"related_species": species_list})
+
+
+def get_plague_summary_view(request, cabi_id):
+
+    scraper_info = ResumeService.get_plague_summary(cabi_id)
+
+    if scraper_info is None:
+        return JsonResponse({"error": "CabiSpecies no encontrado"}, status=404)
+
+    return JsonResponse(scraper_info, safe=False)
 class Pagination(PageNumberPagination):
     page_size = 10 
     page_size_query_param = 'page_size' 
