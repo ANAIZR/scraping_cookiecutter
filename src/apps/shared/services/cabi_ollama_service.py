@@ -175,6 +175,7 @@ class OllamaCabiService:
 
     def save_species_to_postgres(self, structured_data, source_url, mongo_id):
         try:
+            # Mapeo de nombres de campos del JSON a los nombres en el modelo Django
             mapeo_campos = {
                 "nombre_cientifico": "scientific_name",
                 "nombres_comunes": "common_names",
@@ -208,6 +209,12 @@ class OllamaCabiService:
             for key in structured_data:
                 structured_data[key] = safe_get_string(structured_data[key])
 
+            nombre_cientifico = structured_data.get("scientific_name", "").lower()
+
+            if nombre_cientifico == "no encontrado":
+                logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
+                return
+
             with transaction.atomic():
                 species_obj, created = CabiSpecies.objects.update_or_create(
                     source_url=source_url,
@@ -221,7 +228,6 @@ class OllamaCabiService:
 
         except Exception as e:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}")
-
 
 
 
