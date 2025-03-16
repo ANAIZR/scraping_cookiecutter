@@ -439,13 +439,13 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection):
         return {"error": f"Error al guardar datos del scraper: {str(e)}"}
 
 
-def process_scraper_data(all_scraper, url, sobrenombre, collection):
+def process_scraper_data(all_scraper, url, sobrenombre, collection_name=MONGO_COLLECTION_NAME):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
 
     try:
-        db_name = collection.database.name  
-        collection_name = collection.name 
-        logger.info(f"✅ Conectado a MongoDB en la base de datos: '{db_name}', colección: '{collection_name}'")
+        db = connect_to_mongo()  
+        collection = db[collection_name]  
+        logger.info(f"✅ Conectado a MongoDB en la base de datos: '{MONGO_DB_NAME}', colección: '{collection_name}'")
 
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
