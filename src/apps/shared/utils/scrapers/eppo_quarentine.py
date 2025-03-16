@@ -111,8 +111,9 @@ def scraper_eppo_quarentine(url, sobrenombre):
                 "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
             )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
 
     except Exception as e:
         logger.error(f"❌ Error en el proceso de scraping: {str(e)}")

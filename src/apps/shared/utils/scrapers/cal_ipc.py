@@ -19,7 +19,7 @@ from rest_framework import status
 def scraper_cal_ipc(url, sobrenombre, max_depth=2):
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo()  
+    db, fs = connect_to_mongo()  
 
     all_scraper = ""
     total_urls_found = 0
@@ -160,7 +160,7 @@ def scraper_cal_ipc(url, sobrenombre, max_depth=2):
         if urls_not_scraped:
             all_scraper += "⚠️ URLs no scrapeadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
 
     except Exception as e:

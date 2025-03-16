@@ -148,8 +148,9 @@ def scraper_plants_usda_gov(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "Enlaces no procesados:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

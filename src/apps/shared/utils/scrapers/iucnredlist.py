@@ -145,8 +145,10 @@ def scraper_iucnredlist(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
+     
         return response
+
 
     except Exception as e:
         logger.error(f"❌ Error en el scraper: {e}")

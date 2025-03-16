@@ -115,8 +115,10 @@ def scraper_nematode(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
+     
         return response
+
     
     except Exception as e:
         return Response({"error": f"Ocurrió un error durante el scraping: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

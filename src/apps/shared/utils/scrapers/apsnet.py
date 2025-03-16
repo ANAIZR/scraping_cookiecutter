@@ -27,7 +27,7 @@ def scraper_apsnet(url, sobrenombre):
         driver = driver_init()
         object_id = None
 
-        collection, fs = connect_to_mongo()  
+        db, fs = connect_to_mongo()  
         keywords = load_keywords("family.txt")
         scraped_urls = set()
         failed_urls = set()
@@ -128,8 +128,8 @@ def scraper_apsnet(url, sobrenombre):
                         total_failed_scrapes += 1
                         failed_urls.add(link)
 
-                response = process_scraper_data(all_scraper, url, sobrenombre,collection)
-
+                response = process_scraper_data(all_scraper, url, sobrenombre)
+                return response
             except Exception as e:
                 logger.warning(f"Error durante la búsqueda con palabra clave '{keyword}': {e}")
                 continue

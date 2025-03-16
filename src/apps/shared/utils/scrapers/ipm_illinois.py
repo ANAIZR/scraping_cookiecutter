@@ -102,8 +102,10 @@ def scraper_ipm_illinoes(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
+     
         return response
+
 
     except Exception as e:
         logger.error(f"Error general durante el scraping: {str(e)}")

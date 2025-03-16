@@ -99,8 +99,11 @@ def scraper_gene_affrc(url, sobrenombre):
             + "\n".join(scraped_urls)
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+     
+        return response
+
 
     except Exception as e:
         logger.error(f"Ocurrió un error durante el scraping: {e}")

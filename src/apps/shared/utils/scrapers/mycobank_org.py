@@ -112,8 +112,10 @@ def scraper_mycobank_org(url, sobrenombre):
             
 
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
+     
         return response
+
 
     except Exception as e:
         return Response(

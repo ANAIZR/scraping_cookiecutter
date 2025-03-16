@@ -16,7 +16,7 @@ def scraper_bugwood(url, sobrenombre):
     max_depth = 3
     headers = {"User-Agent": get_random_user_agent()}
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo()  
+    db, fs = connect_to_mongo()  
 
     all_scraper = ""
     total_urls_found = 0
@@ -146,7 +146,7 @@ def scraper_bugwood(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_non_scraped_links}\n"
         all_scraper += "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
 
     except requests.RequestException as e:

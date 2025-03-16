@@ -145,8 +145,10 @@ def scraper_nal_usda(url, sobrenombre):
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
+     
         return response
+
 
     except Exception as e:
         logger.error(f"Error durante el scraping: {e}")

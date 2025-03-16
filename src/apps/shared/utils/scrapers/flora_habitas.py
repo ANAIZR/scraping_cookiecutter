@@ -94,8 +94,9 @@ def scraper_flora_habitas(url, sobrenombre):
                 "URLs no procesadas:\n\n" + "\n".join(urls_not_scraped) + "\n"
             )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
 
     except Exception as e:
         logger.error(f"Error general en el proceso de scraping: {str(e)}")

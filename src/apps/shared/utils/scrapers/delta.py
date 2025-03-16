@@ -136,8 +136,9 @@ def scraper_delta(url, sobrenombre):
             f"Enlaces no scrapeados:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

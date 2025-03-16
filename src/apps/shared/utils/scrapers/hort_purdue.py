@@ -99,8 +99,7 @@ def scraper_hort_purdue(url, sobrenombre):
             f"URLs no procesadas:\n{chr(10).join(urls_not_scraped)}\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
-
+        response = process_scraper_data(all_scraper, url, sobrenombre,)
         return response
 
     except Exception as e:

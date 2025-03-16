@@ -21,7 +21,7 @@ def scraper_ars_usda(url, sobrenombre):
     logger = get_logger("ARS")
     logger.info(f"Iniciando scraping para URL: {url}")
 
-    collection, fs = connect_to_mongo() 
+    db, fs = connect_to_mongo() 
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]
@@ -128,7 +128,7 @@ def scraper_ars_usda(url, sobrenombre):
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre,)        
         return response
 
     except Exception as e:

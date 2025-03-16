@@ -281,8 +281,9 @@ def scraper_cabi_digital(url, sobrenombre):
             f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
             f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
         
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")

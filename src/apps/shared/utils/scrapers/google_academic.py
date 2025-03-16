@@ -127,8 +127,9 @@ def scraper_google_academic(url, sobrenombre):
             "URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
 
     except Exception as e:
         logger.error(f"Error durante el scraping: {str(e)}")

@@ -143,8 +143,9 @@ def scraper_e_floras(
             + "\n".join(scraped_urls)
         )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
     except Exception as e:
         logger.error(f"Error: {e}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -73,7 +73,6 @@ from .pestnet import scraper_pestnet
 from .scienceopen import scraper_scienceopen
 from .doaj_org import scraper_doaj_org
 from .biblioteca_sibe import scraper_biblioteca_sibe
-from .acir_aphis_usda import scraper_acir_aphis_usda
 from .defensa_sag import scraper_defensa_sag
 from .gbif import scraper_gbif
 from .pest_report import scraper_pest_report
@@ -152,7 +151,6 @@ SCRAPER_FUNCTIONS = {
     69: scraper_cdnsciencepub,
     70: scraper_scienceopen,
     71: scraper_agresearchmag,
-    72: scraper_acir_aphis_usda,
     73: scraper_notification_aphis,
     74: scraper_repository_cimmy,
     75: scraper_ippc_int,

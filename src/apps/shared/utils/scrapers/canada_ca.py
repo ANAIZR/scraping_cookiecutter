@@ -27,7 +27,7 @@ def scraper_canada_ca(url, sobrenombre):
         time.sleep(random.uniform(3, 6))
         logger.info(f"Iniciando scraping para URL: {url}")
 
-        collection, fs = connect_to_mongo()  # 📌 Corrección en la conexión a MongoDB
+        db, fs = connect_to_mongo()  # 📌 Corrección en la conexión a MongoDB
         keywords = load_keywords("plants.txt")
 
         if not keywords:
@@ -142,8 +142,9 @@ def scraper_canada_ca(url, sobrenombre):
         all_scraper += f"⚠️ Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "❌ URLs fallidas:\n" + "\n".join(failed_urls) + "\n"
         
-        response = process_scraper_data(all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
+
 
     except Exception as e:
         logger.error(f"❌ Error en el scraper: {str(e)}")
