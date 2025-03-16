@@ -48,7 +48,12 @@ class OllamaCabiService:
                 logger.warning(f"🚫 Documento {mongo_id} no tiene contenido.")
                 return
 
-            existing_data = self.get_existing_species_data(mongo_id)
+            # 🔍 Obtén los datos de MongoDB primero
+            existing_data = {
+                "nombre_cientifico": document.get("nombre_cientifico", ""),
+                "hospedantes": document.get("hospedantes", ""),
+                "distribucion": document.get("distribucion", "")
+            }
 
             structured_data = self.analyze_content_with_ollama(content, source_url, existing_data)
 
@@ -68,7 +73,8 @@ class OllamaCabiService:
                 logger.warning(f"⚠️ Datos vacíos para {mongo_id}, no se guardan en PostgreSQL.")
 
         except Exception as e:
-            logger.error(f"🚨 Error procesando documento CABI {mongo_id}: {e}")
+            logger.error(f"🚨 Error procesando documento CABI {mongo_id}: {e}", exc_info=True)
+
 
     def get_existing_species_data(self, object_id):
         document = self.collection.find_one({"_id": ObjectId(object_id)})
@@ -96,7 +102,7 @@ class OllamaCabiService:
         **Las secciones `prevencion_control` e `impacto` deben mantenerse como objetos anidados con sus claves correspondientes.**
         **Si un campo no tiene información, usa `""`.**
         
-        **Los siguientes campos ya han sido extraídos y deben mantenerse sin cambios:**
+        **Mantén los siguientes campos sin cambios:**
         - `nombre_cientifico`: {nombre_cientifico}
         - `hospedantes`: {hospedantes}
         - `distribucion`: {distribucion}
@@ -192,57 +198,22 @@ class OllamaCabiService:
         
     def save_species_to_postgres(self, structured_data, source_url, mongo_id):
         try:
-            # Mapeo de nombres de campos del JSON al modelo Django
-            mapeo_campos = {
-                "nombre_cientifico": "scientific_name",
-                "nombres_comunes": "common_names",
-                "sinonimos": "synonyms",
-                "descripcion_invasividad": "invasiveness_description",
-                "distribucion": "distribution",
-                "impacto": "impact",
-                "habitat": "habitat",
-                "ciclo_vida": "life_cycle",
-                "reproduccion": "reproduction",
-                "hospedantes": "hosts",
-                "sintomas": "symptoms",
-                "organos_afectados": "affected_organs",
-                "condiciones_ambientales": "environmental_conditions",
-                "prevencion_control": "prevention_control",
-                "usos": "uses",
-                "url": "source_url",
-                "hora": "created_at",
-                "fuente": "scraper_source",
+            # 🔍 Validar si el JSON tiene claves incorrectas antes de guardar
+            allowed_fields = {
+                "scientific_name", "common_names", "synonyms", "distribution",
+                "impact", "habitat", "life_cycle", "reproduction", "hosts",
+                "symptoms", "affected_organs", "environmental_conditions",
+                "prevention_control", "uses", "source_url", "created_at", "scraper_source"
             }
 
-            # 🔹 Renombrar los campos del JSON antes de guardarlos en PostgreSQL
-            structured_data = {mapeo_campos.get(k, k): v for k, v in structured_data.items()}
+            structured_data = {k: v for k, v in structured_data.items() if k in allowed_fields}
 
-            # 🔹 Convertir listas en cadenas antes de guardar
-            def safe_get_string(value):
-                if isinstance(value, list):
-                    return ", ".join(str(v).strip() for v in value if v)
-                return str(value).strip() if value else ""
+            # ❌ Si el nombre científico es "No encontrado", no guardar
+            scientific_name = structured_data.get("scientific_name", "").strip().lower()
+            if scientific_name == "no encontrado":
+                logger.warning(f"⚠️ Documento {mongo_id} descartado: scientific_name es 'No encontrado'. No se guarda en PostgreSQL.")
+                return  # 🚨 Salimos de la función sin guardar
 
-            for key in structured_data:
-                structured_data[key] = safe_get_string(structured_data[key])
-
-            # 🔹 Validar si la URL existe en ScraperURL y evitar valores incorrectos
-            scraper_url = structured_data.get("scraper_source")
-            if scraper_url:
-                scraper_url_obj = ScraperURL.objects.filter(url=scraper_url).first()
-                if scraper_url_obj:
-                    structured_data["scraper_source"] = scraper_url_obj
-                else:
-                    logger.warning(f"⚠️ La URL '{scraper_url}' no existe en ScraperURL. Se omite scraper_source.")
-                    structured_data.pop("scraper_source", None)  # 🔹 Eliminar si no existe
-
-            # 🔹 Validar si `nombre_cientifico` es "No encontrado" y detener la ejecución
-            nombre_cientifico = structured_data.get("scientific_name", "").lower()
-            if nombre_cientifico == "no encontrado":
-                logger.warning(f"⚠️ Documento {mongo_id} descartado: nombre_cientifico es 'No encontrado'.")
-                return  # 🔹 Salir de la función inmediatamente
-
-            # 🔹 Guardar en PostgreSQL solo si el documento es válido
             with transaction.atomic():
                 species_obj, created = CabiSpecies.objects.update_or_create(
                     source_url=source_url,
@@ -255,7 +226,9 @@ class OllamaCabiService:
                     logger.info(f"🔄 Especie actualizada en PostgreSQL: {species_obj.scientific_name}")
 
         except Exception as e:
-            logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}", exc_info=True)  # 🔹 Agrega traceback para mejor debugging
+            logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}", exc_info=True)
+
+    # 🔹 Agrega traceback para mejor debugging
 
 
 
