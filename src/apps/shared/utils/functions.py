@@ -17,6 +17,8 @@ from rest_framework import status
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
+from pymongo.errors import ConnectionFailure,OperationFailure
+
 from dotenv import load_dotenv
 load_dotenv()
 USER_AGENTS = [
@@ -38,7 +40,9 @@ LOAD_KEYWORDS = os.path.join(BASE_DIR, "../utils/txt")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
-
+MONGO_URI_CABI = os.getenv("MONGO_URI_CABI")
+MONGO_DB_NAME_CABI = os.getenv("MONGO_DB_NAME_CABI")
+MONGO_COLLECTION_NAME_CABI = os.getenv("MONGO_COLLECTION_NAME")
 
 def load_keywords(file_name ="all.txt", base_dir=LOAD_KEYWORDS):
     logger = get_logger("CARGAR PALABRAS CLAVE")
@@ -219,32 +223,38 @@ def connect_to_mongo(db_name="scrapping-can", collection_name="collection"):
     except Exception as e:
         logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
         raise
-def connect_to_mongo_cabi(db_name=None, collection_name=None):
-    mongo_uri = os.getenv("MONGO_URI_CABI")
-    db_name = db_name or os.getenv("MONGO_DB_NAME_CABI")
-    collection_name = collection_name or os.getenv("MONGO_COLLECTION_NAME_CABI")
+def connect_to_mongo_cabi():
+    logger = get_logger("MONGO_CONNECTION_CABI")
+    try:
+        if not all([MONGO_URI_CABI, MONGO_DB_NAME_CABI]):
+            raise ValueError("⚠️ Faltan variables de entorno en el archivo .env")
+        client = MongoClient(MONGO_URI_CABI)
+        db = client[MONGO_DB_NAME_CABI]
+        fs = gridfs.GridFS(db)
+       
 
-    print(f"Conectando a MongoDB: {mongo_uri} - Base de datos: {db_name}")
+        logger.info(f"Conectando a MongoDB: {MONGO_URI_CABI} - Base de datos: {MONGO_DB_NAME_CABI}")
+        return db, fs  
 
-    client = MongoClient(mongo_uri)
-    db = client[db_name]
-    fs = gridfs.GridFS(db)
+    except Exception as e:
+        logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
+        raise
+
+    
 
     print(f"✅ Conexión a MongoDB establecida correctamente: {db_name}")
     return db[collection_name], fs
 
-def save_to_mongo(collection_name, content_text, href, url, nombre_cientifico,hospedantes,distribucion):
-
-
-    logger = get_logger("GUARDAR EN MONGO")
+def save_to_mongo(collection_name, content_text, href, url, nombre_cientifico, distribucion, hospedantes, common_names, synonyms, invasiveness_description, impact, habitat, reproduction, symptoms, affected_organs, environmental_conditions):
+    logger = get_logger("GUARDAR_EN_MONGO")
 
     if not content_text:
         logger.warning("⚠️ No hay contenido para guardar en MongoDB.")
         return None
 
     try:
-        db, fs = connect_to_mongo_cabi()  
-        collection = db[collection_name]  
+        db, fs = connect_to_mongo_cabi()
+        collection = db[collection_name]
 
         document = {
             "source_url": href,
@@ -252,30 +262,45 @@ def save_to_mongo(collection_name, content_text, href, url, nombre_cientifico,ho
             "etiquetas": ["planta", "plaga"],
             "contenido": content_text,
             "url": url,
-            "nombre_cientifico":nombre_cientifico,
-            "hospedantes":hospedantes,
-            "distribucion":distribucion
+            "nombre_cientifico": nombre_cientifico or "No encontrado",
+            "distribucion": distribucion or "No encontrado",
+            "hospedantes": hospedantes or "No encontrado",
+            "common_names": common_names or "No encontrado",
+            "synonyms": synonyms or "No encontrado",
+            "invasiveness_description": invasiveness_description or "No encontrado",
+            "impact": impact or "No encontrado",
+            "habitat": habitat or "No encontrado",
+            "reproduction": reproduction or "No encontrado",
+            "symptoms": symptoms or "No encontrado",
+            "affected_organs": affected_organs or "No encontrado",
+            "environmental_conditions": environmental_conditions or "No encontrado"
         }
 
-        object_id = collection.insert_one(document).inserted_id
-        logger.info(f"📂 Documento guardado en `{collection_name}` con object_id: {object_id}")
+        result = collection.insert_one(document)
+        object_id = result.inserted_id
 
-        existing_versions = list(
-            collection.find({"source_url": href}).sort("scraping_date", -1)
-        )
+        old_records = collection.find({"source_url": href}).sort("scraping_date", -1)
+        if collection.count_documents({"source_url": href}) > 1:
+            for record in list(old_records)[1:]:  
+                collection.delete_one({"_id": record["_id"]})
+                logger.info(f"🗑 Eliminado documento antiguo con ObjectId: {record['_id']}")
 
-        if len(existing_versions) > 1:
-            oldest_version = existing_versions[-1]  
-            collection.delete_one({"_id": oldest_version["_id"]})
-            logger.info(f"🗑 Eliminada versión más antigua en `{collection_name}`: '{href}' con object_id: {oldest_version['_id']}")
-
-        logger.info(f"✅ Contenido guardado correctamente en `{collection_name}` para {href}.")
+        logger.info(f"📂 Nuevo documento insertado en `{collection_name}` con ObjectId: {object_id}")
 
         return object_id
 
-    except PyMongoError as e:
-        logger.error(f"❌ Error al guardar en MongoDB: {str(e)}")
+    except ConnectionFailure:
+        logger.error("❌ No se pudo conectar a MongoDB. Verifica que el servidor está en ejecución.")
         return None
+
+    except OperationFailure as e:
+        logger.error(f"❌ Error en la operación con MongoDB: {str(e)}")
+        return None
+
+    except Exception as e:
+        logger.error(f"❌ Error inesperado al guardar en MongoDB: {str(e)}")
+        return None
+
 def generate_directory(url, output_dir=OUTPUT_DIR):
     logger = get_logger("GENERANDO DIRECTORIO")
     try:
