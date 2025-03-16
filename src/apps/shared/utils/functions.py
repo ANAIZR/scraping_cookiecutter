@@ -443,7 +443,7 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection_name=MONGO_CO
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
 
     try:
-        db = connect_to_mongo()  
+        db, _ = connect_to_mongo()  
         collection = db[collection_name]  
         logger.info(f"✅ Conectado a MongoDB en la base de datos: '{MONGO_DB_NAME}', colección: '{collection_name}'")
 
