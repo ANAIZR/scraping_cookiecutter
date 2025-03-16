@@ -89,23 +89,28 @@ class OllamaCabiService:
             logger.error(f"🚨 Error procesando documento CABI {mongo_id}: {e}", exc_info=True)
 
     def analyze_content_with_ollama(self, fields_to_summarize, source_url):
-        """Analiza y resume campos específicos con Ollama."""
-        if not any(fields_to_summarize.values()):
+        
+        fields_to_summarize = {k: v.strip() for k, v in fields_to_summarize.items() if v and v.strip()}
+        
+        if not fields_to_summarize:
             logger.info("📭 No hay contenido para resumir con IA.")
             return {}
 
         prompt = f"""
-        Genera un resumen para los siguientes campos en JSON.  
-        Si un campo está vacío, devuelve `""`.
+        Extrae la información relevante sobre los siguientes campos en JSON.  
+        **No inventes datos** y usa el texto proporcionado para generar un resumen claro.  
+        Si un campo está vacío, devuelve `""`.  
 
+        **Texto a analizar:**  
         {json.dumps(fields_to_summarize, indent=2, ensure_ascii=False)}
 
-        **Formato de salida esperado:**
+        **Formato de salida esperado:**  
         {{"environmental_conditions": "", "symptoms": "", "impact": "", "invasiveness_description": ""}}
 
         ⚠️ **Instrucciones Importantes:**  
-        - No uses comillas triples ni bloques de código (`'''`).  
+        - No uses comillas triples ni bloques de código.  
         - Devuelve solo el JSON sin texto adicional.  
+        - Extrae detalles clave de cada campo sin repetir información innecesaria.  
         """
 
         try:
@@ -132,7 +137,16 @@ class OllamaCabiService:
             match = re.search(r"\{.*\}", full_response, re.DOTALL)
             if match:
                 json_text = match.group(0)
-                return json.loads(json_text)
+                summarized_data = json.loads(json_text)
+
+                # 🔍 Validar que el resumen contiene información real
+                for key, value in summarized_data.items():
+                    if not value.strip() or "No encontrado" in value or len(value.strip()) < 5:
+                        logger.warning(f"⚠️ Resumen insuficiente para '{key}', no se usará: {value}")
+                        summarized_data[key] = ""  # Evitar guardar basura
+
+                return summarized_data
+
             else:
                 logger.warning(f"⚠️ No se encontró un JSON válido en la respuesta de Ollama: {full_response[:500]}")
                 return {}
@@ -140,6 +154,7 @@ class OllamaCabiService:
         except requests.RequestException as e:
             logger.error(f"❌ Error en la petición a Ollama: {str(e)}")
             return {}
+
 
     def save_species_to_postgres(self, structured_data, mongo_id):
         """Guarda o actualiza la información en PostgreSQL."""
@@ -186,5 +201,20 @@ class OllamaCabiService:
             logger.error(f"❌ Error al guardar en PostgreSQL: {str(e)}", exc_info=True)
 
     def datos_son_validos(self, datos, min_campos=2):
-        """Valida si al menos `min_campos` tienen datos antes de guardar."""
-        return sum(bool(datos.get(campo)) for campo in datos) >= min_campos
+        valores_invalidos = {"", None, "No encontrado", "N/A", "-", "Desconocido"}
+        
+        if datos.get("scientific_name") in valores_invalidos:
+            logger.warning(f"🚫 Documento descartado: 'scientific_name' inválido ({datos.get('scientific_name')}).")
+            return False
+
+        campos_validos = [
+            datos.get("common_names"),
+            datos.get("distribution"),
+            datos.get("symptoms"),
+            datos.get("impact"),
+            datos.get("habitat"),
+        ]
+        
+        campos_utiles = [campo for campo in campos_validos if campo and campo.strip() not in valores_invalidos]
+        
+        return len(campos_utiles) >= min_campos
