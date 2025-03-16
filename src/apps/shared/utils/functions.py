@@ -266,19 +266,22 @@ def save_to_mongo(collection_name, content_text, href, url):
             "url": url
         }
 
-        object_id = collection.insert_one(document).inserted_id
+        result = collection.insert_one(document)
+        object_id = result.inserted_id
         logger.info(f"📂 Documento guardado en `{collection_name}` con object_id: {object_id}")
 
         existing_versions = list(
             collection.find({"source_url": href}).sort("scraping_date", -1)
         )
+        old_records = collection.find({"source_url": href}).sort("scraping_date", -1)
+        if collection.count_documents({"source_url": href}) > 1:
+            for record in list(old_records)[1:]:  
+                collection.delete_one({"_id": record["_id"]})
+                logger.info(f"🗑 Eliminado documento antiguo con ObjectId: {record['_id']}")
 
-        if len(existing_versions) > 1:
-            oldest_version = existing_versions[-1]  
-            collection.delete_one({"_id": oldest_version["_id"]})
-            logger.info(f"🗑 Eliminada versión más antigua en `{collection_name}`: '{href}' con object_id: {oldest_version['_id']}")
+        logger.info(f"📂 Nuevo documento insertado en `{collection_name}` con ObjectId: {object_id}")
 
-        logger.info(f"✅ Contenido guardado correctamente en `{collection_name}` para {href}.")
+        
 
         return object_id
 
