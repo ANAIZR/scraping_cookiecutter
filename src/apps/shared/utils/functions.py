@@ -443,9 +443,9 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection_name=MONGO_CO
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
 
     try:
-        db, _ = connect_to_mongo()  
+        db, fs = connect_to_mongo()  
         collection = db[collection_name]  
-        logger.info(f"✅ Conectado a MongoDB en la base de datos: '{MONGO_DB_NAME}', colección: '{collection_name}'")
+        logger.info(f"✅ Conectado a MongoDB en la base de datos: '{MONGO_DB_NAME}', colección: '{collection}'")
 
         if all_scraper.strip():
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
