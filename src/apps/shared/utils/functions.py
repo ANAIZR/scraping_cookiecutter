@@ -236,10 +236,9 @@ def connect_to_mongo():
 
         client = MongoClient(MONGO_URI)
         db = client[MONGO_DB_NAME]
-        fs = gridfs.GridFS(db)
 
         logger.info(f"✅ Conexión a MongoDB establecida correctamente: {MONGO_DB_NAME}")
-        return db, fs  
+        return db  
 
     except Exception as e:
         logger.error(f"❌ Error al conectar a MongoDB: {str(e)}")
@@ -255,7 +254,7 @@ def save_to_mongo(collection_name, content_text, href, url):
         return None
 
     try:
-        db, fs = connect_to_mongo()  
+        db = connect_to_mongo()  
         collection = db[collection_name]  
 
         document = {
@@ -439,57 +438,81 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection):
         return {"error": f"Error al guardar datos del scraper: {str(e)}"}
 
 
-def process_scraper_data(all_scraper, url, sobrenombre, collection_name=MONGO_COLLECTION_NAME):
+def process_scraper_data(all_scraper, url, sobrenombre, collection_name=None):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
 
     try:
-        db, fs = connect_to_mongo()  
-        collection = db[collection_name]  
-        logger.info(f"✅ Conectado a MongoDB en la base de datos: '{MONGO_DB_NAME}', colección: '{collection}'")
+        db = connect_to_mongo() 
+        
+        if collection_name is None:
+            collection_name = collection["collection"]
 
-        if all_scraper.strip():
+        if not isinstance(collection_name, str) or not collection_name.strip():
+            raise ValueError(f"collection_name debe ser un string, pero recibió {type(collection_name).__name__}: {collection_name}")
+
+        collection = db[collection_name] 
+        logger.info(f"✅ Conectado a MongoDB en la base de datos: '{db.name}', colección: '{collection_name}'")
+
+        if all_scraper and all_scraper.strip(): 
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
-            
-            collection.insert_one({
+
+            document = {
                 "scraping_date": datetime.now(),
                 "Etiquetas": ["planta", "plaga"],
                 "contenido": all_scraper,
                 "url": url,
-            })
+            }
+            object_id = collection.insert_one(document).inserted_id
+            logger.info(f"📂 Documento guardado en `{collection_name}` con ObjectId: {object_id}")
 
-            # Mantener solo las 2 versiones más recientes en `collection`
+            # Mantener solo las 2 versiones más recientes
             existing_versions = list(collection.find({"url": url}).sort("scraping_date", -1))
             if len(existing_versions) > 2:
                 oldest_version = existing_versions[-1]
                 collection.delete_one({"_id": oldest_version["_id"]})
-                logger.info(f"🗑 Se eliminó la versión más antigua con ObjectId: {oldest_version['_id']}")
+                logger.info(f"🗑 Eliminada versión más antigua con ObjectId: {oldest_version['_id']}")
 
             return response_data
 
         else:
-            logger.warning(f"No se encontraron datos para scrapear en la URL: {url}")
+            logger.warning(f"⚠️ No se encontraron datos para scrapear en la URL: {url}")
             return {
                 "status": "no_content",
                 "url": url,
                 "message": "No se encontraron datos para scrapear.",
             }
 
-    except TimeoutException:
-        logger.error(f"Error: la página {url} está tardando demasiado en responder.")
+    except ValueError as e:
+        logger.error(f"⚠️ Error en los parámetros: {str(e)}")
+        return {
+            "status": "parameter_error",
+            "url": url,
+            "message": str(e),
+        }
+    except PyMongoError as e:
+        logger.error(f"❌ Error de MongoDB: {str(e)}")
+        return {
+            "status": "mongo_error",
+            "url": url,
+            "message": "Error al interactuar con MongoDB.",
+            "error": str(e),
+        }
+    except TimeoutError:
+        logger.error(f"⏳ Error: la página {url} está tardando demasiado en responder.")
         return {
             "status": "timeout",
             "url": url,
             "message": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
         }
     except ConnectionError:
-        logger.error("Error de conexión a la URL.")
+        logger.error("🔌 Error de conexión a la URL.")
         return {
             "status": "connection_error",
             "url": url,
             "message": "No se pudo conectar a la página web.",
         }
     except Exception as e:
-        logger.error(f"Error al procesar datos del scraper: {str(e)}")
+        logger.error(f"❌ Error inesperado al procesar los datos del scraper: {str(e)}")
         return {
             "status": "error",
             "url": url,
