@@ -437,23 +437,23 @@ def save_scraper_data_pdf(all_scraper, url, sobrenombre, collection):
         logger.error(f"❌ Error al guardar datos del scraper: {str(e)}")
         return {"error": f"Error al guardar datos del scraper: {str(e)}"}
 
-
 def process_scraper_data(all_scraper, url, sobrenombre, collection_name=None):
     logger = get_logger("PROCESANDO DATOS DE ALL SCRAPER")
 
     try:
-        db = connect_to_mongo() 
+        db = connect_to_mongo()  # Conectar a MongoDB
         
+        # ✅ Asegurar que `collection_name` tenga un valor válido
         if collection_name is None:
-            collection_name = collection["collection"]
+            collection_name = MONGO_COLLECTION_NAME  # Usa el valor por defecto
 
         if not isinstance(collection_name, str) or not collection_name.strip():
             raise ValueError(f"collection_name debe ser un string, pero recibió {type(collection_name).__name__}: {collection_name}")
 
-        collection = db[collection_name] 
+        collection = db[collection_name]  # ✅ Acceder a la colección correctamente
         logger.info(f"✅ Conectado a MongoDB en la base de datos: '{db.name}', colección: '{collection_name}'")
 
-        if all_scraper and all_scraper.strip(): 
+        if all_scraper and all_scraper.strip():  
             response_data = save_scraper_data(all_scraper, url, sobrenombre)
 
             document = {
@@ -484,41 +484,19 @@ def process_scraper_data(all_scraper, url, sobrenombre, collection_name=None):
 
     except ValueError as e:
         logger.error(f"⚠️ Error en los parámetros: {str(e)}")
-        return {
-            "status": "parameter_error",
-            "url": url,
-            "message": str(e),
-        }
+        return {"status": "parameter_error", "url": url, "message": str(e)}
     except PyMongoError as e:
         logger.error(f"❌ Error de MongoDB: {str(e)}")
-        return {
-            "status": "mongo_error",
-            "url": url,
-            "message": "Error al interactuar con MongoDB.",
-            "error": str(e),
-        }
+        return {"status": "mongo_error", "url": url, "message": "Error en MongoDB.", "error": str(e)}
     except TimeoutError:
         logger.error(f"⏳ Error: la página {url} está tardando demasiado en responder.")
-        return {
-            "status": "timeout",
-            "url": url,
-            "message": "La página está tardando demasiado en responder. Verifique si la URL es correcta o intente nuevamente más tarde.",
-        }
+        return {"status": "timeout", "url": url, "message": "La página está tardando demasiado en responder."}
     except ConnectionError:
         logger.error("🔌 Error de conexión a la URL.")
-        return {
-            "status": "connection_error",
-            "url": url,
-            "message": "No se pudo conectar a la página web.",
-        }
+        return {"status": "connection_error", "url": url, "message": "No se pudo conectar a la página web."}
     except Exception as e:
         logger.error(f"❌ Error inesperado al procesar los datos del scraper: {str(e)}")
-        return {
-            "status": "error",
-            "url": url,
-            "message": "Ocurrió un error al procesar los datos.",
-            "error": str(e),
-        }
+        return {"status": "error", "url": url, "message": "Ocurrió un error.", "error": str(e)}
 
 
 
