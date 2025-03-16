@@ -87,7 +87,7 @@ def scraper_pdf(url, sobrenombre, start_page=1, end_page=None):
             all_scraper, 
             url,
             sobrenombre,
-            collection,
+            collection
         )
 
         logger.info(f"DEBUG - Respuesta de save_scraper_data_pdf: {response_data}")

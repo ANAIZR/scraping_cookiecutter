@@ -135,7 +135,7 @@ def scraper_aphidnet(url, sobrenombre):
         if urls_not_scraped:
             all_scraper += "URLs fallidas:\n" + "\n".join(urls_not_scraped) + "\n"
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,)        
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
     except requests.RequestException as e:
         return JsonResponse(

@@ -58,7 +58,7 @@ def scraper_coleoptera_neotropical(url, sobrenombre):
 
         logger.info(f"Filas scrapeadas: {scraped_rows}, Filas fallidas: {failed_rows}")
 
-        response = process_scraper_data(report_text, url, sobrenombre,collection)
+        response = process_scraper_data(report_text, url, sobrenombre)
         return response
 
     except Exception as e:

@@ -94,7 +94,7 @@ def scraper_ansci_cornell(url, sobrenombre):
         all_scraper += f"Total fallidos: {total_failed_scrapes}\n"
         all_scraper += "\nURLs fallidas:\n" + "\n".join(failed_urls)
 
-        response = process_scraper_data(all_scraper, url, sobrenombre,)        
+        response = process_scraper_data(all_scraper, url, sobrenombre)        
         return response
 
     except Exception as e:

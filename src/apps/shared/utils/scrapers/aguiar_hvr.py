@@ -175,7 +175,7 @@ def scraper_aguiar_hvr(url, sobrenombre):
         state.all_scraper += (
             "\n\nLista de enlaces scrapeados:\n" + "\n".join(state.scraped_urls)
         )
-        response = process_scraper_data(state.all_scraper, url, sobrenombre,collection)
+        response = process_scraper_data(state.all_scraper, url, sobrenombre)
         return response
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
