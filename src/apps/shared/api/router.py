@@ -32,7 +32,7 @@ urlpatterns = [
     path("related_species/<str:query>/", get_related_species, name="related_species"),
         
     path('plague-summary/<int:cabi_id>/', get_plague_summary_view, name='plague_summary'),
-    path('api/plague-news/<int:cabi_id>/', get_plague_news, name='plague-news'),
+    path('plague-news/<int:cabi_id>/', get_plague_news, name='plague-news'),
 
 
 ]
