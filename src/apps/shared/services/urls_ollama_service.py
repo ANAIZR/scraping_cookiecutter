@@ -129,10 +129,9 @@ class OllamaService:
         """
 
         response = requests.post(
-            "http://100.122.137.82:11434/api/chat"
-,
-            json={"model": "llama3:70b", "messages": [{"role": "user", "content": prompt}]},
-            stream=True,
+            "http://127.0.0.1:11434/api/chat",
+             json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
+             stream=True,
         )
 
         full_response = ""
