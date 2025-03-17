@@ -10,7 +10,7 @@ from .viewsets.species_viewsets import (
     SpeciesCABIViewSet,
     get_related_species,
     get_plague_summary_view,
-    get_plague_news
+    get_plague_news, get_relevant_plague_summary_view
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -33,6 +33,7 @@ urlpatterns = [
         
     path('plague-summary/<int:cabi_id>/', get_plague_summary_view, name='plague_summary'),
     path('plague-news/<int:cabi_id>/', get_plague_news, name='plague-news'),
+    path('plague-summary-relevant/<int:cabi_id>/', get_relevant_plague_summary_view, name='plague-summary-relevant'),
 
 
 ]

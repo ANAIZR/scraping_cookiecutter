@@ -79,6 +79,19 @@ def get_plague_summary_view(request, cabi_id):
         return JsonResponse({"error": "CabiSpecies no encontrado"}, status=404)
 
     return JsonResponse(scraper_info, safe=False)
+def get_relevant_plague_summary_view(request, cabi_id):
+
+    scraper_info = ResumeService.get_plague_summary(cabi_id)
+
+    if scraper_info is None:
+        return JsonResponse({"error": "CabiSpecies no encontrado"}, status=404)
+
+    filtered_info = [
+        data for data in scraper_info
+        if data.get("hosts") or data.get("distribution") or data.get("climatic_variables")  # Verifica que tenga info
+    ]
+
+    return JsonResponse(filtered_info, safe=False)
 class Pagination(PageNumberPagination):
     page_size = 10 
     page_size_query_param = 'page_size' 
