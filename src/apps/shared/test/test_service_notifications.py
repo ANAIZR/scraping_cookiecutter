@@ -1,81 +1,61 @@
-import pytest
+import unittest
 from unittest.mock import patch, MagicMock
-from apps.shared.services.notifications_service import SpeciesNotificationService
+from django.utils import timezone
+from datetime import timedelta
+from src.apps.shared.services.notifications_service import SpeciesNotificationService
 
-@pytest.mark.django_db
-class TestSpeciesNotificationService:
+class TestSpeciesNotificationService(unittest.TestCase):
+    
+    def setUp(self):
+        self.service = SpeciesNotificationService()
+        self.service.now = timezone.now()
+        self.service.last_scraping_time = self.service.now - timedelta(hours=1)
 
-    @pytest.fixture
-    def mock_email_service(self):
-        with patch('src.apps.shared.services.notifications.EmailService.send_email') as mock:
-            yield mock
+    @patch('src.apps.shared.services.notifications_service.SpeciesNews.objects.filter')
+    def test_check_new_news_and_notify_no_news(self, mock_news_filter):
+        # Arrange
+        mock_news_filter.return_value.exists.return_value = False
+        
+        # Act
+        self.service.check_new_news_and_notify()
+        
+        # Assert
+        mock_news_filter.assert_called_once()
 
-    @pytest.fixture
-    def mock_species(self):
-        with patch('src.apps.shared.models.Species.objects') as mock:
-            yield mock
+    @patch('src.apps.shared.services.notifications_service.SpeciesNews.objects.filter')
+    @patch('src.apps.shared.services.notifications_service.SpeciesSubscription.objects.filter')
+    def test_check_new_news_and_notify_with_news(self, mock_subscriptions_filter, mock_news_filter):
+        # Arrange
+        mock_news = MagicMock()
+        mock_news.exists.return_value = True
+        mock_news.values_list.return_value = ["Species A", "Species B"]
+        
+        mock_subscription = MagicMock()
+        mock_subscription.user.email = "user@example.com"
+        mock_subscription.scientific_name = "Species A"
+        
+        mock_news_filter.return_value = mock_news
+        mock_subscriptions_filter.return_value = [mock_subscription]
+        
+        # Act
+        with patch.object(self.service, 'notify_user_of_new_news') as mock_notify:
+            self.service.check_new_news_and_notify()
+            
+            # Assert
+            mock_notify.assert_called_once_with(mock_subscription.user, mock_subscription, mock_news.filter())
 
-    @pytest.fixture
-    def mock_subscription(self):
-        with patch('src.apps.shared.models.SpeciesSubscription.objects') as mock:
-            yield mock
-
-    def test_check_new_species_and_notify_no_new_species(self, mock_species, mock_subscription, mock_email_service):
-        mock_species.filter.return_value.exists.return_value = False
-
-        service = SpeciesNotificationService()
-        service.check_new_species_and_notify(['https://example.com'])
-
-        mock_email_service.assert_not_called()
-
-    def test_check_new_species_and_notify_with_matches(self, mock_species, mock_subscription, mock_email_service):
-        mock_species_instance = MagicMock()
-        mock_species_instance.exists.return_value = True
-        mock_species_instance.count.return_value = 1  
-
-        mock_species.filter.return_value = mock_species_instance
-        mock_subscription.filter.return_value = [MagicMock(user=MagicMock(email='user@example.com'),
-                                                        scientific_name='Test',
-                                                        distribution='',
-                                                        hosts='')]
-
-        service = SpeciesNotificationService()
-
-        # Simular un QuerySet-like en lugar de una lista
-        mock_species_queryset = MagicMock()
-        mock_species_queryset.exists.return_value = True
-        mock_species_queryset.count.return_value = 1
-        mock_species_queryset.__iter__.return_value = [
-            MagicMock(scientific_name='Test Species', source_url='https://example.com/species/1')
-        ]
-
-        service.filter_species_by_subscription = MagicMock(return_value=mock_species_queryset)
-
-        service.check_new_species_and_notify(['https://example.com'])
-
-        mock_email_service.assert_called_once()
-        args, kwargs = mock_email_service.call_args
-
-        print(f"Contenido del email: {args[0]}")  # Depuración
-
-        assert '🔔 Se han añadido 1 nuevos registros' in args[0]
-        assert ['user@example.com'] == args[1]
-        assert 'Test Species - https://example.com/species/1' in args[2]
-
-
-
-    def test_filter_species_by_subscription(self, mock_species):
-        mock_species.filter.return_value = mock_species  
-
-        service = SpeciesNotificationService()
-
-        subscription_mock = MagicMock(
-            scientific_name='SpeciesX',
-            distribution='Peru',  
-            hosts=''
-        )
-
-        service.filter_species_by_subscription(mock_species, subscription_mock)
-
-        mock_species.filter.assert_any_call(scientific_name__icontains='SpeciesX')
-        mock_species.filter.assert_any_call(distribution__icontains='Peru')
+    @patch('src.apps.shared.services.notifications_service.EmailService.send_email')
+    def test_notify_user_of_new_news(self, mock_send_email):
+        # Arrange
+        user = MagicMock()
+        user.email = "user@example.com"
+        subscription = MagicMock()
+        subscription.scientific_name = "Species A"
+        news = [MagicMock(publication_date="2024-03-17", source_url="http://example.com", summary="New discovery!")]
+        
+        # Act
+        self.service.notify_user_of_new_news(user, subscription, news)
+        
+        # Assert
+        mock_send_email.assert_called_once()
+        

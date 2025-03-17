@@ -1,17 +1,16 @@
-import pytest
+import unittest
+from unittest.mock import patch, MagicMock
 from src.apps.shared.tasks.notifications_tasks import check_new_species_task
 
-class TestCheckNewSpeciesTask:
-
-    @pytest.fixture
-    def mock_notification_service(self, mocker):
-        return mocker.patch('src.apps.shared.services.notifications.SpeciesNotificationService')
-
-    def test_check_new_species_task(self, mock_notification_service):
-        mock_instance = mock_notification_service.return_value
-        mock_instance.check_new_species_and_notify.return_value = []  # ✅ Evita el error de iteración sobre None
-
-        urls = ["https://example.com/species1", "https://example.com/species2"]
-        check_new_species_task(None, urls)  # Llama a la tarea con URLs
-
-        mock_instance.check_new_species_and_notify.assert_called_once_with(urls)
+class TestCheckNewSpeciesTask(unittest.TestCase):
+    
+    @patch('src.apps.shared.tasks.notifications_tasks.SpeciesNotificationService')
+    def test_check_new_species_task(self, mock_service):
+        # Arrange
+        mock_instance = mock_service.return_value
+        
+        # Act
+        check_new_species_task(None, ["http://example.com"])  # Simulación de ejecución Celery
+        
+        # Assert
+        mock_instance.check_new_news_and_notify.assert_called_once()

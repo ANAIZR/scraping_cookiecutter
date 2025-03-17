@@ -61,13 +61,10 @@ def get_related_species(request, query):
 
 def get_plague_news(request, cabi_id):
     try:
-        # Obtener la especie por su ID
         species = CabiSpecies.objects.get(id=cabi_id)
 
-        # Filtrar las noticias relacionadas con el `scientific_name`
         related_news = SpeciesNews.objects.filter(scientific_name=species.scientific_name)
 
-        # Serializar los datos de las noticias
         news_data = SpeciesNewsSerializer(related_news, many=True).data
 
         return JsonResponse(news_data, safe=False)
@@ -191,7 +188,6 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
         )
 
     def destroy(self, request, *args, **kwargs):
-        """Elimina una suscripción del usuario autenticado."""
         instance = get_object_or_404(SpeciesSubscription, id=kwargs["pk"], user=request.user)
         self.perform_destroy(instance)
 
@@ -201,7 +197,6 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
         )
 
     def send_subscription_email(self, subscription):
-        """Envía un correo de confirmación al usuario cuando se suscribe a una especie."""
         user = subscription.user
         scientific_name = subscription.scientific_name
 

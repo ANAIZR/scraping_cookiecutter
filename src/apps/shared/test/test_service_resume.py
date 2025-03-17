@@ -1,0 +1,65 @@
+import unittest
+from unittest.mock import patch, MagicMock
+from src.apps.shared.services.resume_service import ResumeService
+from src.apps.shared.models.species import CabiSpecies, Species
+from src.apps.shared.models.urls import ScraperURL
+from django.test import TestCase
+
+class TestResumeService(TestCase):
+    
+    def setUp(self):
+        self.service = ResumeService()
+
+    @patch('src.apps.shared.services.resume_service.CabiSpecies.objects.get')
+    def test_get_plague_summary_species_not_found(self, mock_cabi_get):
+        # Arrange
+        mock_cabi_get.side_effect = CabiSpecies.DoesNotExist
+        
+        # Act
+        result = self.service.get_plague_summary(1)
+        
+        # Assert
+        self.assertIsNone(result)
+
+    @patch('src.apps.shared.services.resume_service.CabiSpecies.objects.get')
+    @patch('src.apps.shared.services.resume_service.Species.objects.filter')
+    @patch('src.apps.shared.services.resume_service.ScraperURL.objects.all')
+    def test_get_plague_summary_with_data(self, mock_scraper_all, mock_species_filter, mock_cabi_get):
+        # Arrange
+        mock_cabi_species = MagicMock()
+        mock_cabi_species.scientific_name = "Test Species"
+        mock_cabi_get.return_value = mock_cabi_species
+        
+        mock_species = MagicMock()
+        mock_species.exclude.return_value.values_list.side_effect = lambda *args, **kwargs: {"hosts": ["Host1"], "distribution": ["Region1"], "environmental_conditions": ["Climate1"]}[args[0]]
+        mock_species_filter.return_value = [mock_species]
+        
+        mock_scraper = MagicMock()
+        mock_scraper.id = 1
+        mock_scraper.url = "http://scraper.com"
+        mock_scraper_all.return_value = [mock_scraper]
+        
+        # Act
+        result = self.service.get_plague_summary(1)
+        
+        # Assert
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["hosts"], "Host1")
+        self.assertEqual(result[0]["distribution"], "Region1")
+        self.assertEqual(result[0]["climatic_variables"], "Climate1")
+
+    def test_integration_get_plague_summary(self):
+        # Arrange
+        cabi_species = CabiSpecies.objects.create(scientific_name="Test Species")
+        scraper = ScraperURL.objects.create(url="http://scraper.com")
+        species = Species.objects.create(scientific_name="Test Species", scraper_source=scraper, hosts="Host1", distribution="Region1", environmental_conditions="Climate1")
+        
+        # Act
+        result = self.service.get_plague_summary(cabi_species.id)
+        
+        # Assert
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["hosts"], "Host1")
+        self.assertEqual(result[0]["distribution"], "Region1")
+        self.assertEqual(result[0]["climatic_variables"], "Climate1")
+

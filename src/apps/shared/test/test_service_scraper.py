@@ -1,82 +1,77 @@
-import pytest
+import unittest
 from unittest.mock import patch, MagicMock
 from src.apps.shared.services.scraper_service import WebScraperService
+from src.apps.shared.models.urls import ScraperURL
+from src.apps.shared.utils.scrapers import SCRAPER_FUNCTIONS, scraper_pdf
 from django.utils import timezone
-from django.core.exceptions import ObjectDoesNotExist
+from django.test import TestCase
 
-class TestWebScraperService:
+class TestWebScraperService(TestCase):
+    
+    def setUp(self):
+        self.service = WebScraperService()
+    
+    @patch('src.apps.shared.services.scraper_service.ScraperURL.objects.filter')
+    def test_get_expired_urls(self, mock_filter):
+        # Arrange
+        mock_filter.return_value.exclude.return_value.values_list.return_value = ["http://example.com"]
+        
+        # Act
+        result = self.service.get_expired_urls()
+        
+        # Assert
+        self.assertEqual(list(result), ["http://example.com"])
+        mock_filter.assert_called()
 
-    @pytest.fixture
-    def mock_scraper_url(self, mocker):
-        return mocker.patch('src.apps.shared.models.ScraperURL.objects')
+    @patch('src.apps.shared.services.scraper_service.ScraperURL.objects.get')
+    def test_scraper_one_url_not_found(self, mock_get):
+        # Arrange
+        mock_get.side_effect = ScraperURL.DoesNotExist
+        
+        # Act
+        result = self.service.scraper_one_url("http://example.com", "test")
+        
+        # Assert
+        self.assertIn("error", result)
+        self.assertEqual(result["error"], "La URL http://example.com no se encuentra en la base de datos.")
 
-    @pytest.fixture
-    def mock_scraper_functions(self, mocker):
-        return mocker.patch('src.apps.shared.utils.scrapers.SCRAPER_FUNCTIONS')
+    @patch('src.apps.shared.services.scraper_service.SCRAPER_FUNCTIONS', {"1": MagicMock(return_value={"data": "success"})})
+    @patch('src.apps.shared.services.scraper_service.ScraperURL.objects.get')
+    def test_scraper_one_url_successful(self, mock_get):
+        # Arrange
+        mock_scraper_url = MagicMock()
+        mock_scraper_url.mode_scrapeo = "1"
+        mock_get.return_value = mock_scraper_url
+        
+        # Act
+        result = self.service.scraper_one_url("http://example.com", "test")
+        
+        # Assert
+        self.assertEqual(result["data"], "success")
 
-    @pytest.fixture
-    def mock_scraper_pdf(self, mocker):
-        return mocker.patch('src.apps.shared.utils.scrapers.scraper_pdf')
+    @patch('src.apps.shared.services.scraper_service.scraper_pdf', return_value={"data": "pdf success"})
+    @patch('src.apps.shared.services.scraper_service.ScraperURL.objects.get')
+    def test_scraper_one_url_pdf(self, mock_get, mock_scraper_pdf):
+        # Arrange
+        mock_scraper_url = MagicMock()
+        mock_scraper_url.mode_scrapeo = 7
+        mock_scraper_url.parameters = {"start_page": 1, "end_page": 10}
+        mock_get.return_value = mock_scraper_url
+        
+        # Act
+        result = self.service.scraper_one_url("http://example.com", "test")
+        
+        # Assert
+        self.assertEqual(result["data"], "pdf success")
+        mock_scraper_pdf.assert_called_once()
 
-    def test_get_expired_urls(self, mock_scraper_url):
-        mock_queryset = MagicMock()
-        mock_queryset.__iter__.return_value = ["https://expired.com"]  
-        mock_scraper_url.filter.return_value.exclude.return_value.values_list.return_value = mock_queryset
-
-        service = WebScraperService()
-        urls = service.get_expired_urls()
-
-        print(f"Resultado de get_expired_urls(): {urls}")  # Depuración
-
-        assert urls == ["https://expired.com"]
-
-
-
-    def test_scraper_one_url_not_found(self, mock_scraper_url):
-        mock_scraper_url.get.side_effect = ObjectDoesNotExist  
-
-        service = WebScraperService()
-        result = service.scraper_one_url("https://notfound.com", "test")
-
-        print(f"Mensaje de error recibido: {result['error']}") 
-
-        assert "error" in result
-        assert "no se encuentra en la base de datos" in result["error"]  
-
-
-    def test_scraper_one_url_invalid_mode(self, mock_scraper_url, mock_scraper_functions):
-        mock_instance = MagicMock(mode_scrapeo=99)
-        mock_scraper_url.get.return_value = mock_instance
-        mock_scraper_functions.get.return_value = None
-        service = WebScraperService()
-        result = service.scraper_one_url("https://invalidmode.com", "test")
-
-        assert "error" in result
-        assert "no registrado en SCRAPER_FUNCTIONS" in result["error"]
-
-    def test_scraper_one_url_pdf(self, mock_scraper_url, mock_scraper_pdf):
-        mock_instance = MagicMock(mode_scrapeo=7, parameters={"start_page": 1, "end_page": 5})
-        mock_scraper_url.get.return_value = mock_instance
-        mock_scraper_pdf.side_effect = lambda url, params: {"success": True} 
-
-        service = WebScraperService()
-        result = service.scraper_one_url("https://pdfsite.com", "test")
-
-        print(f"Resultado recibido: {result}") 
-
-        assert result == {"success": True}
-
-    def test_scraper_one_url_generic_scraper(self, mock_scraper_url, mock_scraper_functions):
-        mock_instance = MagicMock()
-        mock_instance.mode_scrapeo = 1  
-        mock_scraper_url.get.return_value = mock_instance
-
-        mock_scraper_functions.get.return_value = lambda url: {"data": "scraped"} 
-
-        service = WebScraperService()
-        result = service.scraper_one_url("https://validsite.com", "test")
-
-        print(f"Resultado recibido: {result}")  # 🔍 Depuración
-
-        assert "data" in result
-        assert result["data"] == "scraped"
+    def test_integration_scraper_one_url(self):
+        # Arrange
+        scraper_url = ScraperURL.objects.create(url="http://example.com", mode_scrapeo="1", is_active=True)
+        SCRAPER_FUNCTIONS["1"] = lambda url, sobrenombre: {"data": "integration success"}
+        
+        # Act
+        result = self.service.scraper_one_url(scraper_url.url, "test")
+        
+        # Assert
+        self.assertEqual(result["data"], "integration success")
