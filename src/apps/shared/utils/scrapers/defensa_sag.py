@@ -103,10 +103,10 @@ def scraper_defensa_sag(url, sobrenombre):
                             if content_text:
                                 object_id = save_to_mongo("urls_scraper", content_text, href, url)
                                 total_scraped_links += 1
-                                scraped_urls.append(href)
+                                scraped_urls.add(href)
                                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
                             else:
-                                non_scraped_urls.append(href)
+                                non_scraped_urls.add(href)
     
                 except NoSuchElementException:
                     continue
