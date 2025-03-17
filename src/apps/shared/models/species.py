@@ -98,7 +98,6 @@ class ReportComparison(models.Model):
 class SpeciesSubscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     scientific_name = models.CharField(max_length=255, blank=False, null=False)  # Obligatorio
-    name_subscription = models.CharField(max_length=255, blank=False, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
