@@ -117,7 +117,7 @@ def scraper_pest_alerts(url, sobrenombre):
                 "⚠️ **URLs no scrapeadas:**\n" + "\n".join(urls_not_scraped) + "\n"
             )
 
-        response = process_scraper_data(all_scraper, url, sobrenombre)        
+        response = process_scraper_data(all_scraper, url, sobrenombre,"news_articles")        
         return response
      
 

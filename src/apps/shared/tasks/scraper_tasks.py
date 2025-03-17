@@ -2,6 +2,7 @@ from celery import shared_task, chain
 from src.apps.shared.services.scraper_service import WebScraperService
 from src.apps.shared.services.urls_ollama_service import OllamaService
 from src.apps.shared.services.cabi_ollama_service import OllamaCabiService
+from src.apps.shared.services.news_services import NewsScraperService
 from src.apps.shared.models.urls import ScraperURL
 import logging
 from django.utils import timezone
@@ -11,42 +12,62 @@ from celery import chain
 from django.db import transaction
 from django.utils import timezone
 import logging
+
 logger = logging.getLogger(__name__)
 
 CABI_URL = "https://www.cabidigitallibrary.org/product/qc"
 
+
 @shared_task(bind=True)
 def process_scraped_data_task(self, url, *args, **kwargs):
+    news_urls = [
+        "https://www.pestalerts.org/nappo/official-pest-reports/",
+        "https://www.ippc.int/en/countries/south-africa/pestreports/",
+        "https://cahfsa.org/#",
+        "https://cahfsa.org/2024-3/",
+        "https://www.aphis.usda.gov/publications",
+        "https://www.aphis.usda.gov/news/program-updates?page=1&search=&searchSelect=Plant+Protection+and+Quarantine"
+    ]
     if not url:
         logger.error("No se recibió una URL válida en process_scraped_data_task")
         return None
 
-    if url == CABI_URL:
+    elif url in news_urls:
+        logger.info(f"🔍 Usando NewsScraperService para {url}")
+        scraper = NewsScraperService()
+
+    elif url == CABI_URL:
         logger.info(f"🔍 Usando OllamaCabiService para {url}")
         scraper = OllamaCabiService()
     else:
         logger.info(f"🔍 Usando OllamaService para {url}")
         scraper = OllamaService()
 
-    scraper.extract_and_save_species(url) 
+    scraper.extract_and_save_species(url)
 
     return url
 
 
 @shared_task(bind=True, max_retries=2)
 def scraper_url_task(self, url, *args, **kwargs):
-    """
-    Tarea Celery para scrapear una URL. Se asegura de que la URL no se procese múltiples veces en paralelo.
-    """
+
 
     try:
         with transaction.atomic():
             try:
-                scraper_url = ScraperURL.objects.select_for_update(nowait=True).get(url=url)
+                scraper_url = ScraperURL.objects.select_for_update(nowait=True).get(
+                    url=url
+                )
 
                 if scraper_url.estado_scrapeo == "en_progreso":
-                    logger.info(f"Task {self.request.id}: La URL {url} ya está en progreso.")
-                    return {"status": "skipped", "url": url, "message": "Scraping ya en progreso"}
+                    logger.info(
+                        f"Task {self.request.id}: La URL {url} ya está en progreso."
+                    )
+                    return {
+                        "status": "skipped",
+                        "url": url,
+                        "message": "Scraping ya en progreso",
+                    }
 
                 scraper_url.estado_scrapeo = "en_progreso"
                 scraper_url.error_scrapeo = ""
@@ -54,25 +75,41 @@ def scraper_url_task(self, url, *args, **kwargs):
                 scraper_url.save()
 
             except ScraperURL.DoesNotExist:
-                logger.error(f"Task {self.request.id}: No se encontró ScraperURL para {url}")
-                return {"status": "failed", "url": url, "error": "ScraperURL no encontrado"}
+                logger.error(
+                    f"Task {self.request.id}: No se encontró ScraperURL para {url}"
+                )
+                return {
+                    "status": "failed",
+                    "url": url,
+                    "error": "ScraperURL no encontrado",
+                }
 
             except Exception as e:
-                logger.error(f"Task {self.request.id}: Error al bloquear la URL {url}: {str(e)}")
-                return {"status": "failed", "url": url, "error": "No se pudo bloquear la URL"}
+                logger.error(
+                    f"Task {self.request.id}: Error al bloquear la URL {url}: {str(e)}"
+                )
+                return {
+                    "status": "failed",
+                    "url": url,
+                    "error": "No se pudo bloquear la URL",
+                }
 
         scraper_service = WebScraperService()
         sobrenombre = scraper_url.sobrenombre
         result = scraper_service.scraper_one_url(url, sobrenombre)
 
         if "error" in result:
-            logger.error(f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}")
+            logger.error(
+                f"Task {self.request.id}: Scraping fallido para {url}: {result['error']}"
+            )
             scraper_url.estado_scrapeo = "fallido"
             scraper_url.error_scrapeo = result["error"]
             scraper_url.save()
             return {"status": "failed", "url": url, "error": result["error"]}
 
-        logger.info(f"Task {self.request.id}: Scraping exitoso para {url}, resultado: {result}")
+        logger.info(
+            f"Task {self.request.id}: Scraping exitoso para {url}, resultado: {result}"
+        )
         scraper_url.estado_scrapeo = "exitoso"
         scraper_url.error_scrapeo = ""
         scraper_url.save()
@@ -83,18 +120,23 @@ def scraper_url_task(self, url, *args, **kwargs):
         ]
 
         chain(*tareas).apply_async()
-        logger.info(f"Task {self.request.id}: Se ha encadenado el procesamiento para {url}")
+        logger.info(
+            f"Task {self.request.id}: Se ha encadenado el procesamiento para {url}"
+        )
 
         return {
             "status": scraper_url.estado_scrapeo,
             "url": url,
-            "data": result if result else "No data scraped"
+            "data": result if result else "No data scraped",
         }
 
     except Exception as e:
-        logger.error(f"Task {self.request.id}: Error inesperado en el scraping de {url}: {str(e)}")
+        logger.error(
+            f"Task {self.request.id}: Error inesperado en el scraping de {url}: {str(e)}"
+        )
         raise self.retry(exc=e, countdown=30)
-    
+
+
 @shared_task(bind=True, max_retries=3)
 def scraper_expired_urls_task(self, *args, **kwargs):
     try:
@@ -113,4 +155,4 @@ def scraper_expired_urls_task(self, *args, **kwargs):
         logger.info("Tareas encoladas en secuencia correctamente.")
     except Exception as e:
         logger.error(f"Error al encolar scraper en secuencia: {str(e)}")
-        raise self.retry(exc=e, countdown=60)  
+        raise self.retry(exc=e, countdown=60)
