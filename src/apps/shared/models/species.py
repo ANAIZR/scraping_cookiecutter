@@ -97,31 +97,16 @@ class ReportComparison(models.Model):
 
 class SpeciesSubscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    scientific_name = models.CharField(max_length=255, blank=True, null=True)
-    distribution = models.JSONField(
-        blank=True, null=True
-    ) 
-    hosts = models.JSONField(blank=True, null=True)  # JSON para múltiples hosts
+    scientific_name = models.CharField(max_length=255, blank=False, null=False)  # Obligatorio
     name_subscription = models.CharField(max_length=255, blank=False, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "scientific_name", "distribution", "hosts")
+        unique_together = ("user", "scientific_name")  # Solo se permite una suscripción por usuario y especie
         db_table = "species_subscription"
 
     def __str__(self):
-        filters = []
-        if self.scientific_name:
-            filters.append(f"Scientific Name: {self.scientific_name}")
-        if self.distribution:
-            filters.append(
-                f"Distribution: {', '.join(self.distribution)}"
-            )  
-        if self.hosts:
-            filters.append(f"Hosts: {', '.join(self.hosts)}")
-
-        filters_text = " | ".join(filters) if filters else "All"
-        return f"{self.user.email} -> {filters_text}"
+        return f"{self.user.email} -> Scientific Name: {self.scientific_name}"
     
 class SpeciesNews(models.Model):
     scientific_name = models.CharField(max_length=255, blank=True, null=True)  

@@ -169,55 +169,48 @@ class SpeciesSubscriptionViewSet(viewsets.ModelViewSet):
             if not self.request.user.is_staff:  
                 raise PermissionDenied("No tienes permisos para ver otras suscripciones.")
             return SpeciesSubscription.objects.filter(user_id=user_id).order_by("-created_at")
-        
+
         return SpeciesSubscription.objects.filter(user=self.request.user).order_by("-created_at")
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
-            subscription = serializer.save(user=request.user)  
+            subscription = serializer.save(user=request.user)  # Asigna el usuario autenticado
 
             self.send_subscription_email(subscription)
 
             return Response(
-                {"message": "Filtro guardado exitosamente", "data": serializer.data},
+                {"message": "Suscripción guardada exitosamente", "data": serializer.data},
                 status=status.HTTP_201_CREATED,
             )
-        
+
         return Response(
             {"error": "Error al guardar la suscripción", "details": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     def destroy(self, request, *args, **kwargs):
+        """Elimina una suscripción del usuario autenticado."""
         instance = get_object_or_404(SpeciesSubscription, id=kwargs["pk"], user=request.user)
         self.perform_destroy(instance)
 
         return Response(
-            {"message": "Filtro eliminado correctamente"},
+            {"message": "Suscripción eliminada correctamente"},
             status=status.HTTP_204_NO_CONTENT,
         )
 
     def send_subscription_email(self, subscription):
+        """Envía un correo de confirmación al usuario cuando se suscribe a una especie."""
         user = subscription.user
-        filters = []
-        if subscription.scientific_name:
-            filters.append(f"🔬 Nombre Científico: {subscription.scientific_name}")
-        if subscription.distribution:
-            filters.append(f"🌍 Distribución: {subscription.distribution}")
-        if subscription.hosts:
-            filters.append(f"🌱 Hospedante: {subscription.hosts}")
-
-        filters_text = "<br>".join(filters)
+        scientific_name = subscription.scientific_name
 
         subject = "✅ Confirmación de suscripción a especies"
         html_content = f"""
             <p>Hola {user.first_name},</p>
-            <p>Te has suscrito con éxito a notificaciones de nuevas especies.</p>
-            <p><b>Filtros guardados:</b></p>
-            <p>{filters_text}</p>
-            <p>Te notificaremos cuando haya nuevas coincidencias.</p>
+            <p>Te has suscrito con éxito a notificaciones sobre la especie:</p>
+            <p><b>🔬 Nombre Científico: {scientific_name}</b></p>
+            <p>Te notificaremos cuando haya nuevas noticias relacionadas.</p>
             <p>¡Gracias por usar nuestra plataforma!</p>
         """
 

@@ -7,5 +7,5 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True)
 def check_new_species_task(self, urls, *args, **kwargs):
 
-    notification_service = SpeciesNotificationService()  
-    notification_service.check_new_species_and_notify(urls) 
+    notification_service = SpeciesNotificationService()
+    notification_service.check_new_news_and_notify()
