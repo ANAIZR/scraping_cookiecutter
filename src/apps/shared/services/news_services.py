@@ -18,7 +18,7 @@ class NewsScraperService:
         self.db = self.client[settings.MONGO_DB_NAME]
         self.collection = self.db["news_articles"] 
 
-    def extract_and_save_news(self, url):
+    def extract_and_save_species(self, url):
         documents = list(self.collection.find({"url": url, "processed": {"$ne": True}}))
         if not documents:
             logger.info(f"🚫 No hay documentos pendientes para {url}.")
