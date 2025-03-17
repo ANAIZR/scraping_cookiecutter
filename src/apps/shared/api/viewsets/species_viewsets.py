@@ -1,8 +1,8 @@
 from rest_framework import viewsets
-from ...models.species import Species, ReportComparison, SpeciesSubscription,CabiSpecies
+from ...models.species import Species, ReportComparison, SpeciesSubscription,CabiSpecies, SpeciesNews
 from ...models.urls import ScraperURL
 from ..serializers.scraperURL_serializers import ScraperURLSerializer
-from ..serializers.species_serializers import SpeciesCabiSerializer,SpeciesSerializer, ReportComparisonSerializer, SpeciesSubscriptionSerializer
+from ..serializers.species_serializers import SpeciesCabiSerializer,SpeciesSerializer, ReportComparisonSerializer, SpeciesSubscriptionSerializer, SpeciesNewsSerializer
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
@@ -59,7 +59,21 @@ def get_related_species(request, query):
 
     return JsonResponse({"related_species": species_list})
 
+def get_plague_news(request, cabi_id):
+    try:
+        # Obtener la especie por su ID
+        species = CabiSpecies.objects.get(id=cabi_id)
 
+        # Filtrar las noticias relacionadas con el `scientific_name`
+        related_news = SpeciesNews.objects.filter(scientific_name=species.scientific_name)
+
+        # Serializar los datos de las noticias
+        news_data = SpeciesNewsSerializer(related_news, many=True).data
+
+        return JsonResponse(news_data, safe=False)
+
+    except CabiSpecies.DoesNotExist:
+        return JsonResponse({"error": "CabiSpecies no encontrado"}, status=404)
 def get_plague_summary_view(request, cabi_id):
 
     scraper_info = ResumeService.get_plague_summary(cabi_id)

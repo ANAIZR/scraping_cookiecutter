@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from src.apps.shared.models.species import Species, ReportComparison, SpeciesSubscription, CabiSpecies
+from src.apps.shared.models.species import Species, ReportComparison, SpeciesSubscription, CabiSpecies,SpeciesNews
 
 
 class SpeciesCabiSerializer(serializers.ModelSerializer):
@@ -37,3 +37,7 @@ class SpeciesSubscriptionSerializer(serializers.ModelSerializer):
         model = SpeciesSubscription
         fields = ["id", "user", "scientific_name", "distribution", "hosts","name_subscription", "created_at"]
         read_only_fields = ["id", "user", "created_at"]
+class SpeciesNewsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpeciesNews
+        fields = ['summary','distribution', 'publication_date', 'source_url']
