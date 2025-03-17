@@ -11,20 +11,22 @@ class TestWebScraperService(TestCase):
     def setUp(self):
         self.service = WebScraperService()
     
-    @patch('src.apps.shared.services.scraper_service.ScraperURL.objects')
-    def test_get_expired_urls(self, mock_scraper_objects):
-        # Arrange
-        mock_query_set = MagicMock()
-        mock_query_set.exclude.return_value.values_list.return_value = ["http://example.com"]
+    from unittest.mock import patch, MagicMock
 
-        mock_scraper_objects.filter.return_value = mock_query_set  # Asegura la cadena completa
+    @patch('src.apps.shared.services.scraper_service.ScraperURL.objects.filter')
+    def test_get_expired_urls(self, mock_filter):
+        mock_query_set = MagicMock()
+        
+        # Simula la secuencia completa de llamadas en el queryset
+        mock_filter.return_value.exclude.return_value.values_list.return_value = ["http://example.com"]
 
         # Act
         result = self.service.get_expired_urls()
 
         # Assert
-        self.assertEqual(list(result), ["http://example.com"])  # Convertimos a lista para comparar correctamente
-        mock_scraper_objects.filter.assert_called()  # Verifica que `.filter()` fue llamado
+        self.assertEqual(list(result), ["http://example.com"]) 
+        mock_filter.assert_called()  
+
 
     @patch('src.apps.shared.services.scraper_service.ScraperURL.objects.get')
     def test_scraper_one_url_not_found(self, mock_get):
@@ -89,10 +91,16 @@ class TestWebScraperService(TestCase):
         # Act
         result = self.service.scraper_one_url(scraper_url.url, "test")
 
-        # Debugging: imprime el resultado para ver si tiene la clave "data"
+        # 🔍 Debugging
         print("🔍 Resultado del scraper_one_url:", result)
+        
+        # 🔍 Verifica si result es un diccionario o un objeto inesperado
+        if not isinstance(result, dict):
+            print("❌ Resultado inesperado:", result)
+            raise AssertionError(f"Se esperaba un diccionario, pero se obtuvo: {type(result)}")
 
         # Assert
         self.assertIn("data", result)  # Primero verifica que "data" existe
         self.assertEqual(result["data"], "integration success")
+
 

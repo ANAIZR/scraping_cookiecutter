@@ -36,20 +36,29 @@ class TestNewsScraperService(unittest.TestCase):
     def test_text_to_json_successful(self, mock_post):
         # Arrange
         mock_response = MagicMock()
-        mock_response.iter_lines.return_value = [b'{"message": {"content": "{\"nombre_cientifico\": \"Example Species\"}"}}']
+        mock_response.iter_lines.return_value = [
+            b'{"message": {"content": "{\"nombre_cientifico\": \"Example Species\"}"}}'
+        ]
         mock_response.status_code = 200
         mock_post.return_value = mock_response
-        
+
         content = "This is a news content."
         source_url = "http://example.com"
         url = "http://news-source.com"
-        
+
         # Act
         result = self.service.text_to_json(content, source_url, url)
-        
+
+        # Debugging: Mostrar salida
+        print("🔍 JSON Extraído:", result)
+
         # Assert
+        self.assertIsInstance(result, dict)  # Verificar que es un diccionario
+        self.assertIn("nombre_cientifico", result)  # Verificar que la clave está presente
         self.assertEqual(result["nombre_cientifico"], "Example Species")
+
         mock_post.assert_called()
+
 
     @patch('src.apps.shared.services.news_services.SpeciesNews.objects.update_or_create')
     def test_save_news_to_postgres(self, mock_update_or_create):

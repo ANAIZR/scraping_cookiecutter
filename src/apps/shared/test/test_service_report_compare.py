@@ -30,19 +30,17 @@ class TestScraperComparisonService(TestCase):
         self.assertEqual(result["message"], "Menos de dos registros encontrados.")
 
 
-    @patch('src.apps.shared.services.report_compare_service.ReportComparison.objects')
-    def test_get_comparison_for_url_existing_report(self, mock_report_manager):
+    @patch('src.apps.shared.services.report_compare_service.ReportComparison.objects.filter')
+    def test_get_comparison_for_url_existing_report(self, mock_report_filter):
         # Arrange
         mock_report = MagicMock()
         mock_report.object_id1 = "id1"
         mock_report.object_id2 = "id2"
 
-        # Simula el comportamiento de un queryset real
-        mock_queryset = MagicMock()
-        mock_queryset.first.return_value = mock_report
+        # Simular que filter().first() devuelve el mock del reporte existente
+        mock_report_filter.return_value.first.return_value = mock_report
 
-        mock_report_manager.filter.return_value = mock_queryset
-
+        # Simular respuesta de MongoDB
         self.collection.find.return_value.sort.return_value = [{"_id": "id1"}, {"_id": "id2"}]
 
         # Act
@@ -92,16 +90,29 @@ class TestScraperComparisonService(TestCase):
         url = "http://example.com"
         doc1 = {"_id": "id1", "contenido": "Enlaces scrapeados:\nhttp://old.com\nEnlaces no procesados:"}
         doc2 = {"_id": "id2", "contenido": "Enlaces scrapeados:\nhttp://new.com\nEnlaces no procesados:"}
-        
-        # Mock del cliente MongoDB
-        mock_db = mock_mongo_client.return_value[settings.MONGO_DB_NAME]
-        mock_collection = mock_db["collection"]
-        mock_collection.find.return_value.sort.return_value = [doc1, doc2]
+
+        # Mock de MongoDB
+        mock_db = MagicMock()
+        mock_collection = MagicMock()
+        mock_mongo_client.return_value.__getitem__.return_value = mock_db
+        mock_db.__getitem__.return_value = mock_collection
+
+        # Simulación dinámica de `find().sort()`
+        mock_collection.find.return_value.sort.side_effect = lambda key, order: [doc1, doc2]
+
+        # Asignar el servicio con el mock de MongoDB
+        self.service.client = mock_mongo_client.return_value
+        self.service.db = mock_db
+        self.service.collection = mock_collection
 
         # Act
         result = self.service.get_comparison_for_url(url)
 
+        # Debugging: Imprimir resultado
+        print("🔍 Resultado de la comparación:", result)
+
         # Assert
         self.assertEqual(result["status"], "changed")
         self.assertEqual(result["message"], "Se detectaron cambios en la comparación.")
+
 

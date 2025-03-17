@@ -117,10 +117,8 @@ class NewsScraperService:
                 return parsed_json if isinstance(parsed_json, dict) else None
             except json.JSONDecodeError as e:
                 print(f"❌ Error al convertir JSON: {e}")
-                return None
-        else:
-            print("⚠️ No se encontró un JSON válido en la respuesta de Ollama.")
-            return None
+                return {}
+        
 
     def save_news_to_postgres(self, structured_data, source_url, url, mongo_id):
 

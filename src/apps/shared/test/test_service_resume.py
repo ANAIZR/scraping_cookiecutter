@@ -21,6 +21,7 @@ class TestResumeService(TestCase):
         # Assert
         self.assertIsNone(result)
 
+
     @patch('src.apps.shared.services.resume_service.CabiSpecies.objects.get')
     @patch('src.apps.shared.services.resume_service.Species.objects.filter')
     @patch('src.apps.shared.services.resume_service.ScraperURL.objects.all')
@@ -30,6 +31,7 @@ class TestResumeService(TestCase):
         mock_cabi_species.scientific_name = "Test Species"
         mock_cabi_get.return_value = mock_cabi_species
 
+        # Simula un objeto Species
         mock_species = MagicMock()
         mock_species.exclude.return_value.values_list.side_effect = lambda *args, **kwargs: {
             "hosts": ["Host1"], 
@@ -37,11 +39,13 @@ class TestResumeService(TestCase):
             "environmental_conditions": ["Climate1"]
         }[args[0]]
 
-        # Simula un queryset con `MagicMock()`
+        # Simula un queryset con `MagicMock()` para que tenga `.exclude()`
         mock_species_queryset = MagicMock()
-        mock_species_queryset.filter.return_value = [mock_species]  # Ahora `filter()` funciona correctamente
+        mock_species_queryset.filter.return_value = mock_species_queryset
+        mock_species_queryset.exclude.return_value = mock_species
         mock_species_filter.return_value = mock_species_queryset
 
+        # Simula ScraperURL.objects.all()
         mock_scraper = MagicMock()
         mock_scraper.id = 1
         mock_scraper.url = "http://scraper.com"
@@ -55,6 +59,7 @@ class TestResumeService(TestCase):
         self.assertEqual(result[0]["hosts"], "Host1")
         self.assertEqual(result[0]["distribution"], "Region1")
         self.assertEqual(result[0]["climatic_variables"], "Climate1")
+
 
 
     def test_integration_get_plague_summary(self):

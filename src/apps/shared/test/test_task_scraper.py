@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 from src.apps.shared.tasks.scraper_tasks import (
     process_scraped_data_task,
@@ -19,7 +20,7 @@ class TestScraperTasks(unittest.TestCase):
         # Assert
         mock_instance.extract_and_save_species.assert_called_once_with("http://example.com")
         self.assertEqual(result, "http://example.com")
-    
+    @pytest.mark.django_db
     @patch('src.apps.shared.tasks.scraper_tasks.WebScraperService')
     @patch('src.apps.shared.tasks.scraper_tasks.ScraperURL.objects.get')
     def test_scraper_url_task_successful(self, mock_get, mock_service):

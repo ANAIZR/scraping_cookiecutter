@@ -37,19 +37,29 @@ class TestOllamaCabiService(unittest.TestCase):
     def test_analyze_content_with_ollama_successful(self, mock_post):
         # Arrange
         mock_response = MagicMock()
-        mock_response.iter_lines.return_value = [b'{"message": {"content": "{\"symptoms\": \"Example\"}"}}']
+        mock_response.iter_lines.return_value = [
+            b'{"message": {"content": "{\"symptoms\": \"Example\", \"impact\": \"High\"}"}}'
+        ]
         mock_response.status_code = 200
         mock_post.return_value = mock_response
-        
-        fields_to_summarize = {"symptoms": "Example symptoms"}
+
+        fields_to_summarize = {"symptoms": "Example symptoms", "impact": "High impact"}
         source_url = "http://example.com"
-        
+
         # Act
         result = self.service.analyze_content_with_ollama(fields_to_summarize, source_url)
-        
+
+        # Debugging
+        print("🔍 Respuesta de analyze_content_with_ollama:", result)
+
         # Assert
+        self.assertIsInstance(result, dict)  # Verifica que devuelve un diccionario
+        self.assertIn("symptoms", result)  # Verifica que la clave está presente
         self.assertEqual(result["symptoms"], "Example")
+        self.assertEqual(result["impact"], "High")
+
         mock_post.assert_called()
+
 
     @patch('src.apps.shared.services.cabi_ollama_service.CabiSpecies.objects.update_or_create')
     def test_save_species_to_postgres(self, mock_update_or_create):
