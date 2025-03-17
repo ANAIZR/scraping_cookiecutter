@@ -29,24 +29,33 @@ class TestResumeService(TestCase):
         mock_cabi_species = MagicMock()
         mock_cabi_species.scientific_name = "Test Species"
         mock_cabi_get.return_value = mock_cabi_species
-        
+
         mock_species = MagicMock()
-        mock_species.exclude.return_value.values_list.side_effect = lambda *args, **kwargs: {"hosts": ["Host1"], "distribution": ["Region1"], "environmental_conditions": ["Climate1"]}[args[0]]
-        mock_species_filter.return_value = [mock_species]
-        
+        mock_species.exclude.return_value.values_list.side_effect = lambda *args, **kwargs: {
+            "hosts": ["Host1"], 
+            "distribution": ["Region1"], 
+            "environmental_conditions": ["Climate1"]
+        }[args[0]]
+
+        # Simula un queryset con `MagicMock()`
+        mock_species_queryset = MagicMock()
+        mock_species_queryset.filter.return_value = [mock_species]  # Ahora `filter()` funciona correctamente
+        mock_species_filter.return_value = mock_species_queryset
+
         mock_scraper = MagicMock()
         mock_scraper.id = 1
         mock_scraper.url = "http://scraper.com"
         mock_scraper_all.return_value = [mock_scraper]
-        
+
         # Act
         result = self.service.get_plague_summary(1)
-        
+
         # Assert
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["hosts"], "Host1")
         self.assertEqual(result[0]["distribution"], "Region1")
         self.assertEqual(result[0]["climatic_variables"], "Climate1")
+
 
     def test_integration_get_plague_summary(self):
         # Arrange
