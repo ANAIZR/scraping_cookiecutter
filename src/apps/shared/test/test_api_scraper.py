@@ -80,7 +80,7 @@ class TestFullAPI(unittest.TestCase):
         mock_get.side_effect = CabiSpecies.DoesNotExist
         
         # Act
-        response = self.client.get("/api/v1/plague-news/999/")
+        response = self.client.get("/plague-news/999/")
         
         # Assert
         self.assertEqual(response.status_code, 404)
@@ -92,7 +92,7 @@ class TestFullAPI(unittest.TestCase):
         mock_filter.return_value = [mock_subscription]
         
         # Act
-        response = self.client.get("/api/v1/subscription/")
+        response = self.client.get("/subscription/")
         
         # Assert
         self.assertEqual(response.status_code, 200)
