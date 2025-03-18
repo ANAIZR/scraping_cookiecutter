@@ -30,21 +30,32 @@ class TestScraperComparisonService(TestCase):
         self.assertEqual(result["message"], "Menos de dos registros encontrados.")
 
 
-    @patch('src.apps.shared.services.report_compare_service.ReportComparison.objects.filter')
-    def test_get_comparison_for_url_existing_report(self, mock_report_filter):
+    @patch('src.apps.shared.services.report_compare_service.ReportComparison')  
+    def test_get_comparison_for_url_existing_report(self, mock_report_class):
         # Arrange
+        url = "http://example.com"
+
+        # Crear el mock del reporte
         mock_report = MagicMock()
         mock_report.object_id1 = "id1"
         mock_report.object_id2 = "id2"
 
-        # Simular que filter().first() devuelve el mock del reporte existente
-        mock_report_filter.return_value.first.return_value = mock_report
+        # Configurar el mock para que filter().first() devuelva el mock_report
+        mock_report_class.objects.filter.return_value.first.return_value = mock_report
 
         # Simular respuesta de MongoDB
+        mock_collection = MagicMock()
+        self.collection = mock_collection
         self.collection.find.return_value.sort.return_value = [{"_id": "id1"}, {"_id": "id2"}]
 
+        # Simular el servicio con el mock de MongoDB
+        self.service.collection = self.collection
+
         # Act
-        result = self.service.get_comparison_for_url("http://example.com")
+        result = self.service.get_comparison_for_url(url)
+
+        # Debugging
+        print("🔍 Resultado de la comparación:", result)
 
         # Assert
         self.assertEqual(result["status"], "duplicate")
@@ -110,7 +121,8 @@ class TestScraperComparisonService(TestCase):
 
         # Debugging: Imprimir resultado
         print("🔍 Resultado de la comparación:", result)
-
+        retrieved_docs = list(mock_collection.find().sort("_id", -1))
+        print("📜 Documentos recuperados:", retrieved_docs)
         # Assert
         self.assertEqual(result["status"], "changed")
         self.assertEqual(result["message"], "Se detectaron cambios en la comparación.")

@@ -17,7 +17,7 @@ class TestFullAPI(unittest.TestCase):
         with patch('src.apps.shared.tasks.scraper_tasks.scraper_url_task.apply_async') as mock_task:
             
             # Act
-            response = self.client.post("/api/v1/scraper-url/", {"url": "http://example.com"}, format='json')
+            response = self.client.post("/scraper-url/", {"url": "http://example.com"}, format='json')
             
             # Assert
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
@@ -29,7 +29,7 @@ class TestFullAPI(unittest.TestCase):
         mock_filter.return_value.first.return_value = None
         
         # Act
-        response = self.client.post("/api/v1/scraper-url/", {"url": "http://example.com"}, format='json')
+        response = self.client.post("/scraper-url/", {"url": "http://example.com"}, format='json')
         
         # Assert
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -42,11 +42,11 @@ class TestFullAPI(unittest.TestCase):
         mock_filter.return_value = [mock_species]
         
         # Act
-        response = self.client.get("/api/species/related/Test Species/")
+        response = self.client.get("/related_species/Test/")
         
         # Assert
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Test Species", response.json()["related_species"][0]["scientific_name"])
+        self.assertIn("Test", response.json()["related_species"][0]["scientific_name"])
     
     @patch('src.apps.shared.models.species.Species.objects.filter')
     def test_get_related_species_not_found(self, mock_filter):
@@ -54,7 +54,7 @@ class TestFullAPI(unittest.TestCase):
         mock_filter.return_value.exists.return_value = False
         
         # Act
-        response = self.client.get("/api/species/related/Unknown Species/")
+        response = self.client.get("/related/Unknown/")
         
         # Assert
         self.assertEqual(response.status_code, 404)
@@ -105,7 +105,7 @@ class TestFullAPI(unittest.TestCase):
         mock_create.return_value = mock_subscription
         
         # Act
-        response = self.client.post("/api/species/subscriptions/", {"scientific_name": "Test Species"}, format='json')
+        response = self.client.post("/subscription/", {"scientific_name": "Test Species"}, format='json')
         
         # Assert
         self.assertEqual(response.status_code, 201)

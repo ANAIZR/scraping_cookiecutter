@@ -31,18 +31,22 @@ class TestResumeService(TestCase):
         mock_cabi_species.scientific_name = "Test Species"
         mock_cabi_get.return_value = mock_cabi_species
 
-        # Simula un objeto Species
+        # Simula un objeto Species con un queryset
         mock_species = MagicMock()
-        mock_species.exclude.return_value.values_list.side_effect = lambda *args, **kwargs: {
-            "hosts": ["Host1"], 
-            "distribution": ["Region1"], 
-            "environmental_conditions": ["Climate1"]
-        }[args[0]]
-
-        # Simula un queryset con `MagicMock()` para que tenga `.exclude()`
         mock_species_queryset = MagicMock()
         mock_species_queryset.filter.return_value = mock_species_queryset
         mock_species_queryset.exclude.return_value = mock_species
+
+        # Simulación de `values_list()` correctamente implementada
+        def values_list_mock(field, flat):
+            data = {
+                "hosts": ["Host1"], 
+                "distribution": ["Region1"], 
+                "environmental_conditions": ["Climate1"]
+            }
+            return data.get(field, [])  # Devuelve la lista correcta
+
+        mock_species.values_list.side_effect = values_list_mock
         mock_species_filter.return_value = mock_species_queryset
 
         # Simula ScraperURL.objects.all()
@@ -53,6 +57,9 @@ class TestResumeService(TestCase):
 
         # Act
         result = self.service.get_plague_summary(1)
+
+        # Debugging: Verificar resultado obtenido
+        print("🔍 Resultado de get_plague_summary:", result)
 
         # Assert
         self.assertEqual(len(result), 1)
