@@ -5,11 +5,14 @@ from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
 import requests
+import os
 import json
 import re
 import logging
 from django.db import transaction
-
+from dotenv import load_dotenv
+load_dotenv()
+OLLAMA_URI =  os.getenv("OLLAMA_URI")
 logger = logging.getLogger(__name__)
 
 class NewsScraperService:
@@ -94,7 +97,7 @@ class NewsScraperService:
         """
 
         response = requests.post(
-            "http://127.0.0.1:11434/api/chat",
+            OLLAMA_URI,
              json={"model": "llama3:8b", "messages": [{"role": "user", "content": prompt}]},
              stream=True,
         )

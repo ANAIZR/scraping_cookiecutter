@@ -6,11 +6,14 @@ from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
 import requests
+import os
 import json
 import re
 import logging
 from django.db import transaction
-
+from dotenv import load_dotenv
+load_dotenv()
+OLLAMA_URI =  os.getenv("OLLAMA_URI")
 logger = logging.getLogger(__name__)
 
 class OllamaService:
@@ -129,8 +132,7 @@ class OllamaService:
         """
 
         response = requests.post(
-            "http://100.122.137.82:11434/api/chat"
-,
+            OLLAMA_URI,
             json={"model": "llama3:70b", "messages": [{"role": "user", "content": prompt}]},
             stream=True,
         )

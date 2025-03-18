@@ -4,12 +4,15 @@ from django.conf import settings
 from pymongo import MongoClient
 from datetime import datetime
 import requests
+import os
 import json
 import re
 import logging
 from bson.objectid import ObjectId
 from django.db import transaction
-
+from dotenv import load_dotenv
+load_dotenv()
+OLLAMA_URI =  os.getenv("OLLAMA_URI")
 logger = logging.getLogger(__name__)
 
 class OllamaCabiService:

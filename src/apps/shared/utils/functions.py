@@ -35,6 +35,7 @@ MONGO_COLLECTION_NAME = os.getenv("MONGO_COLLECTION_NAME")
 OUTPUT_DIR = os.path.expanduser(os.getenv("OUTPUT_DIR"))
 LOG_DIR = os.path.expanduser(os.getenv("LOG_DIR"))
 LOAD_KEYWORDS = os.path.expanduser(os.getenv("LOAD_KEYWORDS"))
+REMOTE_URI = os.getenv("REMOTE_URI")
 load_dotenv()
 
 if not os.path.exists(OUTPUT_DIR):
@@ -206,7 +207,7 @@ def initialize_driver_cabi(retries=3):
             logger.info(f"Usando User-Agent: {random_user_agent}")
 
             driver = webdriver.Remote(
-                command_executor="http://100.122.137.82:4444/wd/hub", 
+                command_executor=REMOTE_URI, 
                 options=options
             )
 
