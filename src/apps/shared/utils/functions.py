@@ -237,7 +237,10 @@ def connect_to_mongo():
 
         client = MongoClient(MONGO_URI)
         db = client[MONGO_DB_NAME]
+        client.admin.command('ismaster')  
+        logger.info("✅ Conexión a MongoDB autenticada correctamente.")
         fs = gridfs.GridFS(db)
+        
 
         logger.info(f"✅ Conexión a MongoDB establecida correctamente: {MONGO_DB_NAME}")
         return db, fs  
