@@ -371,6 +371,11 @@ def delete_old_documents(url, collection, fs, limit=2):
 def save_scraper_data(all_scraper, url, sobrenombre):
     logger = get_logger("GUARDAR DATOS DEL SCRAPER")
     try:
+        folder_path = generate_directory(sobrenombre, OUTPUT_DIR)
+        file_path = get_next_versioned_filename(folder_path, base_name=sobrenombre)
+
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(all_scraper)
         response_data = {
             "Tipo": "WEB",
             "Url": url,
