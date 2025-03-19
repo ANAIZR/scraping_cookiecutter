@@ -32,21 +32,22 @@ def scraper_acir_aphis_usda(url, sobrenombre):
     collection, fs = connect_to_mongo("scrapping-can", "collection") 
     urls_to_scrape = []
 
+
     def scrape_page(href):
         print("qumadev url a scrapear inicio")
-        headers = {"User-Agent": get_random_user_agent()}
         new_links = []
 
-        try:
-            response = requests.get(href, headers=headers, verify=False)
-            response.raise_for_status()
-            print("qumadev antes del html parser")
-            soup = BeautifulSoup(response.content, "html.parser")
-            main_content = soup.find("div", class_="slds-col--padded contentRegion comm-layout-column")
-            print("qumadev main_content", main_content)
+        try: # O el driver que estés utilizando
+            driver.get(href)
+
+            # Esperar a que el contenido principal esté presente
+            main_content = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div.slds-col--padded.contentRegion.comm-layout-column"))
+            )
+
             if main_content:
-                page_text = main_content.get_text(separator=" ", strip=True)
-                print("href by qumadev", href ,page_text)
+                page_text = main_content.text
+                print("href by qumadev", href, page_text)
 
             if page_text:
                 object_id = fs.put(
@@ -57,7 +58,6 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                     contenido=page_text,
                     url=url
                 )
-                total_scraped_links += 1
                 scraped_urls.append(href)
                 logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
@@ -70,10 +70,12 @@ def scraper_acir_aphis_usda(url, sobrenombre):
             else:
                 non_scraped_urls.append(href)
 
-
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             logger.error(f"Error al procesar el enlace {href}: {e}")
             non_scraped_urls.append(href)
+        # finally:
+        #     # Cerrar el navegador
+        #     driver.quit()
 
         return new_links
 
