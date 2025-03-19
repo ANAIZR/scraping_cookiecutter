@@ -1,22 +1,17 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import os
 import time
-import pickle
-import requests
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
     initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data_v2,
-    get_random_user_agent
+    process_scraper_data_v2
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -204,10 +199,12 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                     )
                     break
 
-        while urls_to_scrape:
+        if urls_to_scrape:
             logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
-            urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
-            time.sleep(random.uniform(1, 3))
+
+            for url in urls_to_scrape:
+                scrape_page(url)
+                time.sleep(random.uniform(1, 3))
 
         all_scraper = (
             f"Total enlaces scrapeados: {len(scraped_urls)}\n"
