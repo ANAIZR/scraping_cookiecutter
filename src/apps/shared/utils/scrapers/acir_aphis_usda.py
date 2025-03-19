@@ -4,49 +4,104 @@ from selenium.webdriver.support import expected_conditions as EC
 import os
 import time
 import pickle
+import requests
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
     generate_directory,
     get_next_versioned_filename,
-    delete_old_documents,
     initialize_driver,
     get_logger,
     connect_to_mongo,
     load_keywords,
-    extract_text_from_pdf
+    process_scraper_data_v2,
+    get_random_user_agent
 )
 from rest_framework.response import Response
 from rest_framework import status
-logger = get_logger("scraper")
+
+
 
 def scraper_acir_aphis_usda(url, sobrenombre):
+    logger = get_logger("scraper")
+    non_scraped_urls = []
+    scraped_urls = []    
     driver = initialize_driver()
     logger = get_logger("scraper")
+    collection, fs = connect_to_mongo("scrapping-can", "collection")    
+
+    def scrape_page(href):
+
+
+        headers = {"User-Agent": get_random_user_agent()}
+        new_links = []
+
+        try:
+            response = requests.get(href, headers=headers)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.content, "html.parser")
+            main_content = soup.find("div", class_="slds-col--padded contentRegion comm-layout-column")
+            if main_content:
+                page_text = main_content.get_text(separator=" ", strip=True)
+
+            if page_text:
+                object_id = fs.put(
+                    page_text.encode("utf-8"),
+                    source_url=href,
+                    scraping_date=datetime.now(),
+                    Etiquetas=["planta", "plaga"],
+                    contenido=page_text,
+                    url=url
+                )
+                total_scraped_links += 1
+                scraped_urls.append(href)
+                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+
+                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
+                if len(existing_versions) > 1:
+                    oldest_version = existing_versions[-1]
+                    file_id = oldest_version._id  # Esto obtiene el ID correcto
+                    fs.delete(file_id)  # Eliminar la versión más antigua
+                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+            else:
+                non_scraped_urls.append(href)
+
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error al procesar el enlace {url}: {e}")
+            total_non_scraped_links += 1
+            non_scraped_urls.append(url)
+
+        return new_links
+
+
+    def scrape_pages_in_parallel(url_list):
+        nonlocal non_scraped_urls
+        new_links = []
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_url = {
+                executor.submit(scrape_page, url): (url)
+                for url in url_list
+            }
+            for future in as_completed(future_to_url):
+                try:
+                    result_links = future.result()
+                    new_links.extend(result_links)
+                except Exception as e:
+                    logger.error(f"Error en tarea de scraping: {str(e)}")
+                    non_scraped_urls += 1
+        return new_links
     
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
-        object_id = None
         try:
-
-            collection, fs = connect_to_mongo()
-
-            main_folder = generate_directory(sobrenombre)
-
             keywords = load_keywords("plants.txt")
-            if not keywords:
-                return Response(
-                    {
-                        "status": "error",
-                        "message": "El archivo de palabras clave está vacío o no se pudo cargar.",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            visited_urls = set()
-            scraping_failed = False
+
         except Exception as e:
             logger.error(f"Error al inicializar el scraper: {str(e)}")
 
@@ -83,103 +138,50 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                 time.sleep(random.uniform(3, 6))
      
             except Exception as e:
-                scraping_failed = True
                 logger.info(f"Error al realizar la búsqueda: {e}")
 
-            keyword_folder = generate_directory(keyword, main_folder)
-            keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
-
-            content_accumulated = ""
             while True:
                 try:
 
-                    try:
-                        # 1. Esperar a que la tabla esté presente (con Selenium)
-                        html = WebDriverWait(driver, 60).until(
-                            EC.presence_of_element_located((By.XPATH, "//label[contains(text(), 'Show Entries')]/ancestor::article//table[contains(@class,'slds-table_header-fixed') and contains(@class,'slds-table_bordered')]"))
-                        )
+                    # 1. Esperar a que la tabla esté presente (con Selenium)
+                    html = WebDriverWait(driver, 60).until(
+                        EC.presence_of_element_located((By.XPATH, "//label[contains(text(), 'Show Entries')]/ancestor::article//table[contains(@class,'slds-table_header-fixed') and contains(@class,'slds-table_bordered')]"))
+                    )
 
-                        # Acceder al tbody desde la tabla
-                        tbody = html.find_element(By.TAG_NAME, "tbody")
+                    # Acceder al tbody desde la tabla
+                    tbody = html.find_element(By.TAG_NAME, "tbody")
+                    
+                    # Obtener todas las filas (tr) del tbody
+                    filas = tbody.find_elements(By.TAG_NAME, "tr")
+
+                    # Extraer ambos valores
+                    datos = []
+                    for fila in filas:
+                        row_key = fila.get_attribute("data-row-key-value")
+                        th_text = fila.find_element(By.TAG_NAME, "th").text  # Texto del th
+                        datos.append({
+                            "data-row-key-value": row_key,
+                            "th_text": th_text
+                        })
+
+                    # Procesar los datos para crear las URLs
+                    urls = []
+                    for item in datos:
+                        # Limpiar y formatear el th_text
+                        slug = item['th_text'].lower().replace(' ', '-').replace('(', '').replace(')', '').strip()
                         
-                        # Obtener todas las filas (tr) del tbody
-                        filas = tbody.find_elements(By.TAG_NAME, "tr")
+                        # Construir la URL
+                        url = f"https://acir.aphis.usda.gov/s/cird-taxon/{item['data-row-key-value']}/{slug}"
+                        urls.append(url)
 
-                        # Extraer ambos valores
-                        datos = []
-                        for fila in filas:
-                            row_key = fila.get_attribute("data-row-key-value")
-                            th_text = fila.find_element(By.TAG_NAME, "th").text  # Texto del th
-                            datos.append({
-                                "data-row-key-value": row_key,
-                                "th_text": th_text
-                            })
+                    # Opcional: Filtrar elementos vacíos
+                    urls = [url for url in urls if url.split('/')[-2] != '']
 
-                        print("qumadev Datos extraídos:")
-                        for item in datos:
-                            print(f"ID: {item['data-row-key-value']} | TH: {item['th_text']}")
+                    # Imprimir resultados
+                    print("qumadev URLs generadas:")
+                    for link in urls:
+                        print(link)                            
 
-                        # Procesar los datos para crear las URLs
-                        urls = []
-                        for item in datos:
-                            # Limpiar y formatear el th_text
-                            slug = item['th_text'].lower().replace(' ', '-').replace('(', '').replace(')', '').strip()
-                            
-                            # Construir la URL
-                            url = f"https://acir.aphis.usda.gov/s/cird-taxon/{item['data-row-key-value']}/{slug}"
-                            urls.append(url)
-
-                        # Opcional: Filtrar elementos vacíos
-                        urls = [url for url in urls if url.split('/')[-2] != '']
-
-                        # Imprimir resultados
-                        print("qumadev URLs generadas:")
-                        for url in urls:
-                            print(url)                            
-                            
-                        # 2. Obtener el HTML de la página y parsear con BeautifulSoup
-                        soup = BeautifulSoup(driver.page_source, "html.parser")
-
-                        # 3. Encontrar la tercera tabla (índice 2)
-                        tablas = soup.select("table.slds-table.slds-table_header-fixed.slds-table_bordered")
-                        tercera_tabla = tablas[2]  # Índice 2 para la tercera tabla
-
-                        # 4. Acceder al tbody y a las filas (tr)
-                        tbody = tercera_tabla.find("tbody")
-                        filas = tbody.find_all("tr")
-
-                    except Exception as e:
-                        logger.warning(f"No se encontraron resultados en la página: {e}")
-                        filas = []
-
-                    if filas:
-                        # 5. Iterar sobre las filas
-                        body_text = ""
-                        for fila in filas:
-                            tds = fila.find_all("td")
-                            for td in tds:
-                                body_text += f"{td.get_text(separator=' ', strip=True)};"
-                            body_text += "\n"
-
-
-
-                        if body_text:
-                            content_accumulated += f"keyword:{keyword} \n\n\n{body_text}"
-                            content_accumulated += "-" * 100 + "\n\n"
-
-                            print(f"Página procesada y guardada: {keyword}")
-                            print(f"info guardada: {body_text}")
-                        else:
-                            print("No se encontró contenido en la página.")
-                        driver.back()
-                        WebDriverWait(driver, 60).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "table.slds-table"))
-                        )
-                        time.sleep(random.uniform(3, 6))
-                    else:
-                        logger.info(f"Item no existen {len(filas)} resultados.")
-                        driver.get(url)
-                        time.sleep(random.uniform(3, 6))
 
                     try:
                         logger.info("Buscando botón para la siguiente página.")
@@ -210,73 +212,22 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                         f"No se encontraron resultados para '{keyword}' después de esperar."
                     )
                     break
-                    
-            if content_accumulated:
-                with open(keyword_file_path, "w", encoding="utf-8") as keyword_file:
-                    keyword_file.write(content_accumulated)
 
-                with open(keyword_file_path, "rb") as file_data:
-                    object_id = fs.put(
-                        file_data,
-                        filename=os.path.basename(keyword_file_path),
-                        metadata={
-                            "url": url,
-                            "keyword": keyword,
-                            "content": content_accumulated,
-                            "scraping_date": datetime.now(),
-                            "Etiquetas": ["planta", "plaga"],
-                        },
-                    )
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
+        while urls_to_scrape:
+            logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
+            urls_to_scrape = scrape_pages_in_parallel(urls_to_scrape)
+            time.sleep(random.uniform(1, 3))
 
-                existing_versions = list(
-                    collection.find({
-                        "metadata.keyword": keyword,
-                        "metadata.url": url  
-                    }).sort("metadata.scraping_date", -1)
-                )
-
-                if len(existing_versions) > 2:
-                    oldest_version = existing_versions[-1]  
-                    fs.delete(oldest_version["_id"])  
-                    collection.delete_one({"_id": oldest_version["_id"]}) 
-                    logger.info(
-                        f"Se eliminó la versión más antigua de '{keyword}' con URL '{url}' y object_id: {oldest_version['_id']}"
-                    )
-
-
-        if scraping_failed:
-            return Response(
-                {
-                    "message": "Error durante el scraping. Algunas URLs fallaron.",
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        else:
-            data = {
-                "Objeto": object_id,
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Etiquetas": ["planta", "plaga"],
-            }
-            response_data = {
-                "Tipo": "Web",
-                "Url": url,
-                "Fecha_scraper": data["Fecha_scraper"],
-                "Etiquetas": data["Etiquetas"],
-                "Mensaje": "Los datos han sido scrapeados correctamente.",
-            }
-
-            collection.insert_one(data)
-            delete_old_documents(url, collection, fs)
-
-            return Response(
-            {
-                "data": response_data,
-            },
-            status=status.HTTP_200_OK,
+        all_scraper = (
+            f"Total enlaces scrapeados: {len(scraped_urls)}\n"
+            f"URLs scrapeadas:\n" + "\n".join(scraped_urls) + "\n\n"
+            f"Total enlaces no scrapeados: {len(non_scraped_urls)}\n"
+            f"URLs no scrapeadas:\n" + "\n".join(non_scraped_urls) + "\n"
         )
+
+        response = process_scraper_data_v2(all_scraper, url, sobrenombre)
+        return response
+    
     except TimeoutException:
         logger.error(f"Error: la página {url} está tardando demasiado en responder.")
         return Response(
