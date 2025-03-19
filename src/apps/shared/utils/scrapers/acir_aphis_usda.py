@@ -34,15 +34,16 @@ def scraper_acir_aphis_usda(url, sobrenombre):
 
         try: # O el driver que estés utilizando
             driver.get(href)
-
+            time.sleep(random.uniform(1, 3))
             # Esperar a que el contenido principal esté presente
             main_content = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div.slds-col--padded.contentRegion.comm-layout-column"))
             )
 
+            time.sleep(random.uniform(1, 3))
             if main_content:
                 page_text = main_content.text
-                print("href by qumadev", href, page_text)
+                print("contenido by qumadev", href, page_text)
 
             if page_text:
                 object_id = fs.put(
@@ -203,6 +204,7 @@ def scraper_acir_aphis_usda(url, sobrenombre):
             logger.info(f"URLs restantes por procesar: {len(urls_to_scrape)}")
 
             for url in urls_to_scrape:
+                time.sleep(random.uniform(1, 3))
                 scrape_page(url)
                 time.sleep(random.uniform(1, 3))
 
