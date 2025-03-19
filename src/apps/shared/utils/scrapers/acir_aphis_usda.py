@@ -11,8 +11,6 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..functions import (
-    generate_directory,
-    get_next_versioned_filename,
     initialize_driver,
     get_logger,
     connect_to_mongo,
@@ -31,22 +29,24 @@ def scraper_acir_aphis_usda(url, sobrenombre):
     scraped_urls = []    
     driver = initialize_driver()
     logger = get_logger("scraper")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")    
+    collection, fs = connect_to_mongo("scrapping-can", "collection") 
+    urls_to_scrape = []
 
     def scrape_page(href):
-
-
+        print("qumadev url a scrapear inicio")
         headers = {"User-Agent": get_random_user_agent()}
         new_links = []
 
         try:
-            response = requests.get(href, headers=headers)
+            response = requests.get(href, headers=headers, verify=False)
             response.raise_for_status()
-
+            print("qumadev antes del html parser")
             soup = BeautifulSoup(response.content, "html.parser")
             main_content = soup.find("div", class_="slds-col--padded contentRegion comm-layout-column")
+            print("qumadev main_content", main_content)
             if main_content:
                 page_text = main_content.get_text(separator=" ", strip=True)
+                print("href by qumadev", href ,page_text)
 
             if page_text:
                 object_id = fs.put(
@@ -72,9 +72,8 @@ def scraper_acir_aphis_usda(url, sobrenombre):
 
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error al procesar el enlace {url}: {e}")
-            total_non_scraped_links += 1
-            non_scraped_urls.append(url)
+            logger.error(f"Error al procesar el enlace {href}: {e}")
+            non_scraped_urls.append(href)
 
         return new_links
 
@@ -164,24 +163,14 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                             "th_text": th_text
                         })
 
-                    # Procesar los datos para crear las URLs
-                    urls = []
                     for item in datos:
                         # Limpiar y formatear el th_text
                         slug = item['th_text'].lower().replace(' ', '-').replace('(', '').replace(')', '').strip()
                         
                         # Construir la URL
                         url = f"https://acir.aphis.usda.gov/s/cird-taxon/{item['data-row-key-value']}/{slug}"
-                        urls.append(url)
-
-                    # Opcional: Filtrar elementos vacíos
-                    urls = [url for url in urls if url.split('/')[-2] != '']
-
-                    # Imprimir resultados
-                    print("qumadev URLs generadas:")
-                    for link in urls:
-                        print(link)                            
-
+                        print("qumadev URL generada:", url)
+                        urls_to_scrape.append(url)
 
                     try:
                         logger.info("Buscando botón para la siguiente página.")
