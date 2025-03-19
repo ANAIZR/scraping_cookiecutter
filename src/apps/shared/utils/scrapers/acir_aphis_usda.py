@@ -24,6 +24,7 @@ logger = get_logger("scraper")
 
 def scraper_acir_aphis_usda(url, sobrenombre):
     driver = initialize_driver()
+    logger = get_logger("scraper")
     
     try:
         driver.get(url)
@@ -52,25 +53,39 @@ def scraper_acir_aphis_usda(url, sobrenombre):
         for keyword in keywords:
             print(f"Buscando con la palabra clave: {keyword}")
             try:
-                list_search_input = WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "#input-30"))
+                iframes = driver.find_elements(By.TAG_NAME, "iframe")
+                if iframes:
+                    driver.switch_to.frame(iframes[0])
+                    logger.info("✅ Cambiado a iframe correctamente")
+ 
+                # 🔥 Seleccionar el input correcto basándonos en la etiqueta `<label>`
+                taxon_input = WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.XPATH, "//label[contains(text(), 'Approved, Common, or Synonym of Accepted Scientific Name')]/following-sibling::div//input"))
                 )
-                segundo_input = list_search_input[1]
-
-                segundo_input.clear()
-                segundo_input.send_keys(keyword)
-                print(f"se pinto la Palabra clave: {keyword}")
+               
+                taxon_input.clear()
+                taxon_input.send_keys(keyword)
+                print(f"✅ Se ingresó la palabra clave: {keyword}")
+ 
+                try:
+                    search_button = WebDriverWait(driver, 15).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Search')]"))
+                    )
+                except TimeoutException:
+                    logger.warning("No se encontró el botón de búsqueda.")
+                try:
+ 
+                    search_button.click()
+ 
+                except:
+                    driver.execute_script("arguments[0].click();", search_button)
+               
                 time.sleep(random.uniform(3, 6))
-
-                btn_search = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "button.slds-button.slds-button_brand.slds-button_stretch.slds-m-left_x-small.enable-button"))
-                )
-                btn_search.click()
-                logger.info(f"Realizando búsqueda con la palabra clave: {keyword}")
+     
             except Exception as e:
-                logger.info(f"Error al realizar la búsqueda: {e}")
                 scraping_failed = True
-                continue
+                logger.info(f"Error al realizar la búsqueda: {e}")
+
             keyword_folder = generate_directory(keyword, main_folder)
             keyword_file_path = get_next_versioned_filename(keyword_folder, keyword)
 
@@ -80,9 +95,32 @@ def scraper_acir_aphis_usda(url, sobrenombre):
 
                     try:
                         # 1. Esperar a que la tabla esté presente (con Selenium)
-                        WebDriverWait(driver, 60).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "table.slds-table"))
+                        html = WebDriverWait(driver, 60).until(
+                            EC.presence_of_element_located((By.XPATH, "//label[contains(text(), 'Show Entries')]/ancestor::article//table[contains(@class,'slds-table_header-fixed') and contains(@class,'slds-table_bordered')]"))
                         )
+
+                        # Acceder al tbody desde la tabla
+                        tbody = html.find_element(By.TAG_NAME, "tbody")
+                        
+                        print("qumadev : solo body",tbody.text)
+                        # Obtener todas las filas (tr) del tbody
+                        filas = tbody.find_elements(By.TAG_NAME, "tr")
+
+                        # Extraer el valor de data-row-key-value de cada fila
+                        valores_row_key = [fila.get_attribute("data-row-key-value") for fila in filas]
+
+                        print("qumadev: Valores encontrados:", valores_row_key)
+
+
+                        # # Obtener todas las filas del tbody
+                        # filas = tbody.find_elements(By.TAG_NAME, "tr")
+
+                        print("qumadev : filas",filas)
+
+                        # texto_tabla = html.text
+                        # print("qumadev : antes de pintar")
+                        # print(texto_tabla)
+                        # print("qumadev : despues de pintar")
 
                         # 2. Obtener el HTML de la página y parsear con BeautifulSoup
                         soup = BeautifulSoup(driver.page_source, "html.parser")
