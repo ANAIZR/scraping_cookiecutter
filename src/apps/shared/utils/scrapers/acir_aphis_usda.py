@@ -102,26 +102,41 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                         # Acceder al tbody desde la tabla
                         tbody = html.find_element(By.TAG_NAME, "tbody")
                         
-                        print("qumadev : solo body",tbody.text)
                         # Obtener todas las filas (tr) del tbody
                         filas = tbody.find_elements(By.TAG_NAME, "tr")
 
-                        # Extraer el valor de data-row-key-value de cada fila
-                        valores_row_key = [fila.get_attribute("data-row-key-value") for fila in filas]
+                        # Extraer ambos valores
+                        datos = []
+                        for fila in filas:
+                            row_key = fila.get_attribute("data-row-key-value")
+                            th_text = fila.find_element(By.TAG_NAME, "th").text  # Texto del th
+                            datos.append({
+                                "data-row-key-value": row_key,
+                                "th_text": th_text
+                            })
 
-                        print("qumadev: Valores encontrados:", valores_row_key)
+                        print("qumadev Datos extraídos:")
+                        for item in datos:
+                            print(f"ID: {item['data-row-key-value']} | TH: {item['th_text']}")
 
+                        # Procesar los datos para crear las URLs
+                        urls = []
+                        for item in datos:
+                            # Limpiar y formatear el th_text
+                            slug = item['th_text'].lower().replace(' ', '-').replace('(', '').replace(')', '').strip()
+                            
+                            # Construir la URL
+                            url = f"https://acir.aphis.usda.gov/s/cird-taxon/{item['data-row-key-value']}/{slug}"
+                            urls.append(url)
 
-                        # # Obtener todas las filas del tbody
-                        # filas = tbody.find_elements(By.TAG_NAME, "tr")
+                        # Opcional: Filtrar elementos vacíos
+                        urls = [url for url in urls if url.split('/')[-2] != '']
 
-                        print("qumadev : filas",filas)
-
-                        # texto_tabla = html.text
-                        # print("qumadev : antes de pintar")
-                        # print(texto_tabla)
-                        # print("qumadev : despues de pintar")
-
+                        # Imprimir resultados
+                        print("qumadev URLs generadas:")
+                        for url in urls:
+                            print(url)                            
+                            
                         # 2. Obtener el HTML de la página y parsear con BeautifulSoup
                         soup = BeautifulSoup(driver.page_source, "html.parser")
 
