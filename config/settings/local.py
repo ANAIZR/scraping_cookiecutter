@@ -15,7 +15,6 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "168.121.236.43",
-    "flowerwebscraper.sgcan.dev"
 ]
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
