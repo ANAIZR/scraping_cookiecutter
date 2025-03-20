@@ -82,3 +82,7 @@ from .notification_cahfsa_org import scraper_notification_cahfsa_org
 from .gbif import scraper_gbif
 from .researchgate import scraper_researchgate
 from .euphresco import scraper_euphresco
+from .auiapsc import scraper_auiapsc
+from .cosave import scraper_cosave
+from .nappo import scraper_nappo
+from .oirsa import scraper_oirsa
