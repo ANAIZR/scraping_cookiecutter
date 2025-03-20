@@ -18,7 +18,7 @@ from bson import ObjectId
 
 def scraper_cosave(url, sobrenombre):
     url_padre = url
-    logger = get_logger("ARS")
+    logger = get_logger("COSAVE")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
@@ -78,7 +78,7 @@ def scraper_cosave(url, sobrenombre):
                 return []
 
             if depth >= 2:
-                main_content = soup.find("main", id="main-content")
+                main_content = soup.find("div", id="content-inner-inner")
 
                 if main_content:
                     nonlocal all_scraper
@@ -115,7 +115,7 @@ def scraper_cosave(url, sobrenombre):
                     non_scraped_urls.append(full_url)
                     continue
 
-                if urlparse(full_url).netloc == "www.ars.usda.gov":
+                if urlparse(full_url).netloc == "www.cosave.org":
                     total_found_links += 1
                     new_links.append((full_url, depth + 1))
                     total_scraped_links += 1
