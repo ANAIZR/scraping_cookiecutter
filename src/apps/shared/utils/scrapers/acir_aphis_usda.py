@@ -75,24 +75,6 @@ def scraper_acir_aphis_usda(url, sobrenombre):
 
         return new_links
 
-
-    def scrape_pages_in_parallel(url_list):
-        nonlocal non_scraped_urls
-        new_links = []
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            future_to_url = {
-                executor.submit(scrape_page, url): (url)
-                for url in url_list
-            }
-            for future in as_completed(future_to_url):
-                try:
-                    result_links = future.result()
-                    new_links.extend(result_links)
-                except Exception as e:
-                    logger.error(f"Error en tarea de scraping: {str(e)}")
-                    non_scraped_urls += 1
-        return new_links
-    
     try:
         driver.get(url)
         time.sleep(random.uniform(6, 10))
@@ -172,17 +154,17 @@ def scraper_acir_aphis_usda(url, sobrenombre):
 
                     try:
                         logger.info("Buscando botón para la siguiente página.")
-                        next_page_button = driver.find_element(
-                            By.CSS_SELECTOR,
-                            "doaj-pager-next.doaj-pager-next-bottom-pager",
+                        next_page_button = WebDriverWait(driver, 60).until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Next Page']]")),
                         )
-                        next_page_link = next_page_button.get_attribute("href")
+                        print("qumadev next_page_button   ", next_page_button)
 
-                        if next_page_link:
+                        if next_page_button:
                             logger.info(
-                                f"Yendo a la siguiente página: {next_page_link}"
+                                f"Yendo a la siguiente página: {next_page_button}"
                             )
-                            driver.get(next_page_link)
+                            next_page_button.click()
+                            time.sleep(random.uniform(4, 6))
                         else:
                             logger.info(
                                 "No hay más páginas disponibles. Finalizando búsqueda para esta palabra clave."
