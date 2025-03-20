@@ -78,7 +78,7 @@ def scraper_oirsa(url, sobrenombre):
                 return []
 
             if depth >= 2:
-                main_content = soup.find("main", id="main-content")
+                main_content = soup.find("div", class_="wpb_wrapper")
 
                 if main_content:
                     nonlocal all_scraper
@@ -115,7 +115,7 @@ def scraper_oirsa(url, sobrenombre):
                     non_scraped_urls.append(full_url)
                     continue
 
-                if urlparse(full_url).netloc == "www.ars.usda.gov":
+                if urlparse(full_url).netloc == "www.oirsa.org":
                     total_found_links += 1
                     new_links.append((full_url, depth + 1))
                     total_scraped_links += 1
