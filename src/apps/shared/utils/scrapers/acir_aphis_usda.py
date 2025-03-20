@@ -11,7 +11,8 @@ from ..functions import (
     get_logger,
     connect_to_mongo,
     load_keywords,
-    process_scraper_data
+    process_scraper_data,
+    save_to_mongo
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -46,23 +47,9 @@ def scraper_acir_aphis_usda(url, sobrenombre):
                 print("contenido by qumadev", href, page_text)
 
             if page_text:
-                object_id = fs.put(
-                    page_text.encode("utf-8"),
-                    source_url=href,
-                    scraping_date=datetime.now(),
-                    Etiquetas=["planta", "plaga"],
-                    contenido=page_text,
-                    url=url
-                )
+                object_id = save_to_mongo("urls_scraper", main_content, href, url)
                 scraped_urls.append(href)
-                logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
-
-                existing_versions = list(fs.find({"source_url": href}).sort("scraping_date", -1))
-                if len(existing_versions) > 1:
-                    oldest_version = existing_versions[-1]
-                    file_id = oldest_version._id  # Esto obtiene el ID correcto
-                    fs.delete(file_id)  # Eliminar la versión más antigua
-                    logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                logger.info(f"📂 Texto de PDF guardado en `urls_scraper` con object_id: {object_id}")                
             else:
                 non_scraped_urls.append(href)
 
