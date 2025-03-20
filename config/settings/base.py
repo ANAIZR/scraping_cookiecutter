@@ -172,6 +172,8 @@ MANAGERS = ADMINS
 DJANGO_ADMIN_FORCE_ALLAUTH = env.bool("DJANGO_ADMIN_FORCE_ALLAUTH", default=False)
 
 # LOGGING
+# En config/settings.py
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -186,8 +188,17 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": "/var/www/backend-api/django.log",  # Ruta donde se guardarán los logs
+            "formatter": "verbose",
+        },
     },
-    "root": {"level": "INFO", "handlers": ["console"]},
+    "root": {
+        "level": "DEBUG",  # Cambiado a DEBUG para que se capture más información
+        "handlers": ["console", "file"],  # Ahora los logs se van tanto a consola como a archivo
+    },
 }
 
 
