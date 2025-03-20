@@ -11,7 +11,6 @@ SECRET_KEY = env(
 ALLOWED_HOSTS = [
     "apiwebscraper.sgcan.dev",
     "webscraper.sgcan.dev",
-    "0.0.0.0",
     "localhost",
     "127.0.0.1",
     "168.121.236.43"
