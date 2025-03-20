@@ -1461,5 +1461,57 @@
       "updated_at": "2024-09-16T12:00:00Z",
       "parameters": {}
     }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 110,
+    "fields": {
+      "url": "https://auiapsc.org/",
+      "sobrenombre": "euphresco",
+      "time_choices": 1,
+      "mode_scrapeo": 83,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 111,
+    "fields": {
+      "url": "http://www.cosave.org/",
+      "sobrenombre": "euphresco",
+      "time_choices": 1,
+      "mode_scrapeo": 83,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 112,
+    "fields": {
+      "url": "https://www.nappo.org/",
+      "sobrenombre": "euphresco",
+      "time_choices": 1,
+      "mode_scrapeo": 83,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
+  },
+  {
+    "model": "shared.ScraperURL",
+    "pk": 113,
+    "fields": {
+      "url": "https://www.oirsa.org",
+      "sobrenombre": "euphresco",
+      "time_choices": 1,
+      "mode_scrapeo": 83,
+      "created_at": "2024-09-16T12:00:00Z",
+      "updated_at": "2024-09-16T12:00:00Z",
+      "parameters": {}
+    }
   }
 ]
