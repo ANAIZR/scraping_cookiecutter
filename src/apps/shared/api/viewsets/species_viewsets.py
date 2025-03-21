@@ -74,13 +74,10 @@ def get_related_species(request, query):
     related_species_qs = Species.objects.filter(species_filter).distinct()
 
     if not related_species_qs.exists():
-        return JsonResponse({"error": "No se encontraron especies relacionadas"}, status=404)
-
-    # 🔁 Convertir request a uno compatible con DRF
-    drf_request = Request(request)
+        return Response({"error": "No se encontraron especies relacionadas"}, status=404)
 
     paginator = Pagination()
-    paginated_qs = paginator.paginate_queryset(related_species_qs, drf_request)
+    paginated_qs = paginator.paginate_queryset(related_species_qs, request)  # NO vuelvas a convertir el request
 
     species_list = [
         {
