@@ -144,7 +144,7 @@ def initialize_driver(retries=3):
             )
             options = uc.ChromeOptions()
             options.binary_location = "/usr/bin/google-chrome"
-            options.add_argument("--headless")
+            options.add_argument("--headless=new")
             options.add_argument("--disable-gpu")
             options.add_argument("--allow-insecure-localhost")
             options.add_argument("--disable-web-security")
@@ -159,10 +159,11 @@ def initialize_driver(retries=3):
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
+            options.add_argument("--crash-dump-dir=/tmp")  # Evita problemas de crashpad
+            options.add_argument("--disable-crash-reporter") 
 
-            driver = uc.Chrome(
-                service=Service(ChromeDriverManager().install()), options=options
-            )
+            driver = uc.Chrome(options=options,version_main=134)
+
 
             driver.set_page_load_timeout(600)
             logger.info("Navegador iniciado correctamente con Selenium.")
