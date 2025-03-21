@@ -21,7 +21,7 @@ def scraper_cosave(url, sobrenombre):
     url_padre = url
     logger = get_logger("COSAVE")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]
