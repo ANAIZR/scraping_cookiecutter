@@ -1,58 +1,34 @@
-from django.db.models import Q
-from ..models.species import CabiSpecies, Species
+from ..models.species import  Species
 from ..models.urls import ScraperURL
+
 
 class ResumeService:
     @staticmethod
-    def get_plague_summary(cabi_id):
+    def get_species_data_by_name(scientific_name):
+        species_related = Species.objects.filter(scientific_name__icontains=scientific_name)
 
-        try:
-            cabi_species = CabiSpecies.objects.get(id=cabi_id)
+        if not species_related.exists():
+            return None
 
-            species_related = Species.objects.filter(
-                Q(scientific_name__icontains=cabi_species.scientific_name) |
-                Q(common_names__icontains=cabi_species.scientific_name) |
-                Q(synonyms__icontains=cabi_species.scientific_name) |
-                Q(invasiveness_description__icontains=cabi_species.scientific_name)
-            )
+        scraper_info = []
 
-            scraper_info = []
-            scrapers = ScraperURL.objects.all()
+        scrapers = ScraperURL.objects.all()
 
-            for scraper in scrapers:
-                species_for_scraper = species_related.filter(scraper_source=scraper)
+        for scraper in scrapers:
+            species_for_scraper = species_related.filter(scraper_source=scraper)
 
-                hosts_list = set(species_for_scraper.exclude(hosts="").values_list('hosts', flat=True))
-                distribution_list = set(species_for_scraper.exclude(distribution="").values_list('distribution', flat=True))
-                climate_list = set(species_for_scraper.exclude(environmental_conditions="").values_list('environmental_conditions', flat=True))
+            if not species_for_scraper.exists():
+                continue
 
-                def format_list(data_set):
-                    return ", ".join(data_set) if data_set else ""
-
-                formatted_hosts = format_list(hosts_list)
-                formatted_distribution = format_list(distribution_list)
-                formatted_climate = format_list(climate_list)
-
-                description = []
-                if formatted_hosts:
-                    description.append("se encontró información de hospedantes")
-                if formatted_distribution:
-                    description.append("se encontró información de distribución")
-                if formatted_climate:
-                    description.append("se encontró información de variables climáticas")
-
-                description_text = " y ".join(description) if description else "no se encontró ninguna información"
-
+            for species in species_for_scraper:
                 scraper_info.append({
-                    "id": scraper.id,
-                    "url": scraper.url,
-                    "description": description_text,
-                    "hosts": formatted_hosts,
-                    "distribution": formatted_distribution,
-                    "climatic_variables": formatted_climate,
+                    "scraper_id": scraper.id,
+                    "scraper_url": scraper.url,
+                    "source_url": species.source_url,
+                    "hosts": species.hosts,
+                    "distribution": species.distribution,
+                    "environmental_conditions": species.environmental_conditions,
                 })
 
-            return scraper_info
+        return scraper_info
 
-        except CabiSpecies.DoesNotExist:
-            return None

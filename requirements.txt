@@ -52,3 +52,4 @@ selenium-stealth
 responses
 pytest-cov
 pytest-mock
+django-filter
