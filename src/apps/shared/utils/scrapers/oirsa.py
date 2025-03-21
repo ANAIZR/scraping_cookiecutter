@@ -20,7 +20,7 @@ def scraper_oirsa(url, sobrenombre):
     url_padre = url
     logger = get_logger("OIRSA")
     logger.info(f"Iniciando scraping para URL: {url}")
-    collection, fs = connect_to_mongo("scrapping-can", "collection")
+    collection, fs = connect_to_mongo()
     all_scraper = ""
     processed_links = set()
     urls_to_scrape = [(url, 1)]
@@ -48,6 +48,7 @@ def scraper_oirsa(url, sobrenombre):
             response.raise_for_status()
 
             soup = BeautifulSoup(response.content, "html.parser")
+            # print("qumadev - soup", soup)
 
             if url.endswith(".pdf"):
                 logger.info(f"Extrayendo texto de PDF: {url}")
@@ -122,7 +123,7 @@ def scraper_oirsa(url, sobrenombre):
                     non_scraped_urls.append(full_url)
                     continue
 
-                if urlparse(full_url).netloc == "www.oirsa.org":
+                if urlparse(full_url).netloc == "web.oirsa.org":
                     total_found_links += 1
                     new_links.append((full_url, depth + 1))
                     total_scraped_links += 1
