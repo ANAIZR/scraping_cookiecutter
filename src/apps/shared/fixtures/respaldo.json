@@ -1,0 +1,1526 @@
+[
+    {
+      "model": "shared.ScraperURL",
+      "pk": 1,
+      "fields": {
+        "url": "https://www.redalyc.org/pdf/1950/195018673003.pdf",
+        "time_choices": 2,
+        "mode_scrapeo": 7,
+        "sobrenombre": "DERMESTIDAE",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 2,
+          "end_page": 6
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 2,
+      "fields": {
+        "url": "http://www.iucngisd.org/gisd/",
+        "time_choices": 3,
+        "sobrenombre": "IUCNGISD",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "mode_scrapeo": 1
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 3,
+      "fields": {
+        "url": "http://coleoptera-neotropical.org/8b-colecc-JEBC/JEBC/5-Buprestidae.htm",
+        "time_choices": 1,
+        "sobrenombre": "COLEOPTERA",
+        "mode_scrapeo": 2,
+        "created_at": "2024-09-16T11:00:00Z",
+        "updated_at": "2024-12-09T23:47:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 4,
+      "fields": {
+        "url": "http://aphid.aphidnet.org/",
+        "time_choices": 2,
+        "sobrenombre": "APHID",
+        "mode_scrapeo": 6,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 5,
+      "fields": {
+        "url": "http://editorial.agrosavia.co/index.php/publicaciones/catalog/download/10/8/97-1?inline=1",
+        "mode_scrapeo": 7,
+        "sobrenombre": "AGROSAVIA",
+        "time_choices": 3,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 24,
+          "end_page": 158
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 6,
+      "fields": {
+        "url": "https://www.sag.gob.cl/sites/default/files/MANUAL_INSECTOS_MADERA.pdf",
+        "time_choices": 1,
+        "mode_scrapeo": 7,
+        "sobrenombre": "SAG",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 6,
+          "end_page": 27
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 7,
+      "fields": {
+        "url": "https://www.iucngisd.org/gisd/pdf/100Spanish.pdf",
+        "time_choices": 3,
+        "mode_scrapeo": 7,
+        "sobrenombre": "IUCN_PDF",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 3,
+          "end_page": 10
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 8,
+      "fields": {
+        "url": "https://jb.utad.pt/chavedicotomica/inversa/todas",
+        "time_choices": 3,
+        "mode_scrapeo": 8,
+        "sobrenombre": "AGUIAR",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 9,
+      "fields": {
+        "url": "http://www.efloras.org/flora_page.aspx?flora_id=5",
+        "time_choices": 2,
+        "mode_scrapeo": 3,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "sobrenombre": "FLORAS",
+        "parameters": {
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 10,
+      "fields": {
+        "url": "http://www.ansci.cornell.edu/plants/php/plants.php",
+        "time_choices": 1,
+        "mode_scrapeo": 4,
+        "sobrenombre": "ANSCI_CORNELL_edu",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 11,
+      "fields": {
+        "url": "https://www.gene.affrc.go.jp/databases-micro_pl_diseases_en.php",
+        "time_choices": 1,
+        "mode_scrapeo": 9,
+        "sobrenombre": "GENE",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z"
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 12,
+      "fields": {
+        "url": "http://flora.huh.harvard.edu/china/mss/alphabetical_families.htm",
+        "time_choices": 1,
+        "mode_scrapeo": 5,
+        "sobrenombre": "FLORA_HARVARD",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z"
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 13,
+      "fields": {
+        "url": "https://plant-directory.ifas.ufl.edu/plant-directory/",
+        "time_choices": 2,
+        "mode_scrapeo": 10,
+        "sobrenombre": "IFAS",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 14,
+      "fields": {
+        "url": "https://plants.usda.gov/",
+        "time_choices": 2,
+        "mode_scrapeo": 27,
+        "sobrenombre": "PLANTS_USDA",
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 15,
+      "fields": {
+        "url": "https://www.habitas.org.uk/flora/splist.asp",
+        "sobrenombre": "FLORA_HABITAS",
+        "time_choices": 1,
+        "mode_scrapeo": 48,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 16,
+      "fields": {
+        "url": "https://plantatlas.usf.edu/",
+        "sobrenombre": "ATLAS",
+        "time_choices": 1,
+        "mode_scrapeo": 11,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 17,
+      "fields": {
+        "url": "https://www.genome.jp/virushostdb/view/",
+        "sobrenombre": "GENOME",
+        "time_choices": 1,
+        "mode_scrapeo": 26,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 18,
+      "fields": {
+        "url": "https://www.mycobank.org/Simple%20names%20search",
+        "sobrenombre": "MYCOBANK",
+        "time_choices": 1,
+        "mode_scrapeo": 23,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 19,
+      "fields": {
+        "url": "http://www.flmnh.ufl.edu/scripts/dbs/malatp_pub.asp",
+        "sobrenombre": "FLMNH_UFL",
+        "time_choices": 1,
+        "mode_scrapeo": 12,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 20,
+      "fields": {
+        "url": "https://www.indexfungorum.org/names/names.asp",
+        "sobrenombre": "FUNGORUM",
+        "time_choices": 1,
+        "mode_scrapeo": 30,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 21,
+      "fields": {
+        "url": "http://nemaplex.ucdavis.edu/Nemabase2010/PlantHostStatusDDQuery.aspx",
+        "sobrenombre": "NEMAPLEX_PLANT_HOST",
+        "time_choices": 1,
+        "mode_scrapeo": 31,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 22,
+      "fields": {
+        "url": "https://nematode.ars.usda.gov/",
+        "sobrenombre": "NEMATODE",
+        "time_choices": 1,
+        "mode_scrapeo": 24,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 23,
+      "fields": {
+        "url": "http://diaspididae.linnaeus.naturalis.nl/linnaeus_ng/app/views/species/taxon.php?id=113067&epi=155",
+        "sobrenombre": "DIASPIDIDAE",
+        "time_choices": 1,
+        "mode_scrapeo": 25,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 24,
+      "fields": {
+        "url": "https://www.fws.gov/species/search",
+        "sobrenombre": "FWS_GOV",
+        "time_choices": 1,
+        "mode_scrapeo": 28,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 25,
+      "fields": {
+        "url": "https://www.iucnredlist.org/",
+        "sobrenombre": "IUCNREDLIST",
+        "time_choices": 1,
+        "mode_scrapeo": 13,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 26,
+      "fields": {
+        "url": "http://www.ala.org.au/",
+        "sobrenombre": "ALA_ORG",
+        "time_choices": 1,
+        "mode_scrapeo": 14,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+  
+    {
+      "model": "shared.ScraperURL",
+      "pk": 27,
+      "fields": {
+        "url": "https://agritrop.cirad.fr/461853/1/ID461853.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "AGRITROP",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 4,
+          "end_page": 80
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 28,
+      "fields": {
+        "url": "https://aafitopatologos.com.ar/media/secciones/241_desc.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "CONGRESO_AAFITO",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 8,
+          "end_page": 535
+        }
+      }
+    },
+  
+    {
+      "model": "shared.ScraperURL",
+      "pk": 29,
+      "fields": {
+        "url": "https://cenida.una.edu.ni/relectronicos/RENH10J61me.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "METODOS_CONTROL_PLAGAS",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 10,
+          "end_page": 142
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 30,
+      "fields": {
+        "url": "http://cipotato.org/wp-content/uploads/2002/05/002485-1.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "MANUAL_ENFERMEDADES_DE_LA_PAPA",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 5,
+          "end_page": 65
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 31,
+      "fields": {
+        "url": "http://pnwhandbooks.org/plantdisease/",
+        "sobrenombre": "PNW_HAND_BOOKS",
+        "time_choices": 1,
+        "mode_scrapeo": 15,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 32,
+      "fields": {
+        "url": "https://www.mapa.gob.es/ministerio/pags/biblioteca/hojas/hd_1989_05.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "PLAGAS_DE_CRISANTEMOS",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 2
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 33,
+      "fields": {
+        "url": "http://ipm.illinois.edu/diseases/index.html",
+        "sobrenombre": "IPM_ILLINOIS",
+        "time_choices": 1,
+        "mode_scrapeo": 16,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 34,
+      "fields": {
+        "url": "https://www.ndrs.org.uk/volumes.php",
+        "sobrenombre": "NDRS",
+        "time_choices": 1,
+        "mode_scrapeo": 19,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 35,
+      "fields": {
+        "url": "https://www.ippc.int/en/countries/south-africa/pestreports/",
+        "sobrenombre": "IPPC",
+        "time_choices": 1,
+        "mode_scrapeo": 20,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 36,
+      "fields": {
+        "url": "https://www.pestalerts.org/nappo/emerging-pest-alerts/",
+        "sobrenombre": "PEST_ALERTS",
+        "time_choices": 1,
+        "mode_scrapeo": 17,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 37,
+      "fields": {
+        "url": "http://biblioteca.usac.edu.gt/tesis/01/01_3129.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "USAC",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 27,
+          "end_page": 181
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 38,
+      "fields": {
+        "url": "https://www.sfe.go.cr/DocsFocR4TSFE/ARP%20Foc%20R4T.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "ANALISIS_RIESGO_DE_PLAGAS",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 2,
+          "end_page": 16
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 39,
+      "fields": {
+        "url": "https://www.aphis.usda.gov",
+        "sobrenombre": "APHIS_USDA",
+        "time_choices": 1,
+        "mode_scrapeo": 32,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 40,
+      "fields": {
+        "url": "https://prod.senasica.gob.mx/SIRVEF/ContenidoPublico/Manuales%20operativos/Plan%20de%20accion%20vigilancia%20y%20control-%20Helicoverpa%20armigera%20en%20M%C3%A9xico.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "ABOUT_HELICOPERVA_ARMIGERA",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 6,
+          "end_page": 28
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 41,
+      "fields": {
+        "url": "https://gd.eppo.int/datasheets/",
+        "sobrenombre": "EPPO",
+        "time_choices": 1,
+        "mode_scrapeo": 21,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 42,
+      "fields": {
+        "url": "https://www.eppo.int/ACTIVITIES/plant_quarantine/A1_list",
+        "sobrenombre": "EPPO_QUARENTINE",
+        "time_choices": 1,
+        "mode_scrapeo": 33,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 43,
+      "fields": {
+        "url": "https://www.se-eppc.org/weeds.cfm",
+        "sobrenombre": "SE_EPPC",
+        "time_choices": 1,
+        "mode_scrapeo": 22,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 44,
+      "fields": {
+        "url": "https://www.fao.org/4/x5030s/x5030S01.htm#Prologo",
+        "sobrenombre": "FAO_ORG",
+        "time_choices": 1,
+        "mode_scrapeo": 29,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 45,
+      "fields": {
+        "url": "http://www.extento.hawaii.edu/kbase/crop/Type/Croppest.htm",
+        "sobrenombre": "EXTENTO",
+        "time_choices": 1,
+        "mode_scrapeo": 34,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 46,
+      "fields": {
+        "url": "https://www.ipta.gov.py/application/files/2615/6261/3962/Mnual_Tecnico_Tomate_-_Papa_-_Pimiento_-_Cebolla_08jul.pdf?fbclid=IwAR2BZhaaw-B5G-J2cKwfNKirqwxI4_WpWH_IfPVi5zK0Y2bIMkzeFOOmPDQ",
+        "mode_scrapeo": 7,
+        "sobrenombre": "MANUAL_TECNICO_TOMATE_PAPA_PIMIENTO_CEBOLLA",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 11,
+          "end_page": 111
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 47,
+      "fields": {
+        "url": "https://www.bivica.org/files/tomate-manual-tecnico.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "MANUAL_TECNICO_TOMATE",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 15,
+          "end_page": 181
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 48,
+      "fields": {
+        "url": "https://bookstore.ksre.ksu.edu/pubs/s156.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "STORED_PRODUCT_PROTECTION",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 7,
+          "end_page": 344
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 49,
+      "fields": {
+        "url": "http://www.conafor.gob.mx/biblioteca/Manuales-Tecnicos/Manual_para_la_identificacion_y_manejo_de_plagas_en_plantaciones_forestales.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "CONAFOR",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 11,
+          "end_page": 213
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 50,
+      "fields": {
+        "url": "http://cipotato.org/wp-content/uploads/2014/05/005754.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "GUIAS_DE_INTENSIFICACION_DE_PLAGAS",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 10,
+          "end_page": 45
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 51,
+      "fields": {
+        "url": "http://sinavef.senasica.gob.mx/CNRF/AreaDiagnostico/DocumentosReferencia/Documentos/ManualesGuias/Manuales/Manual%20de%20Toma,%20Manejo%20y%20Env%C3%ADo%20de%20Muestras.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "SINAVEF_SENASICA",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 8
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 52,
+      "fields": {
+        "url": "https://www.gob.mx/cms/uploads/attachment/file/585145/Manual_Establecimiento__Certificaci_n_y_Seguimiento_de_HTLMF_2018.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "SAGARPA",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 3,
+          "end_page": 17
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 53,
+      "fields": {
+        "url": "http://www.dicta.gob.hn/files/2014,-Almacenamiento-hermetico-de-semillas-y-granos,-G.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "IICA",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 3,
+          "end_page": 31
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 54,
+      "fields": {
+        "url": "https://botanicaargentina.org.ar/wp-content/uploads/2019/06/978-987-688-332-0-baja-resoluci%C3%B3n.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "UNIRO",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 15,
+          "end_page": 920
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 55,
+      "fields": {
+        "url": "https://www.cipca.org.bo/docs/publications/es/114_los-maices-en-la-seguridad-alimentaria-de-bolivia-1.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "CIPCO",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 19,
+          "end_page": 177
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 56,
+      "fields": {
+        "url": "https://nappo.org/application/files/5715/9451/4328/RSPM_36-s.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "NAPO",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 5
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 57,
+      "fields": {
+        "url": "https://www.oirsa.org/contenido/2018/Sanidad_Vegetal/Manuales%20OIRSA%202015-2018/Plan_conting_FOC_R4T_2017-V2-Final-FEB18-2017.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "OIRSA",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 18,
+          "end_page": 201
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 58,
+      "fields": {
+        "url": "https://www.ams.usda.gov/sites/default/files/media/NWS%20List%20for%202015.pdf",
+        "mode_scrapeo": 7,
+        "sobrenombre": "AMS",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 2
+        }
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 59,
+      "fields": {
+        "url": "https://www.cabidigitallibrary.org/product/qc",
+        "mode_scrapeo": 18,
+        "sobrenombre": "CABI",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 60,
+      "fields": {
+        "url": "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi",
+        "mode_scrapeo": 35,
+        "sobrenombre": "NCBI",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 61,
+      "fields": {
+        "url": "https://bonap.net/tdc",
+        "mode_scrapeo": 36,
+        "sobrenombre": "BONAP",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 62,
+      "fields": {
+        "url": "https://scholar.google.es/schhp?hl=es",
+        "mode_scrapeo": 37,
+        "sobrenombre": "Google_Scholar",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 63,
+      "fields": {
+        "url": "https://biotanz.landcareresearch.co.nz/",
+        "mode_scrapeo": 38,
+        "sobrenombre": "Biota_NZ",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 64,
+      "fields": {
+        "url": "https://www.catalogueoflife.org/annual-checklist/2007/search.php",
+        "mode_scrapeo": 39,
+        "sobrenombre": "Catalogue_of_life",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 65,
+      "fields": {
+        "url": "http://delta-intkey.com/www/data.htm",
+        "mode_scrapeo": 40,
+        "sobrenombre": "delta-intkey",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 66,
+      "fields": {
+        "url": "http://nemaplex.ucdavis.edu/Nemabase2010/PlantNematodeHostStatusDDQuery.aspx",
+        "sobrenombre": "NEMAPLEX_PLANT_NEMATODE",
+        "time_choices": 1,
+        "mode_scrapeo": 41,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 67,
+      "fields": {
+        "url": "https://wiki.bugwood.org/Main_Page",
+        "sobrenombre": "BUGWOOD",
+        "time_choices": 1,
+        "mode_scrapeo": 42,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 68,
+      "fields": {
+        "url": "https://www.padil.gov.au/search",
+        "sobrenombre": "PADIL",
+        "time_choices": 1,
+        "mode_scrapeo": 43,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 69,
+      "fields": {
+        "url": "http://www.cal-ipc.org/ip/inventory/index.php",
+        "sobrenombre": "CAL-IPC",
+        "time_choices": 1,
+        "mode_scrapeo": 44,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 70,
+      "fields": {
+        "url": "https://cibnor.repositorioinstitucional.mx/jspui/bitstream/1001/1448/1/MANUAL%20DE%20PLAGAS%20Y%20ENFERMEDADES.pdf",
+        "sobrenombre": "MANUAL_PLAGAS_ENFERMEDADES",
+        "time_choices": 4,
+        "mode_scrapeo": 7,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {
+          "start_page": 9
+        }
+      }
+    },
+  
+    {
+      "model": "shared.ScraperURL",
+      "pk": 73,
+      "fields": {
+        "url": "http://www.virtualherbarium.org/",
+        "sobrenombre": "herbarium",
+        "time_choices": 1,
+        "mode_scrapeo": 46,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 74,
+      "fields": {
+        "url": "https://www.fao.org/agriculture/crops/core-themes/theme/biodiversity/weeds/db-countries/en/",
+        "sobrenombre": "agriculture",
+        "time_choices": 1,
+        "mode_scrapeo": 47,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 75,
+      "fields": {
+        "url": "https://www.cdfa.ca.gov/",
+        "sobrenombre": "cdfa",
+        "time_choices": 1,
+        "mode_scrapeo": 49,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 76,
+      "fields": {
+        "url": "https://hort.purdue.edu/newcrop/Indices/index_ab.html#A",
+        "sobrenombre": "hort_purdue",
+        "time_choices": 1,
+        "mode_scrapeo": 50,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 77,
+      "fields": {
+        "url": "https://www.nal.usda.gov/",
+        "sobrenombre": "nal-usda",
+        "time_choices": 1,
+        "mode_scrapeo": 51,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 78,
+      "fields": {
+        "url": "https://www.ers.usda.gov/",
+        "sobrenombre": "ers-usda",
+        "time_choices": 1,
+        "mode_scrapeo": 52,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 79,
+      "fields": {
+        "url": "https://www.ars.usda.gov/",
+        "sobrenombre": "ars-usda",
+        "time_choices": 1,
+        "mode_scrapeo": 53,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 80,
+      "fields": {
+        "url": "https://www.ippc.int/es/core-activities/standards-setting/ispms/",
+        "sobrenombre": "ippc-int",
+        "time_choices": 1,
+        "mode_scrapeo": 54,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },					
+    {
+      "model": "shared.ScraperURL",
+      "pk": 81,
+      "fields": {
+        "url": "https://www.agriculture.gov.au/search",
+        "sobrenombre": "agriculture_gov",
+        "time_choices": 1,
+        "mode_scrapeo": 55,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 82,
+      "fields": {
+        "url": "https://www.sciencedirect.com/",
+        "sobrenombre": "sciencedirect",
+        "time_choices": 1,
+        "mode_scrapeo": 56,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 83,
+      "fields": {
+        "url": "https://www.cabidigitallibrary.org/",
+        "mode_scrapeo": 57,
+        "sobrenombre": "CABI_LIBRARY",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 84,
+      "fields": {
+        "url": "http://ecoport.org/ep?SearchType=displayMenu&menu=Basic_Search",
+        "mode_scrapeo": 58,
+        "sobrenombre": "ecoport",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 85,
+      "fields": {
+        "url": "https://www.pestnet.org/",
+        "mode_scrapeo": 59,
+        "sobrenombre": "pestnet",
+        "time_choices": 1,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 86,
+      "fields": {
+        "url": "https://www.fao.org/",
+        "sobrenombre": "FAO_ORG_HOME",
+        "time_choices": 1,
+        "mode_scrapeo": 60,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 87,
+      "fields": {
+        "url": "https://scientificdiscoveries.ars.usda.gov/",
+        "sobrenombre": "SCIENTIFIC_DISCOVERIES",
+        "time_choices": 1,
+        "mode_scrapeo": 61,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 88,
+      "fields": {
+        "url": "https://search.usa.gov/search?query=&affiliate=agriculturalresearchservicears",
+        "sobrenombre": "SEARCH_USA_GOV",
+        "time_choices": 1,
+        "mode_scrapeo": 62,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 89,
+      "fields": {
+        "url": "https://apsjournals.apsnet.org/search/advanced",
+        "sobrenombre": "apsnet",
+        "time_choices": 1,
+        "mode_scrapeo": 63,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 90,
+      "fields": {
+        "url": "https://www.canada.ca/en/natural-resources-canada/search.html",
+        "sobrenombre": "canada_ca",
+        "time_choices": 1,
+        "mode_scrapeo": 64,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 91,
+      "fields": {
+        "url": "https://www.npdn.org/",
+        "sobrenombre": "npdn",
+        "time_choices": 1,
+        "mode_scrapeo": 65,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 92,
+      "fields": {
+        "url": "https://www.eppo.int/",
+        "sobrenombre": "eppo_int",
+        "time_choices": 1,
+        "mode_scrapeo": 66,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 93,
+      "fields": {
+        "url": "https://publications.gc.ca/site/eng/search/search.html",
+        "sobrenombre": "gc_ca",
+        "time_choices": 1,
+        "mode_scrapeo": 67,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 94,
+      "fields": {
+        "url": "https://doaj.org/",
+        "sobrenombre": "doaj_org",
+        "time_choices": 1,
+        "mode_scrapeo": 68,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 95,
+      "fields": {
+        "url": "https://cdnsciencepub.com/action/doSearch",
+        "sobrenombre": "cdnsciencepub",
+        "time_choices": 1,
+        "mode_scrapeo": 69,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 96,
+      "fields": {
+        "url": "https://www.scienceopen.com/search",
+        "sobrenombre": "scienceopen",
+        "time_choices": 1,
+        "mode_scrapeo": 70,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 97,
+      "fields": {
+        "url": "https://agresearchmag.ars.usda.gov/archive",
+        "sobrenombre": "agresearchmag",
+        "time_choices": 1,
+        "mode_scrapeo": 71,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 98,
+      "fields": {
+        "url": "https://acir.aphis.usda.gov/s/taxon-search",
+        "sobrenombre": "acir_aphis_usda",
+        "time_choices": 1,
+        "mode_scrapeo": 72,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 99,
+      "fields": {
+        "url": "https://www.aphis.usda.gov/publications",
+        "sobrenombre": "notification_aphis",
+        "time_choices": 1,
+        "mode_scrapeo": 73,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 100,
+      "fields": {
+        "url": "https://repository.cimmyt.org/home",
+        "sobrenombre": "repository_cimmy",
+        "time_choices": 1,
+        "mode_scrapeo": 74,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 101,
+      "fields": {
+        "url": "https://www.ippc.int/en/countries/reportingsystem/all/2025/01/",
+        "sobrenombre": "ippc_int",
+        "time_choices": 1,
+        "mode_scrapeo": 75,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 102,
+      "fields": {
+        "url": "https://cahfsa.org/#",
+        "sobrenombre": "cahfsa",
+        "time_choices": 1,
+        "mode_scrapeo": 76,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 103,
+      "fields": {
+        "url": "https://www.aphis.usda.gov/news/program-updates?page=1&search=&searchSelect=Plant+Protection+and+Quarantine",
+        "sobrenombre": "aphis_usda_gov",
+        "time_choices": 1,
+        "mode_scrapeo": 77,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 104,
+      "fields": {
+        "url": "https://www.pestalerts.org/nappo/official-pest-reports/",
+        "sobrenombre": "pest_report",
+        "time_choices": 1,
+        "mode_scrapeo": 78,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 105,
+      "fields": {
+        "url": "https://defensa.sag.gob.cl/reqmercado/consulta.asp?tp=1",
+        "sobrenombre": "defensa_sag",
+        "time_choices": 1,
+        "mode_scrapeo": 79,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 106,
+      "fields": {
+        "url": "https://bibliotecasibe.ecosur.mx/sibe/",
+        "sobrenombre": "biblioteca_sibe",
+        "time_choices": 1,
+        "mode_scrapeo": 80,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 107,
+      "fields": {
+        "url": "https://cahfsa.org/2024-3/",
+        "sobrenombre": "notification_cahfsa_org",
+        "time_choices": 1,
+        "mode_scrapeo": 81,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 108,
+      "fields": {
+        "url": "https://www.gbif.org/",
+        "sobrenombre": "gbif",
+        "time_choices": 1,
+        "mode_scrapeo": 82,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 109,
+      "fields": {
+        "url": "https://drop.euphresco.net/search?title%5B%5D=publication+by+euphresco",
+        "sobrenombre": "euphresco",
+        "time_choices": 1,
+        "mode_scrapeo": 83,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 111,
+      "fields": {
+        "url": "https://auiapsc.org/",
+        "sobrenombre": "auiapsc",
+        "time_choices": 1,
+        "mode_scrapeo": 85,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 112,
+      "fields": {
+        "url": "http://www.cosave.org/",
+        "sobrenombre": "cosave",
+        "time_choices": 1,
+        "mode_scrapeo": 86,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 113,
+      "fields": {
+        "url": "https://www.nappo.org/",
+        "sobrenombre": "nappo",
+        "time_choices": 1,
+        "mode_scrapeo": 87,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    },
+    {
+      "model": "shared.ScraperURL",
+      "pk": 114,
+      "fields": {
+        "url": "https://www.oirsa.org/",
+        "sobrenombre": "oirsa",
+        "time_choices": 1,
+        "mode_scrapeo": 88,
+        "created_at": "2024-09-16T12:00:00Z",
+        "updated_at": "2024-09-16T12:00:00Z",
+        "parameters": {}
+      }
+    }
+  
+  ]
+  
