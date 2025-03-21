@@ -39,42 +39,7 @@ from src.apps.shared.services.resume_service import ResumeService
 
 logger = logging.getLogger(__name__)
 
-def get_related_species(request, query):
 
-    query = unquote(query).strip()  
-
-    related_species = Species.objects.filter(
-        Q(scientific_name__iexact=query) | Q(hosts__icontains=query)
-    ).distinct()
-
-    if not related_species.exists():
-        return JsonResponse({"error": "No se encontraron especies relacionadas"}, status=404)
-
-    species_list = [
-        {
-            "id": species.id,
-            "scientific_name": species.scientific_name,
-            "description":species.description,
-            "common_names": species.common_names,
-            "synonyms": species.synonyms,
-            "invasiveness_description": species.invasiveness_description,
-            "distribution": species.distribution,
-            "impact": species.impact,
-            "habitat": species.habitat,
-            "life_cycle": species.life_cycle,
-            "reproduction": species.reproduction,
-            "hosts": species.hosts,
-            "symptoms": species.symptoms,
-            "affected_organs": species.affected_organs,
-            "environmental_conditions": species.environmental_conditions,
-            "prevention_control": species.prevention_control,
-            "uses": species.uses,
-            "source_url": species.source_url,
-        }
-        for species in related_species
-    ]
-
-    return JsonResponse({"related_species": species_list})
 
 
 """ def get_relevant_plague_summary_view(request, cabi_id):
@@ -91,7 +56,48 @@ def get_related_species(request, query):
 
     return JsonResponse(filtered_info, safe=False) """
 
+def get_related_species(request, query):
+    query = unquote(query).strip()
+    words = query.split()
 
+    species_filter = Q()
+    for word in words:
+        species_filter |= Q(scientific_name__icontains=word)
+
+    related_species_qs = Species.objects.filter(species_filter).distinct()
+
+    if not related_species_qs.exists():
+        return JsonResponse({"error": "No se encontraron especies relacionadas"}, status=404)
+
+    # Aplicar la paginación de DRF manualmente
+    paginator = Pagination()
+    paginated_qs = paginator.paginate_queryset(related_species_qs, request)
+
+    species_list = [
+        {
+            "id": species.id,
+            "scientific_name": species.scientific_name,
+            "description": species.description,
+            "common_names": species.common_names,
+            "synonyms": species.synonyms,
+            "invasiveness_description": species.invasiveness_description,
+            "distribution": species.distribution,
+            "impact": species.impact,
+            "habitat": species.habitat,
+            "life_cycle": species.life_cycle,
+            "reproduction": species.reproduction,
+            "hosts": species.hosts,
+            "symptoms": species.symptoms,
+            "affected_organs": species.affected_organs,
+            "environmental_conditions": species.environmental_conditions,
+            "prevention_control": species.prevention_control,
+            "uses": species.uses,
+            "source_url": species.source_url,
+        }
+        for species in paginated_qs
+    ]
+
+    return paginator.get_paginated_response(species_list)
 class Pagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
