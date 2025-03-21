@@ -19,12 +19,15 @@ from django_filters.rest_framework import DjangoFilterBackend
 from ..filter import CabiSpeciesFilter, ScraperURLFilter
 from rest_framework import generics
 from rest_framework.response import Response
+from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from src.apps.shared.models.species import ReportComparison
 from src.apps.shared.models.urls import ScraperURL
 import logging
+from urllib.parse import unquote
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
@@ -36,7 +39,7 @@ from src.apps.shared.services.resume_service import ResumeService
 
 logger = logging.getLogger(__name__)
 
-"""def get_related_species(request, query):
+def get_related_species(request, query):
 
     query = unquote(query).strip()  
 
@@ -51,6 +54,7 @@ logger = logging.getLogger(__name__)
         {
             "id": species.id,
             "scientific_name": species.scientific_name,
+            "description":species.description,
             "common_names": species.common_names,
             "synonyms": species.synonyms,
             "invasiveness_description": species.invasiveness_description,
@@ -70,7 +74,7 @@ logger = logging.getLogger(__name__)
         for species in related_species
     ]
 
-    return JsonResponse({"related_species": species_list})"""
+    return JsonResponse({"related_species": species_list})
 
 
 """ def get_relevant_plague_summary_view(request, cabi_id):
