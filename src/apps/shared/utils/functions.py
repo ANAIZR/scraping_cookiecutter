@@ -159,6 +159,8 @@ def initialize_driver(retries=3):
             random_user_agent = get_random_user_agent()
             options.add_argument(f"user-agent={random_user_agent}")
             logger.info(f"Usando User-Agent: {random_user_agent}")
+            options.add_argument("--crash-dump-dir=/tmp")  # Evita problemas de crashpad
+            options.add_argument("--disable-crash-reporter") 
 
             driver = uc.Chrome(
                 service=Service(ChromeDriverManager().install()), options=options
