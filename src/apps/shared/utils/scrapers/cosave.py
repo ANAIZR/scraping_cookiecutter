@@ -14,8 +14,7 @@ from ..functions import (
     extract_text_from_pdf,
     save_to_mongo
 )
-from datetime import datetime
-from bson import ObjectId
+
 
 def scraper_cosave(url, sobrenombre):
     url_padre = url
