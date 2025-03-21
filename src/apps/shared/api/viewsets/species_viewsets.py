@@ -36,6 +36,7 @@ from django.conf import settings
 from src.apps.users.services.email import EmailService
 from rest_framework.pagination import PageNumberPagination
 from src.apps.shared.services.resume_service import ResumeService
+from rest_framework.request import Request  
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,11 @@ def get_related_species(request, query):
     if not related_species_qs.exists():
         return JsonResponse({"error": "No se encontraron especies relacionadas"}, status=404)
 
-    # Aplicar la paginación de DRF manualmente
+    # 🔁 Convertir request a uno compatible con DRF
+    drf_request = Request(request)
+
     paginator = Pagination()
-    paginated_qs = paginator.paginate_queryset(related_species_qs, request)
+    paginated_qs = paginator.paginate_queryset(related_species_qs, drf_request)
 
     species_list = [
         {
