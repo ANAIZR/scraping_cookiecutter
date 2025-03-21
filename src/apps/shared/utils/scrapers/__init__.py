@@ -80,6 +80,9 @@ from .cabi_library import scraper_cabi_library
 from .notification_cahfsa_org import scraper_notification_cahfsa_org
 from .euphresco import scraper_euphresco
 from .acir_aphis_usda import scraper_acir_aphis_usda
+from .auiapsc import scraper_auiapsc
+from .cosave import scraper_cosave
+from .nappo import scraper_nappo
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
@@ -163,5 +166,8 @@ SCRAPER_FUNCTIONS = {
     80: scraper_biblioteca_sibe,
     81: scraper_notification_cahfsa_org,
     82: scraper_gbif,
-    83: scraper_euphresco
+    83: scraper_euphresco,
+    85: scraper_auiapsc,
+    86: scraper_cosave,
+    87: scraper_nappo,
 }
