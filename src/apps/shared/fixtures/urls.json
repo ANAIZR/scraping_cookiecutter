@@ -1504,7 +1504,7 @@
     "model": "shared.ScraperURL",
     "pk": 114,
     "fields": {
-      "url": "https://www.oirsa.org",
+      "url": "https://www.oirsa.org/",
       "sobrenombre": "oirsa",
       "time_choices": 1,
       "mode_scrapeo": 88,

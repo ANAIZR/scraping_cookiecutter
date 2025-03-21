@@ -18,7 +18,7 @@ from bson import ObjectId
 
 def scraper_oirsa(url, sobrenombre):
     url_padre = url
-    logger = get_logger("ARS")
+    logger = get_logger("OIRSA")
     logger.info(f"Iniciando scraping para URL: {url}")
     collection, fs = connect_to_mongo("scrapping-can", "collection")
     all_scraper = ""
@@ -78,7 +78,14 @@ def scraper_oirsa(url, sobrenombre):
                 return []
 
             if depth >= 2:
-                main_content = soup.find("div", class_="wpb_wrapper")
+                main_content = soup.find("div", id="wrapper")
+                # Si no encuentra el segundo elemento, busca el tercero
+                if not main_content:
+                    main_content = soup.find("section", class_="wpb-content-wrapper")
+
+                # Si no encuentra el primer elemento, busca el segundo
+                if not main_content:
+                    main_content = soup.find("div", id="content")
 
                 if main_content:
                     nonlocal all_scraper
