@@ -6,7 +6,7 @@ from ..functions import (
     process_scraper_data,
     connect_to_mongo,
     get_logger,
-    driver_init,
+    initialize_driver,
     save_to_mongo,
     load_keywords
 )
@@ -28,7 +28,7 @@ total_scraped_links = 0
 def scraper_catalogue_of_life(url, sobrenombre):
     global total_scraped_links
     logger.info(f"🚀 Iniciando scraping para URL: {url}")
-    driver = driver_init()
+    driver = initialize_driver()
     collection, fs = connect_to_mongo()
 
     keywords = load_keywords("plants.txt")
