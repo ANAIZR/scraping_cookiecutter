@@ -73,24 +73,14 @@ def scraper_ers_usda(url, sobrenombre):
                     nonlocal all_scraper
                     page_text = main_content.get_text(separator=" ", strip=True)
                     if page_text:
-                        object_id = fs.put(
-                            page_text.encode("utf-8"),
-                            source_url=url,
-                            scraping_date=datetime.now(),
-                            Etiquetas=["planta", "plaga"],
-                            contenido=page_text,
-                            url=url_padre
-                        )
+                        object_id = save_to_mongo("urls_scraper", page_text, url, url_padre)
+
+            
                         total_scraped_links += 1
                         scraped_urls.append(url)
                         logger.info(f"Archivo almacenado en MongoDB con object_id: {object_id}")
 
-                        existing_versions = list(fs.find({"source_url": url}).sort("scraping_date", -1))
-                        if len(existing_versions) > 1:
-                            oldest_version = existing_versions[-1]
-                            file_id = oldest_version._id  
-                            fs.delete(file_id)  
-                            logger.info(f"Se eliminó la versión más antigua con object_id: {file_id}")
+                        
                     else:
                         non_scraped_urls.append(url)
 
