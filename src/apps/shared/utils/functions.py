@@ -162,7 +162,7 @@ def initialize_driver(retries=3):
             options.add_argument("--crash-dump-dir=/tmp")  # Evita problemas de crashpad
             options.add_argument("--disable-crash-reporter") 
 
-            driver = uc.Chrome(options=options)
+            driver = uc.Chrome(options=options,version_main=134)
 
 
             driver.set_page_load_timeout(600)
