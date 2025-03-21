@@ -57,6 +57,12 @@ logger = logging.getLogger(__name__)
 
     return JsonResponse(filtered_info, safe=False) """
 
+class Pagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+@api_view(["GET"])
 def get_related_species(request, query):
     query = unquote(query).strip()
     words = query.split()
@@ -101,12 +107,6 @@ def get_related_species(request, query):
     ]
 
     return paginator.get_paginated_response(species_list)
-class Pagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = "page_size"
-    max_page_size = 100
-
-
 @api_view(["GET"])
 def get_plague_summary_view(request):
     scientific_name = request.GET.get("scientific_name")
