@@ -8,9 +8,9 @@ from .viewsets.species_viewsets import (
     SpeciesSubscriptionViewSet,
     ScraperURLViewSet,
     SpeciesCABIViewSet,
-    get_related_species,
+    #get_related_species,
     get_plague_summary_view,
-    get_plague_news, get_relevant_plague_summary_view
+    get_plague_news #, get_relevant_plague_summary_view
 )
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
@@ -29,11 +29,11 @@ urlpatterns = [
         ReportComparisonDetailView.as_view(),
         name="report-comparison-detail",
     ),
-    path("related_species/<str:query>/", get_related_species, name="related_species"),
+    #path("related_species/<str:query>/", get_related_species, name="related_species"),
         
-    path('plague-summary/<int:cabi_id>/', get_plague_summary_view, name='plague_summary'),
+    path('api/plague-summary/', get_plague_summary_view, name='get_plague_summary'),
     path('plague-news/<int:cabi_id>/', get_plague_news, name='plague-news'),
-    path('plague-summary-relevant/<int:cabi_id>/', get_relevant_plague_summary_view, name='plague-summary-relevant'),
+    #path('plague-summary-relevant/<int:cabi_id>/', get_relevant_plague_summary_view, name='plague-summary-relevant'),
 
 
 ]
