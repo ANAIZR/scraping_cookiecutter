@@ -57,6 +57,7 @@ def scraper_auiapsc(url, sobrenombre):
                 if pdf_text:
                     object_id = save_to_mongo("urls_scraper", pdf_text, url, url_padre)
                     logger.info(f"📂 Archivo guardado en `urls_scraper` con object_id: {object_id}")
+                    scraped_urls.append(url)
                 else:
                     non_scraped_urls.append(url)
                     total_non_scraped_links += 1
@@ -71,6 +72,7 @@ def scraper_auiapsc(url, sobrenombre):
                     if page_text:
                         object_id = save_to_mongo("urls_scraper", page_text, url, url_padre)
                         logger.info(f"📂 Archivo guardado en `urls_scraper` con object_id: {object_id}")
+                        scraped_urls.append(url)
                     else:
                         non_scraped_urls.append(url)
                         total_non_scraped_links += 1
