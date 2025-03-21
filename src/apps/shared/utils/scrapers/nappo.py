@@ -55,7 +55,7 @@ def scraper_nappo(url, sobrenombre):
                 pdf_text = extract_text_from_pdf(url)
 
                 if pdf_text:
-                    object_id = save_to_mongo("urls_scraper", page_text, url, url_padre)
+                    object_id = save_to_mongo("urls_scraper", pdf_text, url, url_padre)
                     logger.info(f"📂 Archivo guardado en `urls_scraper` con object_id: {object_id}")
                 else:
                     non_scraped_urls.append(url)

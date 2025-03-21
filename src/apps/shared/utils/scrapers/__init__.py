@@ -83,6 +83,7 @@ from .acir_aphis_usda import scraper_acir_aphis_usda
 from .auiapsc import scraper_auiapsc
 from .cosave import scraper_cosave
 from .nappo import scraper_nappo
+from .oirsa import scraper_oirsa
 
 SCRAPER_FUNCTIONS = {
     1: scraper_iucngisd,
@@ -170,4 +171,5 @@ SCRAPER_FUNCTIONS = {
     85: scraper_auiapsc,
     86: scraper_cosave,
     87: scraper_nappo,
+    88: scraper_oirsa
 }
