@@ -162,7 +162,7 @@ def initialize_driver(retries=3):
             logger.info(f"Usando User-Agent: {random_user_agent}")
             #options.add_adergument("--crash-dump-dir=/tmp")  # Evita problemas de crashpad
             #options.add_argument("--disable-crash-reporter") 
-            driver_path=ChromeDriverManager().install()
+            driver_path = "/usr/local/bin/chromedriver"
             print(f"Chromedriver descargado en: {driver_path}")
             driver = uc.Chrome(executable_path=driver_path, options=options)
 
