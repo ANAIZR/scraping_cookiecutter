@@ -162,10 +162,8 @@ def initialize_driver(retries=3):
             logger.info(f"Usando User-Agent: {random_user_agent}")
             #options.add_adergument("--crash-dump-dir=/tmp")  # Evita problemas de crashpad
             #options.add_argument("--disable-crash-reporter") 
-
-            driver = uc.Chrome(
-                service=Service(ChromeDriverManager().install()), options=options
-            )
+            driver_path=ChromeDriverManager().install()
+            driver = uc.Chrome(executable_path=driver_path, options=options)
 
             driver.set_page_load_timeout(600)
             logger.info("Navegador iniciado correctamente con Selenium.")
